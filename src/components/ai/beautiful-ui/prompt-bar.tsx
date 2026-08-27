@@ -80,6 +80,12 @@ const MODELS = [
   { key: 'focused', name: 'Focused', tag: 'Mock' },
 ]
 
+const COACH_STARTERS = [
+  'I have too much on my mind',
+  'Help me figure out my next step',
+  'I keep avoiding a decision',
+] as const
+
 /* the last @word or /word being typed, if any */
 function parseToken(draft: string): { kind: 'at' | 'slash'; query: string; start: number } | null {
   const match = /(^|\s)([@/])([\w-]*)$/.exec(draft)
@@ -536,6 +542,202 @@ export default function PromptBar({
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Coach variant — keeps the Beautiful UI composer anatomy while limiting the
+ * surface to capabilities available in the local Coach prototype.
+ */
+export function CoachPromptBar({
+  placeholder = 'Say what feels present…',
+  showInspirations = false,
+  onSend,
+}: {
+  placeholder?: string
+  showInspirations?: boolean
+  onSend: (text: string) => void
+}) {
+  const [draft, setDraft] = useState('')
+  const [startersOpen, setStartersOpen] = useState(false)
+  const [activeStarter, setActiveStarter] = useState(0)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const starterRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const canSend = draft.trim().length > 0
+
+  useEffect(() => {
+    if (!startersOpen) return
+    starterRefs.current[activeStarter]?.focus()
+    const close = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setStartersOpen(false)
+    }
+    const closeWithKeyboard = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setStartersOpen(false)
+      triggerRef.current?.focus()
+    }
+    document.addEventListener('pointerdown', close)
+    document.addEventListener('keydown', closeWithKeyboard)
+    return () => {
+      document.removeEventListener('pointerdown', close)
+      document.removeEventListener('keydown', closeWithKeyboard)
+    }
+  }, [activeStarter, startersOpen])
+
+  function send() {
+    if (!canSend) return
+    onSend(draft.trim())
+    setDraft('')
+    setStartersOpen(false)
+    if (inputRef.current) inputRef.current.style.height = '28px'
+  }
+
+  return (
+    <div ref={rootRef} data-promptbar className="relative w-full">
+      {showInspirations && !draft ? (
+        <div
+          className="coach-scrollbar-none -mx-5 mb-2 flex gap-3 overflow-x-auto px-5"
+          aria-label="Inspiration options"
+        >
+          {COACH_STARTERS.map((starter) => (
+            <button
+              key={starter}
+              type="button"
+              onClick={() => {
+                setDraft(starter)
+                setStartersOpen(false)
+                inputRef.current?.focus()
+              }}
+              className="coach-pressable flex min-h-touch shrink-0 touch-manipulation items-center whitespace-nowrap rounded-full text-sm font-medium text-[var(--coach-ink)] transition-transform duration-150 active:scale-[0.97]"
+            >
+              <span className="inline-flex h-[30px] items-center rounded-full border border-[var(--coach-border-warm-subtle)] bg-[var(--coach-inspiration-surface)] px-[13px]">
+                {starter}
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {startersOpen ? (
+        <div
+          id="coach-conversation-starters"
+          className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-card bg-surface p-1 shadow-raised"
+          role="listbox"
+          aria-label="Conversation starters"
+          style={{ animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both' }}
+        >
+          {COACH_STARTERS.map((starter, index) => (
+            <button
+              key={starter}
+              ref={(element) => {
+                starterRefs.current[index] = element
+              }}
+              type="button"
+              role="option"
+              aria-selected={index === activeStarter}
+              onFocus={() => setActiveStarter(index)}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+                event.preventDefault()
+                const offset = event.key === 'ArrowDown' ? 1 : COACH_STARTERS.length - 1
+                const next = (index + offset) % COACH_STARTERS.length
+                setActiveStarter(next)
+                starterRefs.current[next]?.focus()
+              }}
+              onClick={() => {
+                setDraft(starter)
+                setStartersOpen(false)
+                inputRef.current?.focus()
+              }}
+              className="flex min-h-touch w-full items-center gap-2 rounded-chip px-3 text-left text-xs leading-5 text-ink transition-colors hover:bg-hover"
+            >
+              <span className="shrink-0 text-accent-ink">
+                <Icon size={14}>
+                  <path d="M12 3l1.1 3.1L16 7.3l-2.9 1.2L12 12l-1.1-3.5L8 7.3l2.9-1.2L12 3z" />
+                </Icon>
+              </span>
+              {starter}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-[var(--bui-control-size)_minmax(0,1fr)_var(--bui-control-size)_var(--bui-control-size)] items-end gap-1 rounded-full border border-[var(--coach-border-warm)] bg-[var(--coach-surface-glass-strong)] p-1.5 shadow-[var(--coach-shadow)] transition-colors focus-within:border-[var(--coach-border-strong)]">
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-label="Open conversation starters"
+          aria-expanded={startersOpen}
+          aria-controls={startersOpen ? 'coach-conversation-starters' : undefined}
+          onClick={() => {
+            setActiveStarter(0)
+            setStartersOpen((current) => !current)
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'ArrowDown') return
+            event.preventDefault()
+            setActiveStarter(0)
+            setStartersOpen(true)
+          }}
+          className="flex size-[var(--bui-control-size)] items-center justify-center rounded-full text-ink-2 transition-[background-color,color,transform] hover:bg-hover hover:text-ink active:scale-[0.94]"
+        >
+          <Icon size={16}>
+            <path d="M12 3l1.1 3.1L16 7.3l-2.9 1.2L12 12l-1.1-3.5L8 7.3l2.9-1.2L12 3z" />
+            <path d="M18.5 13l.7 2 1.8.8-1.8.7-.7 2-.7-2-1.8-.7 1.8-.8.7-2z" />
+          </Icon>
+        </button>
+        <textarea
+          ref={inputRef}
+          rows={1}
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            event.target.style.height = '0px'
+            event.target.style.height = `${Math.min(event.target.scrollHeight, 96)}px`
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setStartersOpen(false)
+            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+              event.preventDefault()
+              send()
+            }
+          }}
+          placeholder={placeholder}
+          aria-label="Prompt"
+          className="min-h-7 min-w-0 w-full resize-none bg-transparent px-1 py-[5px] text-[13px] leading-[18px] text-ink outline-none [overflow-wrap:anywhere] placeholder:text-ink-3"
+        />
+        <button
+          type="button"
+          aria-label="Dictation unavailable"
+          title="Voice input is not connected"
+          disabled
+          className="flex size-[var(--bui-control-size)] items-center justify-center rounded-full text-ink-3 opacity-45"
+        >
+          <Icon size={15} strokeWidth={2}>
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3" />
+          </Icon>
+        </button>
+        <button
+          type="button"
+          aria-label="Send"
+          disabled={!canSend}
+          onClick={send}
+          className="flex size-[var(--bui-control-size)] items-center justify-center rounded-full transition-[background-color,color,transform] enabled:active:scale-[0.94]"
+          style={{
+            background: canSend ? 'var(--coach-accent)' : 'var(--line-strong)',
+            color: canSend ? 'var(--primary-foreground)' : 'var(--ink-2)',
+          }}
+        >
+          <Icon size={16} strokeWidth={2.4}>
+            <path d="M12 19V5M5 12l7-7 7 7" />
+          </Icon>
+        </button>
       </div>
     </div>
   )

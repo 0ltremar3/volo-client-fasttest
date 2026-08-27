@@ -32,4 +32,41 @@
   --bui-shadow-card: 0 1px 2px rgb(0 0 0 / 24%);
   --bui-shadow-raised: 0 8px 18px rgb(0 0 0 / 32%);
   --font-family-display: var(--font-family-sans);
+
+  --coach-background: linear-gradient(180deg, #172433 0%, #202832 30%, #2f251f 62%, #171615 100%);
+  --coach-desktop-background: #0f0f0e;
+  --coach-frame-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
+  --coach-header: rgb(23 36 51 / 74%);
+  --coach-ink: #f3f0ea;
+  --coach-text-secondary: #c2bbb3;
+  --coach-text-tertiary: #aaa29a;
+  --coach-text-warm: #d2b79d;
+  --coach-surface: #252321;
+  --coach-surface-muted: #302d2a;
+  --coach-surface-glass: rgb(37 35 33 / 82%);
+  --coach-surface-glass-strong: rgb(37 35 33 / 96%);
+  --coach-inspiration-surface: #302d2a;
+  --coach-bottom-nav: rgb(28 26 24 / 90%);
+  --coach-nav-surface-filter: brightness(0.17) saturate(0.55);
+  --coach-border: #46413c;
+  --coach-border-warm: rgb(157 135 112 / 42%);
+  --coach-border-warm-subtle: rgb(157 135 112 / 28%);
+  --coach-border-strong: #777068;
+  --coach-accent: #ff8a42;
+  --coach-accent-muted: #47291b;
+  --coach-mark-gradient: linear-gradient(
+    180deg,
+    #f1d6b5 0%,
+    #f1d6b5 18%,
+    #ffb454 30%,
+    #ff7a2b 74%,
+    #d59a59 100%
+  );
+  --coach-toggle-off: #625d57;
+  --coach-success: #8bc79a;
+  --coach-focus: rgb(37 35 33 / 82%);
+  --coach-user-bubble: rgb(52 49 46 / 86%);
+  --coach-shadow: 0 6px 20px rgb(0 0 0 / 30%);
+  --coach-card-shadow: 0 0 0 1px rgb(255 255 255 / 8%), 0 6px 20px rgb(0 0 0 / 30%);
+  --coach-composer-fade: linear-gradient(180deg, transparent 0%, rgb(23 22 21 / 90%) 30%);
 }

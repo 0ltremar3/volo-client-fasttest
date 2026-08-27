@@ -3,8 +3,9 @@
 A lightweight, mobile-first React SPA foundation for an AI chat-style application. It is designed
 to sit in front of an existing backend and remain easy to extend with coding agents.
 
-The repository currently contains the Phase 1 frontend shell. Mock email login is available for
-local development; no business REST API or AI streaming protocol has been connected.
+The repository currently contains the Phase 1 frontend shell and an interactive Coach flow based
+on the product Figma. Mock email login and Coach data are available for local development; no
+business REST API or AI streaming protocol has been connected.
 
 ## Stack
 
@@ -41,14 +42,17 @@ Set `VITE_MOCK_MODE=false` in production builds.
 
 ## Available routes
 
-| Route            | Purpose                        | Current state            |
-| ---------------- | ------------------------------ | ------------------------ |
-| `/login`         | Email and password sign-in     | Mock flow only           |
-| `/chat`          | Chat surface and composer      | UI only                  |
-| `/conversations` | Conversation history           | Empty state; API pending |
-| `/review`        | Summaries and reflections      | Empty state; API pending |
-| `/insights`      | Metrics and trends             | Empty state; API pending |
-| `/debug`         | Request and runtime inspection | Configuration skeleton   |
+| Route    | Purpose                        | Current state                         |
+| -------- | ------------------------------ | ------------------------------------- |
+| `/login` | Email and password sign-in     | Mock flow only                        |
+| `/chat`  | Coach experience               | Interactive local state and mock data |
+| `/debug` | Request and runtime inspection | Configuration skeleton                |
+
+The Coach route opens on the Figma-aligned conversation state and includes the welcome, scheduling,
+scheduled-session, conversation, Focus, Inspiration, Move, summary, and local history states. The
+top bar is intentionally title-only; schedule, Coach, and history navigation live in the bottom bar.
+Conversation replies and history are deterministic local mock data; they do not imply an AI
+transport, persistence API, reminders, or calendar integration.
 
 In mock mode, application routes redirect to `/login` until the test session is created. Real auth
 guards will be implemented only after the backend authentication contract is known.
@@ -116,6 +120,9 @@ src/styles/themes/dark.css
 src/styles/globals.css
 ```
 
+The Coach visual rules, component anatomy, and responsive behavior are documented in
+[`DESIGN.md`](./DESIGN.md). Update that design anchor before changing the Coach visual language.
+
 Tokens cover color, typography, radius, shadow, motion, page spacing, content width, and touch size.
 Feature modules consume semantic classes instead of palette values.
 
@@ -124,7 +131,7 @@ To add a theme:
 1. Create `src/styles/themes/<name>.css` with a `[data-theme="<name>"]` selector.
 2. Import it from `src/styles/globals.css`.
 3. Add the name to `ThemeName` in `src/lib/theme.ts` and update the theme selector UI.
-4. Verify `/login`, `/chat`, `/conversations`, `/review`, and `/insights` at 375px and desktop width.
+4. Verify `/login`, `/chat`, and `/debug` at 375px and desktop width.
 
 ## Beautiful UI
 
@@ -132,9 +139,9 @@ Beautiful UI is used through its official copy-paste model, not as an npm packag
 Prompt Bar source lives at `src/components/ai/beautiful-ui/prompt-bar.tsx`; application-specific
 layout and transport messaging live in `src/components/ai/beautiful-prompt-composer.tsx`.
 
-The source attribution and MIT notice are preserved in `THIRD_PARTY_NOTICES.md`. Keep copied
-components behind the local token system and remove demo-only capabilities that the backend cannot
-support.
+The Coach composer reuses the adapted Prompt Bar through the application adapter. Source
+attribution and the MIT notice are preserved in `THIRD_PARTY_NOTICES.md`. Keep copied components
+behind the local token system and remove demo-only capabilities that the backend cannot support.
 
 ## Project shape
 
@@ -171,5 +178,5 @@ For UI changes, also verify both themes at 375px and desktop width, including ke
 
 - OpenAPI document location and supported REST operations
 - Authentication method and session lifecycle
-- Conversation, review, insight, and debug response contracts
+- Conversation history, Coach scheduling, Move, summary, and debug response contracts
 - AI streaming transport, events, cancellation, errors, and metadata
