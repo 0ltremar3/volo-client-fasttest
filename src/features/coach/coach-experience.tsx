@@ -1,20 +1,14 @@
-import {
-  ArrowRight,
-  Check,
-  ChevronRight,
-  History,
-  Pencil,
-  Sparkles,
-  X,
-} from 'lucide-react'
+import { ArrowRight, Check, Pencil, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { BeautifulPromptComposer } from '@/components/ai/beautiful-prompt-composer'
-import { ThemeToggle } from '@/components/theme-toggle'
+import { MoveCardSurface } from '@/components/cards/move-card-surface'
+import { AppAtmosphere } from '@/components/layout/app-atmosphere'
+import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
-import coachNavSchedule from '@/assets/coach/coach-nav-schedule.svg'
-import coachNavSurface from '@/assets/coach/coach-nav-surface.svg'
-import { CoachNavMark, CoachOrb } from '@/features/coach/coach-orb'
+import { ConversationHistoryDialog } from '@/features/coach/conversation-history-dialog'
+import { CoachOrb } from '@/features/coach/coach-orb'
 import {
   defaultSchedule,
   formatScheduleDate,
@@ -26,7 +20,6 @@ import {
   type CoachMessage,
   type CoachSchedule,
   type CoachScreen,
-  type CoachSession,
 } from '@/features/coach/coach-model'
 import { cn } from '@/lib/utils'
 
@@ -41,79 +34,6 @@ function CoachHeader() {
         <span aria-hidden="true" />
       </div>
     </header>
-  )
-}
-
-function CoachBottomNavigation({
-  active,
-  onHome,
-  onCoach,
-  onHistory,
-}: {
-  active: 'home' | 'coach' | 'history'
-  onHome: () => void
-  onCoach: () => void
-  onHistory: () => void
-}) {
-  return (
-    <nav
-      className="safe-bottom relative z-30 grid min-h-[93px] shrink-0 grid-cols-3 items-start px-11 pt-3"
-      aria-label="Coach navigation"
-    >
-      <img
-        data-coach-nav-bump
-        src={coachNavSurface}
-        alt=""
-        width="430"
-        height="133"
-        className="pointer-events-none absolute -left-5 -top-[14px] h-[133px] w-[430px] max-w-none"
-        style={{ filter: 'var(--coach-nav-surface-filter)' }}
-        aria-hidden="true"
-      />
-      <button
-        type="button"
-        onClick={onHome}
-        aria-label="Open Coach schedule"
-        aria-current={active === 'home' ? 'page' : undefined}
-        className="relative z-10 mx-auto grid min-h-touch min-w-touch place-items-center rounded-full text-[var(--coach-text-tertiary)] transition-[color,transform] duration-150 active:scale-[0.97] aria-[current=page]:text-[var(--coach-ink)]"
-      >
-        <span
-          className="size-[27px] bg-current"
-          style={{
-            maskImage: `url(${coachNavSchedule})`,
-            maskPosition: 'center',
-            maskRepeat: 'no-repeat',
-            maskSize: '100% 100%',
-            WebkitMaskImage: `url(${coachNavSchedule})`,
-            WebkitMaskPosition: 'center',
-            WebkitMaskRepeat: 'no-repeat',
-            WebkitMaskSize: '100% 100%',
-          }}
-          aria-hidden="true"
-        />
-      </button>
-
-      <button
-        type="button"
-        onClick={onCoach}
-        aria-label="Open Coach conversation"
-        aria-current={active === 'coach' ? 'page' : undefined}
-        className="coach-pressable relative z-10 mx-auto -mt-3 grid size-16 place-items-center transition-transform duration-150 active:scale-[0.97]"
-      >
-        <CoachNavMark />
-      </button>
-
-      <button
-        type="button"
-        onClick={onHistory}
-        aria-label="Open conversation history"
-        aria-haspopup="dialog"
-        aria-current={active === 'history' ? 'page' : undefined}
-        className="relative z-10 mx-auto grid min-h-touch min-w-touch place-items-center rounded-full text-[var(--coach-text-tertiary)] transition-[color,transform] duration-150 active:scale-[0.97] aria-[current=page]:text-[var(--coach-ink)]"
-      >
-        <History className="size-[28px]" aria-hidden="true" />
-      </button>
-    </nav>
   )
 }
 
@@ -139,87 +59,6 @@ function FocusCard() {
         ))}
       </div>
     </article>
-  )
-}
-
-function CoachHistoryDialog({
-  open,
-  onOpenChange,
-  onSelect,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSelect: (session: CoachSession) => void
-}) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
-  }, [open])
-
-  return (
-    <dialog
-      ref={dialogRef}
-      className="coach-dialog m-0 h-dvh max-h-none w-[min(22.5rem,calc(100vw-1rem))] max-w-none bg-[var(--coach-surface)] p-0 text-[var(--coach-ink)]"
-      onClose={() => onOpenChange(false)}
-      onCancel={(event) => {
-        event.preventDefault()
-        onOpenChange(false)
-      }}
-      aria-labelledby="coach-history-title"
-    >
-      <div className="safe-top safe-bottom flex h-full flex-col">
-        <div className="flex h-16 items-center gap-3 border-b border-[var(--coach-border)] px-4">
-          <div className="min-w-0 flex-1">
-            <h2 id="coach-history-title" className="text-base font-semibold">
-              Conversations
-            </h2>
-            <p className="text-xs text-[var(--coach-text-secondary)]">Local mock history</p>
-          </div>
-          <ThemeToggle />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => onOpenChange(false)}
-            aria-label="Close conversation history"
-          >
-            <X />
-          </Button>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          {mockSessions.map((session) => (
-            <button
-              key={session.id}
-              type="button"
-              onClick={() => onSelect(session)}
-              className="group mb-1 flex min-h-touch w-full items-start gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-[var(--coach-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-[var(--coach-accent-muted)] text-[var(--coach-accent)]">
-                <Sparkles className="size-4" aria-hidden="true" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{session.title}</span>
-                <span className="mt-0.5 block text-xs text-[var(--coach-text-tertiary)]">
-                  {session.date}
-                </span>
-                <span className="mt-2 line-clamp-2 block text-xs leading-5 text-[var(--coach-text-secondary)]">
-                  {session.preview}
-                </span>
-              </span>
-              <ChevronRight
-                className="mt-2 size-4 shrink-0 text-[var(--coach-text-tertiary)] transition-transform group-hover:translate-x-0.5"
-                aria-hidden="true"
-              />
-            </button>
-          ))}
-        </div>
-      </div>
-    </dialog>
   )
 }
 
@@ -463,32 +302,30 @@ function MoveCard({
       <p className="mb-4 text-pretty text-base font-medium leading-5">
         Based on our conversation, here’s a move that reflects what matters most to you:
       </p>
-      <article className="min-h-[146px] rounded-[22px] border border-white/80 bg-[var(--coach-surface-glass)] p-[18px] shadow-[var(--coach-card-shadow)] backdrop-blur-sm">
-        <div className="flex min-h-[15px] items-center gap-3 text-xs text-[var(--coach-text-tertiary)]">
-          <span className="min-w-0 flex-1">Every Sun · 09:00 / 21:00</span>
-          {state === 'added' ? (
+      <MoveCardSurface
+        schedule="Every Sun · 09:00 / 21:00"
+        source="From “The Cost of Choice”"
+        dueLabel="Today 21:00"
+        status={
+          state === 'added' ? (
             <span className="inline-flex items-center gap-1 font-medium text-[var(--coach-success)]">
               <Check className="size-3.5" /> Added
             </span>
-          ) : null}
-        </div>
-
+          ) : null
+        }
+      >
         {state === 'editing' ? (
           <textarea
             value={text}
             onChange={(event) => onTextChange(event.target.value)}
             rows={3}
-            className="mt-4 w-full resize-none rounded-lg bg-[var(--coach-surface-muted)] p-3 text-base leading-6 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="w-full resize-none rounded-lg bg-[var(--coach-surface-muted)] p-3 text-base leading-6 outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Edit move"
           />
         ) : (
-          <p className="mt-4 text-pretty text-lg font-medium leading-6">{text}</p>
+          <p>{text}</p>
         )}
-        <div className="mt-4 flex items-end gap-3 text-xs text-[var(--coach-text-tertiary)]">
-          <p className="min-w-0 flex-1 truncate">From “The Cost of Choice”</p>
-          <time className="shrink-0 font-semibold">Today 21:00</time>
-        </div>
-      </article>
+      </MoveCardSurface>
 
       {state === 'suggested' || state === 'editing' ? (
         <div className="mt-3 px-3">
@@ -664,14 +501,22 @@ function SummaryScreen({ moveText, onContinue }: { moveText: string; onContinue:
   )
 }
 
-export function CoachExperience() {
+function CoachExperienceState({
+  initialSession,
+}: {
+  initialSession: (typeof mockSessions)[number] | undefined
+}) {
+  const navigate = useNavigate()
   const [screen, setScreen] = useState<CoachScreen>('conversation')
   const [historyOpen, setHistoryOpen] = useState(false)
+  const historyButtonRef = useRef<HTMLButtonElement>(null)
   const [schedule, setSchedule] = useState(defaultSchedule)
-  const [messages, setMessages] = useState<CoachMessage[]>(previewMessages)
+  const [messages, setMessages] = useState<CoachMessage[]>(
+    initialSession?.messages ?? previewMessages,
+  )
   const [replying, setReplying] = useState(false)
-  const [turn, setTurn] = useState(2)
-  const [moveState, setMoveState] = useState<MoveState>('suggested')
+  const [turn, setTurn] = useState(initialSession ? 0 : 2)
+  const [moveState, setMoveState] = useState<MoveState>(initialSession ? 'hidden' : 'suggested')
   const [moveText, setMoveText] = useState(moveCopy)
   const timerRef = useRef<number | null>(null)
 
@@ -748,24 +593,29 @@ export function CoachExperience() {
     }, 720)
   }
 
-  function openSession(session: CoachSession) {
+  function openSession(session: (typeof mockSessions)[number]) {
     clearPendingReply()
     setMessages(session.messages)
     setTurn(0)
     setMoveState('hidden')
     setScreen('conversation')
     setHistoryOpen(false)
+    void navigate(`/chat?session=${encodeURIComponent(session.id)}`)
+  }
+
+  function setHistoryOpenWithFocus(open: boolean) {
+    setHistoryOpen(open)
+    if (!open) {
+      window.requestAnimationFrame(() =>
+        window.requestAnimationFrame(() => historyButtonRef.current?.focus()),
+      )
+    }
   }
 
   const coachChromeVisible = screen !== 'welcome' && screen !== 'schedule'
-  const activeNavigation = historyOpen ? 'history' : screen === 'home' ? 'home' : 'coach'
-
   return (
-    <div className="coach-canvas relative isolate flex h-dvh min-h-0 w-full flex-col overflow-hidden text-[var(--coach-ink)]">
-      <span
-        className="coach-atmosphere pointer-events-none absolute inset-0 -z-10"
-        aria-hidden="true"
-      />
+    <div className="app-canvas relative isolate flex h-dvh min-h-0 w-full flex-col overflow-hidden text-[var(--coach-ink)]">
+      <AppAtmosphere />
       {coachChromeVisible ? <CoachHeader /> : null}
 
       <main className="flex min-h-0 flex-1 flex-col">
@@ -801,15 +651,31 @@ export function CoachExperience() {
       </main>
 
       {coachChromeVisible ? (
-        <CoachBottomNavigation
-          active={activeNavigation}
-          onHome={() => setScreen('home')}
+        <AppBottomNavigation
+          ref={historyButtonRef}
           onCoach={() => setScreen('conversation')}
           onHistory={() => setHistoryOpen(true)}
         />
       ) : null}
 
-      <CoachHistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} onSelect={openSession} />
+      <ConversationHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpenWithFocus}
+        onSelect={openSession}
+      />
     </div>
   )
+}
+
+export function CoachExperience() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const sessionId = new URLSearchParams(location.search).get('session')
+  const session = mockSessions.find((candidate) => candidate.id === sessionId)
+
+  useEffect(() => {
+    if (sessionId && !session) void navigate('/chat', { replace: true })
+  }, [navigate, session, sessionId])
+
+  return <CoachExperienceState key={session?.id ?? 'default'} initialSession={session} />
 }

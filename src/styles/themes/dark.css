@@ -33,9 +33,14 @@
   --bui-shadow-raised: 0 8px 18px rgb(0 0 0 / 32%);
   --font-family-display: var(--font-family-sans);
 
-  --coach-background: linear-gradient(180deg, #172433 0%, #202832 30%, #2f251f 62%, #171615 100%);
-  --coach-desktop-background: #0f0f0e;
-  --coach-frame-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
+  --app-background: linear-gradient(180deg, #172433 0%, #202832 30%, #2f251f 62%, #171615 100%);
+  --app-desktop-background: #0f0f0e;
+  --app-frame-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
+  --app-brand-asset-filter: invert(1) brightness(1.6);
+  --app-nav-icon-filter: invert(1) brightness(1.25);
+  --daily-decoration-filter: invert(1) brightness(0.72) sepia(0.2);
+  --daily-badge-foreground: #171615;
+  --daily-profile-background: #3d3a36;
   --coach-header: rgb(23 36 51 / 74%);
   --coach-ink: #f3f0ea;
   --coach-text-secondary: #c2bbb3;

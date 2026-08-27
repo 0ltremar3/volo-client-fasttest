@@ -164,11 +164,11 @@
     text-wrap: pretty;
   }
 
-  .coach-canvas {
-    background: var(--coach-background);
+  .app-canvas {
+    background: var(--app-background);
   }
 
-  .coach-atmosphere {
+  .app-atmosphere {
     background-image:
       url('../assets/coach/atmosphere-sky.svg'),
       radial-gradient(ellipse at 50% 58%, rgb(255 192 98 / 64%) 0%, rgb(255 167 102 / 0%) 58%);
@@ -179,6 +179,28 @@
     background-size:
       33.5rem 21rem,
       62rem 56rem;
+  }
+
+  .daily-card {
+    border: 1px solid var(--coach-border-warm);
+    border-radius: 22px;
+    background: var(--coach-surface-glass);
+    box-shadow: var(--coach-card-shadow);
+    backdrop-filter: blur(6px);
+  }
+
+  .daily-overline {
+    color: var(--coach-text-tertiary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .daily-section-title {
+    color: var(--coach-ink);
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.25rem;
   }
 
   .coach-orb__glow {

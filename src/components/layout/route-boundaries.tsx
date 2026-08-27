@@ -4,7 +4,7 @@ import { AppShell } from '@/components/layout/app-shell'
 import { hasMockSession, mockAuthEnabled } from '@/features/auth/mock-auth'
 
 export function HomeRedirect() {
-  const destination = mockAuthEnabled && hasMockSession() ? '/chat' : '/login'
+  const destination = mockAuthEnabled && hasMockSession() ? '/daily' : '/login'
   return <Navigate to={destination} replace />
 }
 

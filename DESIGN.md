@@ -1,10 +1,10 @@
-# Volo Coach Design System
+# Volo Application Design System
 
-Source of truth: the Coach section in the [light-mode Figma file](https://www.figma.com/design/sPJrdSkCdw3ZnHuBXNmjsp/light-mode?node-id=93-7242&m=dev), with implementation detail taken from the speaking, quick-reply, Focus-card, and Move-card states inside that section. Product behavior remains a frontend-only mock until backend contracts exist.
+Sources of truth: the Coach section and [Daily Ver2 node](https://www.figma.com/design/sPJrdSkCdw3ZnHuBXNmjsp/light-mode?node-id=102-15348&m=dev) in the light-mode Figma file. Coach implementation detail comes from its speaking, quick-reply, Focus-card, and Move-card states; Daily long-form order comes from nodes `37:9371` and `37:9628`. Product behavior remains a frontend-only mock until backend contracts exist.
 
 ## 1. Visual theme and atmosphere
 
-Volo Coach is a quiet, warm reflection space. A pale sky at the top dissolves into a peach center and a paper-white base. The interface should feel calm and private rather than clinical or futuristic. One orange ring—the Coach mark in the bottom navigation—is the memorable focal point.
+Volo is a quiet, warm reflection space. A pale sky at the top dissolves into a peach center and a paper-white base. Daily and Coach share this full-viewport atmosphere, warm ink, glass surfaces, and one orange Coach mark in the bottom navigation. The interface should feel calm and private rather than clinical or futuristic.
 
 The Figma composition is primary. Claude's editorial design system is a secondary DNA donor for three supporting details: warm near-black instead of pure black, a serif/sans content hierarchy, and whisper-soft `0 4px 24px rgb(0 0 0 / 5%)` elevation. These values support the Figma direction; they do not replace it.
 
@@ -54,11 +54,23 @@ Use when the conversation produces a concrete next action. It is not a chat bubb
 
 ### Bottom navigation
 
-Three destinations only: schedule/home, Coach, and history. The active Coach mark sits in a small raised notch and uses the orange ring asset. Navigation is semantic, keyboard accessible, safe-area aware, and at least 93px high including the device inset. Conversation history belongs here, not in the top bar.
+Three controls only: Daily (`/daily`), Coach (`/chat`), and Coach conversation history. Daily and Coach are real links; History is a dialog button. The Coach mark sits in a small raised notch and uses the orange ring asset. Navigation is semantic, keyboard accessible, safe-area aware, and at least 93px high including the device inset. Active route state remains independent from the History dialog state.
 
 ### Top bar
 
-The top bar contains only the centered `Coach` title. Do not add new-conversation or history controls. The quiet empty side columns are intentional and keep the title optically centered.
+Coach contains only the centered `Coach` title. Daily uses the exported VOLO wordmark and a non-interactive profile brand glyph. Do not add new-conversation, account, or history controls to either top bar. Browser/PWA safe areas replace Figma's illustrative status bar and Dynamic Island.
+
+### Daily date and week strip
+
+The selected weekday is a `28px / 38px` display heading; month/year remains static text until a designed calendar state exists. Seven date buttons keep 44px touch targets. The active date uses weight, ink, and a 15px tick so selection is not color-only. Date state belongs in `/daily?date=YYYY-MM-DD` and is restored by browser history.
+
+### Daily Echo
+
+The summary Echo is a read-only `article`, 350px wide at the 390px reference, 323px high, radius 22px, with warm glass, a Figma-exported arc and marker, a 12px overline, and `22px / 28px` display lead. It has no edit affordance in the first slice. The scheduled Echo variant belongs to the later settings slice.
+
+### Daily summary and traces
+
+The summary uses the same 22px glass surface, source/date metadata, `18px / 24px` body, exported divider, and distinct TAKE AWAY block. Traces remain a separate card and semantic ordered list with a time column, exported rail, `15px / 20px` copy, and compact kind chips. Missing summary and empty traces are separate states.
 
 ## 5. Layout principles
 
@@ -66,7 +78,7 @@ The top bar contains only the centered `Coach` title. Do not add new-conversatio
 - Desktop: center the same mobile composition in a neutral app frame; do not invent a separate desktop information architecture.
 - Primary horizontal gutter: 15–20px. Focus card uses 15px; conversation and composer use 20px.
 - Vertical rhythm follows 8/12/16/24/36px increments.
-- Content scrolls between the top title and the stacked inspiration/composer/bottom-navigation controls.
+- Content scrolls between the top region and bottom navigation. Coach may additionally stack inspiration and composer controls.
 - Bottom controls remain keyboard-safe and safe-area aware. No horizontal page overflow.
 
 ## 6. Depth and elevation
@@ -102,6 +114,7 @@ Don't:
 - Inspiration chips remain one line and use horizontal scrolling with hidden scrollbars.
 - Composer actions retain 44px touch targets; text gets the remaining width with `min-width: 0`.
 - At desktop widths, the shell stays 390px wide and centered. The outer background provides framing only.
+- Daily uses a 350px content width inside the 390px shell; Move cards may use the full 360px content column.
 - Both themes must preserve the same anatomy, spacing, and hierarchy.
 - Long labels and generated content use wrapping or truncation by role; metadata may truncate, primary content must wrap.
 
