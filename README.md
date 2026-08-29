@@ -3,10 +3,9 @@
 A lightweight, mobile-first React SPA foundation for an AI chat-style application. It is designed
 to sit in front of an existing backend and remain easy to extend with coding agents.
 
-The repository currently contains the Phase 1 frontend shell, a local-mock Daily home, and an
-interactive Coach flow based on the product Figma. Mock email login, Daily fixtures, and Coach data
-are available for local development; no business REST API or AI streaming protocol has been
-connected.
+The repository contains the Volo frontend shell, local mock fixtures, and a connected Volo V2 mode.
+With `VITE_MOCK_MODE=false`, email OTP auth uses the existing `/v1` account API while Coach, Daily,
+Move checks, scheduling, and POST SSE streaming use `/v2`.
 
 ## Stack
 
@@ -43,28 +42,29 @@ Set `VITE_MOCK_MODE=false` in production builds.
 
 ## Available routes
 
-| Route    | Purpose                        | Current state                         |
-| -------- | ------------------------------ | ------------------------------------- |
-| `/login` | Email and password sign-in     | Mock flow only                        |
-| `/daily` | Daily reflection home          | URL-selected date and local fixtures  |
-| `/chat`  | Coach experience               | Interactive local state and mock data |
-| `/debug` | Request and runtime inspection | Configuration skeleton                |
+| Route    | Purpose                                 | Current state                  |
+| -------- | --------------------------------------- | ------------------------------ |
+| `/login` | Mock password or real email OTP sign-in | Mode-selected authentication   |
+| `/daily` | Daily summary, moves, and traces        | Mock fixtures or Volo V2 data  |
+| `/chat`  | Coach experience                        | Mock flow or persisted Volo V2 |
+| `/debug` | Request and runtime inspection          | Configuration skeleton         |
 
-After mock sign-in, `/` redirects to `/daily`. Daily includes the Figma-aligned week strip, Echo
-summary, period moves, daily summary, traces, and shared Coach history. Selecting a history entry
-navigates to `/chat?session=<session-id>`. Dates without fixture data intentionally render separate
-empty states for Echo, moves, summary, and traces.
+After sign-in, `/` redirects to `/daily`. Daily includes the Figma-aligned week strip, a read-only
+Daily Echo summary with insights, Period Moves, empty hardware traces, and shared Coach history.
+Daily Echo is not a chat route and has no frontend start, message, generation, or complete action.
+Its settings icon opens the reminder sheet; real mode saves one enabled switch and local time through
+`PUT /v2/daily/echo/schedule`. A missing summary keeps the existing empty state.
 
-The Coach route opens on the Figma-aligned conversation state and includes the welcome, scheduling,
-scheduled-session, conversation, Focus, Inspiration, Move, summary, and local history states. The
-top bar is intentionally title-only; schedule, Coach, and history navigation live in the bottom bar.
-Conversation replies and history are deterministic local mock data; they do not imply an AI
-transport, persistence API, reminders, or calendar integration.
+The Coach route opens on the Figma-aligned conversation state and includes welcome, scheduling,
+conversation, Move proposal, session-end proposal, and history states. In real mode it uses
+`POST /v2/coach/sessions/:id/messages/stream`; assistant text streams from Mastra after the
+transformational-coach Skill is activated. Sessions, messages, retry ids, and pending cards persist
+in PostgreSQL. A Move is not written until its card is explicitly confirmed.
 
-In mock mode, application routes redirect to `/login` until the test session is created. Real auth
-guards will be implemented only after the backend authentication contract is known. Daily Echo
-settings, calendar sync, reminders, persistence, business APIs, and AI streaming are not
-implemented.
+In mock mode, application routes redirect to `/login` until the local test session is created and
+Coach replies remain fixtures. In real mode, login uses the backend email OTP endpoints, Better Auth
+cookie credentials, and `/v1/me`; Coach and Daily then use Volo V2. Calendar sync, device
+notifications, hardware traces, and frontend Daily summary generation remain out of scope.
 
 ## Commands
 
@@ -90,8 +90,8 @@ Only variables prefixed with `VITE_` are bundled into browser code. They must ne
 
 ## OpenAPI and REST APIs
 
-OpenAPI is the source of truth for ordinary REST endpoints. No schema is committed because the
-backend contract has not been provided.
+The backend-generated OpenAPI document is the source of truth for ordinary REST endpoints. The
+handwritten Volo client mirrors that contract while POST SSE framing remains isolated separately.
 
 Generate the client with a real schema:
 
@@ -108,9 +108,9 @@ credentials, and refresh behavior remain unset until the backend contract define
 
 ## AI streaming
 
-Streaming is intentionally not implemented. Before adding it, confirm the real transport and event
-format with the backend, then isolate that protocol behind a small adapter. UI modules should depend
-on stable chat state and actions rather than raw SSE, WebSocket, or framework-specific events.
+Coach POST SSE streaming is isolated in `src/api/sse.ts`. Feature modules receive parsed Volo events
+and do not parse transport frames. Message retries reuse the same `client_temp_id`; Daily has no SSE
+transport. A durable offline queue and background replay remain out of scope.
 
 ## Themes
 
@@ -184,10 +184,8 @@ npm run build
 For UI changes, also verify both themes at 375px and desktop width, including keyboard navigation,
 44px touch targets, safe areas, mobile keyboard behavior, and horizontal overflow.
 
-## Pending backend decisions
+## Pending product work
 
-- OpenAPI document location and supported REST operations
-- Authentication method and session lifecycle
-- Daily Echo, moves, summary, traces, conversation history, Coach scheduling, and debug contracts
-- Calendar sync, reminders, and persistence behavior
-- AI streaming transport, events, cancellation, errors, and metadata
+- Hardware trace ingestion and Daily summary generation jobs
+- Device notifications and calendar sync
+- Durable offline queue and background replay

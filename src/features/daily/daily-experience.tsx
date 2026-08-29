@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
+import { Settings2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import calendarChevron from '@/assets/daily/calendar-chevron.svg'
-import dotGlyph from '@/assets/daily/dot-glyph.svg'
 import echoArc from '@/assets/daily/echo-arc.svg'
 import echoMarker from '@/assets/daily/echo-marker.svg'
 import profileGlyph from '@/assets/daily/profile-glyph.svg'
@@ -16,6 +16,7 @@ import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { ConversationHistoryDialog } from '@/features/coach/conversation-history-dialog'
 import type { CoachSession } from '@/features/coach/coach-model'
 import {
+  defaultEchoSchedule,
   defaultDailyDate,
   formatDailyDate,
   getDailyRecord,
@@ -25,7 +26,11 @@ import {
   type DailyEcho,
   type DailySummary,
   type DailyTrace,
+  type EchoSchedule,
 } from '@/features/daily/daily-model'
+import { EchoSettingsSheet } from '@/features/daily/echo-settings-sheet'
+import { mockAuthEnabled } from '@/features/auth/mock-auth'
+import { VoloDailyExperience } from '@/features/daily/volo-daily-experience'
 
 function DailyHeader() {
   return (
@@ -113,13 +118,26 @@ function WeekStrip({ selectedDate }: { selectedDate: Date }) {
   )
 }
 
-function DailyEchoCard({ echo }: { echo: DailyEcho | null }) {
+function DailyEchoCard({ echo, onSettings }: { echo: DailyEcho | null; onSettings: () => void }) {
   if (!echo) {
     return (
-      <section className="daily-card min-h-[164px] px-5 py-6" aria-labelledby="daily-echo-title">
-        <p id="daily-echo-title" className="daily-overline">
-          DAILY ECHO
-        </p>
+      <section
+        className="daily-card relative min-h-[164px] px-5 py-6"
+        aria-labelledby="daily-echo-title"
+      >
+        <div className="flex items-center justify-between">
+          <p id="daily-echo-title" className="daily-overline">
+            DAILY ECHO
+          </p>
+          <button
+            type="button"
+            className="grid size-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={onSettings}
+            aria-label="Daily Echo settings"
+          >
+            <Settings2 className="size-4" />
+          </button>
+        </div>
         <p className="mt-8 font-display text-[22px] font-medium leading-7">No Echo for this day.</p>
         <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">
           Choose another date to revisit a reflection.
@@ -130,14 +148,22 @@ function DailyEchoCard({ echo }: { echo: DailyEcho | null }) {
 
   return (
     <article
-      className="daily-card relative h-[323px] overflow-hidden"
+      className="daily-card relative h-[323px] w-full overflow-hidden text-left"
       aria-labelledby="daily-echo-title"
+      aria-describedby="daily-echo-description"
     >
       <div className="absolute left-5 right-5 top-6 z-10 flex items-center justify-between">
         <p id="daily-echo-title" className="daily-overline">
           DAILY ECHO
         </p>
-        <img src={dotGlyph} alt="" width="8" height="12" className="h-3 w-2" aria-hidden="true" />
+        <button
+          type="button"
+          className="grid size-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={onSettings}
+          aria-label="Daily Echo settings"
+        >
+          <Settings2 className="size-4" />
+        </button>
       </div>
       <img
         src={echoArc}
@@ -156,7 +182,10 @@ function DailyEchoCard({ echo }: { echo: DailyEcho | null }) {
         className="absolute left-7 top-[103px] size-[10px]"
         aria-hidden="true"
       />
-      <div className="absolute inset-x-5 bottom-[30px] z-10 text-[var(--coach-ink)]">
+      <div
+        id="daily-echo-description"
+        className="absolute inset-x-5 bottom-[30px] z-10 text-[var(--coach-ink)]"
+      >
         <p className="text-pretty font-display text-[22px] font-medium leading-7">{echo.lead}</p>
         <p className="mt-1.5 text-pretty text-base leading-normal">{echo.takeaway}</p>
       </div>
@@ -246,11 +275,14 @@ function DailyTracesCard({ traces }: { traces: DailyTrace[] }) {
   )
 }
 
-export function DailyExperience() {
+function MockDailyExperience() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [echoSettingsOpen, setEchoSettingsOpen] = useState(false)
+  const [echoSchedule, setEchoSchedule] = useState<EchoSchedule>(defaultEchoSchedule)
   const historyButtonRef = useRef<HTMLButtonElement>(null)
+  const echoButtonRef = useRef<HTMLDivElement>(null)
   const selectedDate = parseDailyDate(searchParams.get('date')) ?? parseDailyDate(defaultDailyDate)!
   const selectedValue = toDailyDateValue(selectedDate)
   const record = getDailyRecord(selectedValue)
@@ -269,6 +301,11 @@ export function DailyExperience() {
     void navigate(`/chat?session=${encodeURIComponent(session.id)}`)
   }
 
+  function closeEchoSettings() {
+    setEchoSettingsOpen(false)
+    window.requestAnimationFrame(() => echoButtonRef.current?.querySelector('button')?.focus())
+  }
+
   return (
     <div className="app-canvas relative isolate flex h-dvh min-h-0 w-full flex-col overflow-hidden text-[var(--coach-ink)]">
       <AppAtmosphere />
@@ -277,8 +314,8 @@ export function DailyExperience() {
         <WeekStrip selectedDate={selectedDate} />
 
         <main className="mx-auto mt-10 flex w-[calc(100%-30px)] max-w-[360px] flex-col items-center gap-9 pb-12">
-          <div className="w-full max-w-[350px]">
-            <DailyEchoCard echo={record.echo} />
+          <div ref={echoButtonRef} className="w-full max-w-[350px]">
+            <DailyEchoCard echo={record.echo} onSettings={() => setEchoSettingsOpen(true)} />
           </div>
 
           <section className="w-full" aria-labelledby="period-moves-title">
@@ -333,6 +370,19 @@ export function DailyExperience() {
         onOpenChange={setHistoryOpenWithFocus}
         onSelect={openSession}
       />
+      <EchoSettingsSheet
+        open={echoSettingsOpen}
+        value={echoSchedule}
+        onClose={closeEchoSettings}
+        onSave={(nextSchedule) => {
+          setEchoSchedule(nextSchedule)
+          closeEchoSettings()
+        }}
+      />
     </div>
   )
+}
+
+export function DailyExperience() {
+  return mockAuthEnabled ? <MockDailyExperience /> : <VoloDailyExperience />
 }

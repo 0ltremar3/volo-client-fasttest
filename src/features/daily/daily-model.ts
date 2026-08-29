@@ -34,6 +34,30 @@ export type DailyRecord = {
   traces: DailyTrace[]
 }
 
+export type EchoRepeat = 'daily' | 'weekly' | 'monthly' | 'custom' | 'none'
+
+export type EchoSchedule = {
+  time: string
+  date: string
+  repeat: EchoRepeat
+  alarm: boolean
+}
+
+export const echoRepeatOptions: ReadonlyArray<{ value: EchoRepeat; label: string }> = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'custom', label: 'Custom' },
+  { value: 'none', label: 'No repeat' },
+]
+
+export const defaultEchoSchedule: EchoSchedule = {
+  time: '21:45',
+  date: '2026-08-25',
+  repeat: 'daily',
+  alarm: false,
+}
+
 export const defaultDailyDate = '2026-05-27'
 
 export const dailyRecords: Record<string, DailyRecord> = {
@@ -93,6 +117,22 @@ export function parseDailyDate(value: string | null) {
 
 export function formatDailyDate(date: Date, options: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat('en', { ...options, timeZone: 'UTC' }).format(date)
+}
+
+export function formatEchoScheduleDate(value: string) {
+  const date = parseDailyDate(value)
+  return date ? formatDailyDate(date, { month: 'short', day: 'numeric', year: 'numeric' }) : value
+}
+
+export function formatEchoScheduleTime(value: string) {
+  const [hour = '0', minute = '0'] = value.split(':')
+  const date = new Date(Date.UTC(2026, 0, 1, Number(hour), Number(minute)))
+  return new Intl.DateTimeFormat('en', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'UTC',
+  }).format(date)
 }
 
 export function getWeekDates(selectedDate: Date) {

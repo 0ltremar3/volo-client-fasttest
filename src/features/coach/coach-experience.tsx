@@ -22,6 +22,8 @@ import {
   type CoachScreen,
 } from '@/features/coach/coach-model'
 import { cn } from '@/lib/utils'
+import { mockAuthEnabled } from '@/features/auth/mock-auth'
+import { VoloCoachExperience } from '@/features/coach/volo-coach-experience'
 
 type MoveState = 'hidden' | 'suggested' | 'editing' | 'added' | 'skipped'
 
@@ -668,6 +670,10 @@ function CoachExperienceState({
 }
 
 export function CoachExperience() {
+  return mockAuthEnabled ? <MockCoachExperience /> : <VoloCoachExperience />
+}
+
+function MockCoachExperience() {
   const location = useLocation()
   const navigate = useNavigate()
   const sessionId = new URLSearchParams(location.search).get('session')

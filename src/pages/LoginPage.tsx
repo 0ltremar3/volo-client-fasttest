@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { AppMark } from '@/components/app-mark'
+import { authApi } from '@/api/volo'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +17,8 @@ export function LoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState(mockAuthEnabled ? mockCredentials.email : '')
   const [password, setPassword] = useState(mockAuthEnabled ? mockCredentials.password : '')
+  const [otp, setOtp] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -23,22 +26,29 @@ export function LoginPage() {
     event.preventDefault()
     setNotice(null)
 
-    if (!mockAuthEnabled) {
-      setNotice('Sign in will be connected after the real Auth API is available.')
-      return
-    }
-
     setIsSubmitting(true)
-    await new Promise((resolve) => window.setTimeout(resolve, 300))
-
-    if (!authenticateMock(email, password)) {
-      setNotice('Email or password does not match the test account.')
+    try {
+      if (mockAuthEnabled) {
+        await new Promise((resolve) => window.setTimeout(resolve, 300))
+        if (!authenticateMock(email, password)) {
+          setNotice('Email or password does not match the test account.')
+          return
+        }
+        createMockSession()
+      } else if (!otpSent) {
+        await authApi.sendOtp(email.trim())
+        setOtpSent(true)
+        setNotice('We sent a six-digit sign-in code to your email.')
+        return
+      } else {
+        await authApi.signIn(email.trim(), otp.trim())
+      }
+      await navigate('/daily', { replace: true })
+    } catch {
+      setNotice(otpSent ? 'That code is invalid or expired.' : 'We could not send a code yet.')
+    } finally {
       setIsSubmitting(false)
-      return
     }
-
-    createMockSession()
-    await navigate('/chat', { replace: true })
   }
 
   return (
@@ -92,30 +102,48 @@ export function LoginPage() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-4">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Password
+                <label
+                  htmlFor={mockAuthEnabled ? 'password' : 'otp'}
+                  className="text-sm font-medium"
+                >
+                  {mockAuthEnabled ? 'Password' : 'Sign-in code'}
                 </label>
-                <span className="inline-flex min-h-touch items-center text-xs font-medium text-text-tertiary">
-                  Forgot password?
-                </span>
               </div>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value)
-                  setNotice(null)
-                }}
-                disabled={isSubmitting}
-                required
-              />
+              {mockAuthEnabled ? (
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value)
+                    setNotice(null)
+                  }}
+                  disabled={isSubmitting}
+                  required
+                />
+              ) : (
+                <Input
+                  id="otp"
+                  name="otp"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder={otpSent ? '6-digit code' : 'Request a code first'}
+                  value={otp}
+                  onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  disabled={!otpSent || isSubmitting}
+                  required={otpSent}
+                />
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? 'Signing in…' : 'Sign in'}
+              {isSubmitting
+                ? 'Please wait…'
+                : !mockAuthEnabled && !otpSent
+                  ? 'Send code'
+                  : 'Sign in'}
             </Button>
 
             {notice ? (

@@ -54,6 +54,10 @@
   --daily-decoration-filter: none;
   --daily-badge-foreground: #f3efe8;
   --daily-profile-background: #3d3a36;
+  --echo-settings-sheet: rgb(255 252 246 / 88%);
+  --echo-settings-popup: rgb(255 255 255 / 92%);
+  --echo-settings-selection: #f3efe8;
+  --echo-settings-shadow: 0 6px 18px rgb(52 51 48 / 8%);
   --coach-header: rgb(232 241 248 / 64%);
   --coach-ink: #3d3a36;
   --coach-text-secondary: #6b6560;

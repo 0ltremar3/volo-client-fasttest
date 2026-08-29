@@ -121,3 +121,15 @@ Don't:
 ## 9. Motion philosophy
 
 Motion communicates state, never personality theatre. Button press feedback uses `transform: scale(0.97)` over 120–160ms. Menus use a trigger-origin ease-out transition under 200ms. Newly generated Move content may rise by 8px while fading in over 200–240ms. Keyboard navigation receives no movement animation. All motion is disabled or reduced under `prefers-reduced-motion`, and hover-only effects are gated to fine pointers.
+
+## 10. Daily Echo settings
+
+The Echo settings surface follows Figma nodes `1:1260`, `37:10320`, `37:10738`, `37:10557`, and `37:11003`. It is a bottom sheet over the mounted Daily page, not a route. At the 390px reference width the sheet begins 54px below the viewport top, uses a 46px top radius, a paper-glass surface, and the existing 120px Coach orb. Time, Date, Repeat, and Alarm use the same 70px row rhythm and warm dividers as Coach scheduling.
+
+Volo V2 keeps Daily Echo intentionally daily: the sheet contains one local time and one enabled switch. Time uses compact hour, minute, and period controls inside the same glass popup anatomy. The control exposes expanded state, supports keyboard focus, and closes without changing committed data when the sheet is cancelled. Save persists the plan through `/v2/daily/echo/schedule`; device notifications remain explicitly unavailable.
+
+The Daily Echo card itself is read-only. It displays the selected date's summary and insights, or the established empty state when no summary exists. Only the settings icon is interactive; the card never navigates to a conversation and the frontend does not offer summary generation.
+
+## 11. Connected product states
+
+With `VITE_MOCK_MODE=false`, Coach and Daily use the Volo V2 backend. Loading uses stable skeleton surfaces, network failures keep retry actions near the failed work, and completed Coach sessions are read-only. Coach token deltas stream into the active reply; persisted messages and pending cards replace optimistic state after reload. Pending Move and topic-title cards remain visually distinct from chat bubbles. A Period Move groups all of its due times inside one card and gives each time an independent, icon-labelled three-state control; no percentage or progress bar is introduced.

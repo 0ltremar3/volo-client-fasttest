@@ -1,11 +1,12 @@
+import { useQuery } from '@tanstack/react-query'
 import { Navigate } from 'react-router-dom'
 
+import { authApi } from '@/api/volo'
 import { AppShell } from '@/components/layout/app-shell'
 import { hasMockSession, mockAuthEnabled } from '@/features/auth/mock-auth'
 
 export function HomeRedirect() {
-  const destination = mockAuthEnabled && hasMockSession() ? '/daily' : '/login'
-  return <Navigate to={destination} replace />
+  return <Navigate to={mockAuthEnabled && !hasMockSession() ? '/login' : '/daily'} replace />
 }
 
 export function ProtectedAppShell() {
@@ -13,5 +14,20 @@ export function ProtectedAppShell() {
     return <Navigate to="/login" replace />
   }
 
+  if (!mockAuthEnabled) return <RealSessionBoundary />
+
+  return <AppShell />
+}
+
+function RealSessionBoundary() {
+  const session = useQuery({ queryKey: ['me'], queryFn: authApi.me, retry: false })
+  if (session.isPending) {
+    return (
+      <div className="app-canvas grid min-h-dvh place-items-center text-sm text-text-secondary">
+        Opening Volo…
+      </div>
+    )
+  }
+  if (session.isError) return <Navigate to="/login" replace />
   return <AppShell />
 }

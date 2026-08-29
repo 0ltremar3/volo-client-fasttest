@@ -34,7 +34,7 @@ export async function apiFetch<T>(url: string, options: RequestInit = {}): Promi
   const response = await fetch(getRequestUrl(url), {
     ...options,
     headers,
-    // Authentication is intentionally unset until the backend contract is known.
+    credentials: options.credentials ?? 'include',
   })
   const payload = await parseResponse(response)
 
