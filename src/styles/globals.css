@@ -171,7 +171,7 @@
   .app-atmosphere {
     background-image:
       url('../assets/coach/atmosphere-sky.svg'),
-      radial-gradient(ellipse at 50% 58%, rgb(255 192 98 / 64%) 0%, rgb(255 167 102 / 0%) 58%);
+      radial-gradient(ellipse at 50% 58%, var(--app-atmosphere-peach) 0%, rgb(255 167 102 / 0%) 58%);
     background-position:
       50% -5rem,
       center;

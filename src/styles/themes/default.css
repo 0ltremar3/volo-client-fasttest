@@ -47,6 +47,7 @@
   --bui-shadow-raised: 0 8px 18px rgb(28 28 25 / 12%);
 
   --app-background: linear-gradient(180deg, #c8dff6 0%, #e8f1f8 28%, #fbf7f0 52%, #f7f6f2 100%);
+  --app-atmosphere-peach: rgb(255 192 98 / 64%);
   --app-desktop-background: #e9e9e5;
   --app-frame-shadow: 0 0 0 1px rgb(61 58 54 / 8%);
   --app-brand-asset-filter: none;

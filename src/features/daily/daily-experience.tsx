@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Settings2 } from 'lucide-react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 
 import calendarChevron from '@/assets/daily/calendar-chevron.svg'
 import echoArc from '@/assets/daily/echo-arc.svg'
@@ -13,8 +13,6 @@ import voloWordmark from '@/assets/daily/volo-wordmark.svg'
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
-import { ConversationHistoryDialog } from '@/features/coach/conversation-history-dialog'
-import type { CoachSession } from '@/features/coach/coach-model'
 import {
   defaultEchoSchedule,
   defaultDailyDate,
@@ -277,29 +275,12 @@ function DailyTracesCard({ traces }: { traces: DailyTrace[] }) {
 
 function MockDailyExperience() {
   const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
-  const [historyOpen, setHistoryOpen] = useState(false)
   const [echoSettingsOpen, setEchoSettingsOpen] = useState(false)
   const [echoSchedule, setEchoSchedule] = useState<EchoSchedule>(defaultEchoSchedule)
-  const historyButtonRef = useRef<HTMLButtonElement>(null)
   const echoButtonRef = useRef<HTMLDivElement>(null)
   const selectedDate = parseDailyDate(searchParams.get('date')) ?? parseDailyDate(defaultDailyDate)!
   const selectedValue = toDailyDateValue(selectedDate)
   const record = getDailyRecord(selectedValue)
-
-  function setHistoryOpenWithFocus(open: boolean) {
-    setHistoryOpen(open)
-    if (!open) {
-      window.requestAnimationFrame(() =>
-        window.requestAnimationFrame(() => historyButtonRef.current?.focus()),
-      )
-    }
-  }
-
-  function openSession(session: CoachSession) {
-    setHistoryOpen(false)
-    void navigate(`/chat?session=${encodeURIComponent(session.id)}`)
-  }
 
   function closeEchoSettings() {
     setEchoSettingsOpen(false)
@@ -364,12 +345,7 @@ function MockDailyExperience() {
         </main>
       </div>
 
-      <AppBottomNavigation ref={historyButtonRef} onHistory={() => setHistoryOpen(true)} />
-      <ConversationHistoryDialog
-        open={historyOpen}
-        onOpenChange={setHistoryOpenWithFocus}
-        onSelect={openSession}
-      />
+      <AppBottomNavigation />
       <EchoSettingsSheet
         open={echoSettingsOpen}
         value={echoSchedule}

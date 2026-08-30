@@ -54,7 +54,7 @@ Use when the conversation produces a concrete next action. It is not a chat bubb
 
 ### Bottom navigation
 
-Three controls only: Daily (`/daily`), Coach (`/chat`), and Coach conversation history. Daily and Coach are real links; History is a dialog button. The Coach mark sits in a small raised notch and uses the orange ring asset. Navigation is semantic, keyboard accessible, safe-area aware, and at least 93px high including the device inset. Active route state remains independent from the History dialog state.
+Three real links only: Daily (`/daily`), Coach (`/chat`), and Review (`/review`). Review uses the exact Figma-exported 32px history glyph rather than a library approximation. The Coach mark sits in a small raised notch and uses the orange ring asset. Navigation is semantic, keyboard accessible, safe-area aware, and at least 93px high including the device inset.
 
 ### Top bar
 
@@ -66,7 +66,7 @@ The selected weekday is a `28px / 38px` display heading; month/year remains stat
 
 ### Daily Echo
 
-The summary Echo is a read-only `article`, 350px wide at the 390px reference, 323px high, radius 22px, with warm glass, a Figma-exported arc and marker, a 12px overline, and `22px / 28px` display lead. It has no edit affordance in the first slice. The scheduled Echo variant belongs to the later settings slice.
+The Daily Echo card has one full main action and a separate settings control, with no nested buttons. Before start it follows node `37:9869`: 350px wide, 264px high, 30px radius, scheduled time, and `Start now`. In progress it resumes the same day's Echo. Completed state follows `37:9611`: 323px high with the exported arc/marker, `22px / 28px` summary lead, and one visible takeaway. Opening the conversation uses the light Coach anatomy but never renders Free Coach Pause or Move/Vision cards.
 
 ### Daily summary and traces
 
@@ -102,11 +102,11 @@ Do:
 
 Don't:
 
-- Do not add top-level new-conversation or history entries.
+- Do not add top-level modal history entries; Review is the third primary route.
 - Do not use a left-side accent stripe on cards or selected states.
 - Do not turn every message into a card.
 - Do not use purple-blue glows, pure black, italics, or decorative system status-bar replicas.
-- Do not imply AI streaming, calendar persistence, reminders, or backend history.
+- Do not imply hardware traces, device notifications, or calendar-provider sync.
 
 ## 8. Responsive behavior
 
@@ -128,8 +128,16 @@ The Echo settings surface follows Figma nodes `1:1260`, `37:10320`, `37:10738`, 
 
 Volo V2 keeps Daily Echo intentionally daily: the sheet contains one local time and one enabled switch. Time uses compact hour, minute, and period controls inside the same glass popup anatomy. The control exposes expanded state, supports keyboard focus, and closes without changing committed data when the sheet is cancelled. Save persists the plan through `/v2/daily/echo/schedule`; device notifications remain explicitly unavailable.
 
-The Daily Echo card itself is read-only. It displays the selected date's summary and insights, or the established empty state when no summary exists. Only the settings icon is interactive; the card never navigates to a conversation and the frontend does not offer summary generation.
+The settings button remains independent from the card's main action. Starting, resuming, completing, and reading the latest summary use the Volo V2 Daily Echo endpoints; the frontend never generates or copies the summary itself.
 
 ## 11. Connected product states
 
-With `VITE_MOCK_MODE=false`, Coach and Daily use the Volo V2 backend. Loading uses stable skeleton surfaces, network failures keep retry actions near the failed work, and completed Coach sessions are read-only. Coach token deltas stream into the active reply; persisted messages and pending cards replace optimistic state after reload. Pending Move and topic-title cards remain visually distinct from chat bubbles. A Period Move groups all of its due times inside one card and gives each time an independent, icon-labelled three-state control; no percentage or progress bar is introduced.
+With `VITE_MOCK_MODE=false`, Coach, Daily, and Review use the Volo V2 backend. Loading uses stable skeleton surfaces, network failures keep retry actions near the failed work, and completed sessions are read-only. Coach and Echo token deltas stream into the active reply; persisted messages and cards replace optimistic state after reload. Pending Move and Pause cards remain visually distinct from chat bubbles. A Period Move groups all of its due times inside one card and gives each time an independent, icon-labelled three-state control; no percentage or progress bar is introduced.
+
+## 12. Coach appointments, Pause, and Review
+
+Scheduled Coach cards use nodes `93:8839` and `93:9159`. The latest appointment sits above two translucent stack layers until expanded. The card's main region is one button; cancel is a separate 44px control. Card activation compares `Date.now()` with the absolute `scheduled_at` instant: due and expired appointments start immediately, while future appointments open the full-screen preview where `Start now` permits an early start.
+
+The Free Coach Pause card follows node `102:13177`. `TOPIC TO EXPLORE` and `TAKE AWAY` are both editable; Confirm sends both final fields, while Continue rejects only the pending card and keeps the session ongoing. An AI-proposed ending first renders a compact Pause/Continue offer; accepting it enters the same Pause-card generation path as the user's explicit Pause command.
+
+Review follows nodes `102:14569`, `291:11479`, and `291:11727`. The 350px month calendar uses a 36px orange selected circle and 6px activity dots. Only non-empty Coach, Echo, and Move groups render. Detail uses the confirmed Pause or Echo summary above confirmed Move cards and full read-only messages; its bottom command creates a new conversation.

@@ -42,24 +42,35 @@ Set `VITE_MOCK_MODE=false` in production builds.
 
 ## Available routes
 
-| Route    | Purpose                                 | Current state                  |
-| -------- | --------------------------------------- | ------------------------------ |
-| `/login` | Mock password or real email OTP sign-in | Mode-selected authentication   |
-| `/daily` | Daily summary, moves, and traces        | Mock fixtures or Volo V2 data  |
-| `/chat`  | Coach experience                        | Mock flow or persisted Volo V2 |
-| `/debug` | Request and runtime inspection          | Configuration skeleton         |
+| Route                        | Purpose                                   | Current state                  |
+| ---------------------------- | ----------------------------------------- | ------------------------------ |
+| `/login`                     | Mock password or real email OTP sign-in   | Mode-selected authentication   |
+| `/daily`                     | Daily Echo, moves, and traces             | Mock fixtures or Volo V2 data  |
+| `/daily/echo/:echoId`        | Resumable Daily Echo conversation         | Persisted Volo V2 Echo         |
+| `/chat`                      | Coach experience                          | Mock flow or persisted Volo V2 |
+| `/chat/scheduled/:sessionId` | Scheduled-session preview and early start | Persisted Volo V2 Coach        |
+| `/review`                    | Calendar and completed history            | Mock fixtures or Volo V2 data  |
+| `/review/:sessionId`         | Read-only Coach/Echo/Move detail          | Mock fixtures or Volo V2 data  |
+| `/debug`                     | Request and runtime inspection            | Configuration skeleton         |
 
-After sign-in, `/` redirects to `/daily`. Daily includes the Figma-aligned week strip, a read-only
-Daily Echo summary with insights, Period Moves, empty hardware traces, and shared Coach history.
-Daily Echo is not a chat route and has no frontend start, message, generation, or complete action.
-Its settings icon opens the reminder sheet; real mode saves one enabled switch and local time through
-`PUT /v2/daily/echo/schedule`. A missing summary keeps the existing empty state.
+After sign-in, `/` redirects to `/daily`. Daily includes the Figma-aligned week strip, an actionable
+Daily Echo card, Period Moves, and empty hardware traces. The card starts or resumes the selected
+day's Evening Reflection through the V2 Echo lifecycle. Its independent settings icon still opens
+the reminder sheet and saves one enabled switch and local time through
+`PUT /v2/daily/echo/schedule`. Completing an Echo persists the generated summary and exposes it in
+Daily and Review from the same backend record.
 
-The Coach route opens on the Figma-aligned conversation state and includes welcome, scheduling,
-conversation, Move proposal, session-end proposal, and history states. In real mode it uses
+The Coach route opens on the Figma-aligned conversation state and includes appointment stacking,
+absolute-time start routing, scheduling, conversation, Move proposal, and editable Pause states. In real mode it uses
 `POST /v2/coach/sessions/:id/messages/stream`; assistant text streams from Mastra after the
 transformational-coach Skill is activated. Sessions, messages, retry ids, and pending cards persist
-in PostgreSQL. A Move is not written until its card is explicitly confirmed.
+in PostgreSQL. A Move is not written until its card is explicitly confirmed. Confirming a Pause
+uses the user's final topic and takeaway; Continue leaves the session ongoing.
+
+Review replaces the former History dialogs. `/review?date=YYYY-MM-DD` owns calendar state, marks
+activity dates, and groups completed Coach, Echo, and Move-adjustment sessions. Detail pages show the
+confirmed Pause or Echo summary, confirmed Moves, and full read-only messages. Continue creates a
+new Free Coach session without reopening the completed source.
 
 In mock mode, application routes redirect to `/login` until the local test session is created and
 Coach replies remain fixtures. In real mode, login uses the backend email OTP endpoints, Better Auth
@@ -73,6 +84,7 @@ notifications, hardware traces, and frontend Daily summary generation remain out
 | `npm run dev`          | Start the Vite development server        |
 | `npm run build`        | Type-check and create a production build |
 | `npm run typecheck`    | Run strict TypeScript checks             |
+| `npm run test`         | Run focused Vitest tests                 |
 | `npm run lint`         | Run ESLint with zero warnings allowed    |
 | `npm run format`       | Format supported files with Prettier     |
 | `npm run format:check` | Verify formatting without changing files |
@@ -108,9 +120,9 @@ credentials, and refresh behavior remain unset until the backend contract define
 
 ## AI streaming
 
-Coach POST SSE streaming is isolated in `src/api/sse.ts`. Feature modules receive parsed Volo events
-and do not parse transport frames. Message retries reuse the same `client_temp_id`; Daily has no SSE
-transport. A durable offline queue and background replay remain out of scope.
+Coach and Daily Echo POST SSE streaming are isolated in `src/api/sse.ts`. Feature modules receive
+parsed Volo events and do not parse transport frames. Message retries reuse the same
+`client_temp_id`. A durable offline queue and background replay remain out of scope.
 
 ## Themes
 
@@ -186,6 +198,6 @@ For UI changes, also verify both themes at 375px and desktop width, including ke
 
 ## Pending product work
 
-- Hardware trace ingestion and Daily summary generation jobs
+- Hardware trace ingestion
 - Device notifications and calendar sync
 - Durable offline queue and background replay

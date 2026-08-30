@@ -6,6 +6,10 @@ import { DailyPage } from '@/pages/DailyPage'
 import { DebugPage } from '@/pages/DebugPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { DailyEchoPage } from '@/pages/DailyEchoPage'
+import { ReviewDetailPage } from '@/pages/ReviewDetailPage'
+import { ReviewPage } from '@/pages/ReviewPage'
+import { ScheduledCoachPage } from '@/pages/ScheduledCoachPage'
 
 export const router = createBrowserRouter([
   {
@@ -20,7 +24,11 @@ export const router = createBrowserRouter([
     element: <ProtectedAppShell />,
     children: [
       { path: '/daily', element: <DailyPage /> },
+      { path: '/daily/echo/:echoId', element: <DailyEchoPage /> },
       { path: '/chat', element: <ChatPage /> },
+      { path: '/chat/scheduled/:sessionId', element: <ScheduledCoachPage /> },
+      { path: '/review', element: <ReviewPage /> },
+      { path: '/review/:sessionId', element: <ReviewDetailPage /> },
       { path: '/debug', element: <DebugPage /> },
     ],
   },

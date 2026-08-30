@@ -25,7 +25,6 @@ import {
 const today = () => new Date().toLocaleDateString('en-CA')
 
 export function VoloDailyExperience() {
-  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedValue = searchParams.get('date') ?? today()
   const selectedDate = parseDailyDate(selectedValue) ?? new Date(`${today()}T00:00:00Z`)
@@ -55,7 +54,12 @@ export function VoloDailyExperience() {
       <div className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto">
         <header className="safe-top grid h-24 grid-cols-[2rem_1fr_2rem] items-center px-5">
           <span />
-          <img src={voloWordmark} alt="Volo" className="mx-auto h-[22px] w-[75px]" />
+          <img
+            src={voloWordmark}
+            alt="Volo"
+            className="mx-auto h-[22px] w-[75px]"
+            style={{ filter: 'var(--app-brand-asset-filter)' }}
+          />
           <span className="grid size-8 place-items-center rounded-full bg-[var(--daily-profile-background)]">
             <img src={profileGlyph} alt="" className="h-5 w-[11px]" />
           </span>
@@ -105,52 +109,11 @@ export function VoloDailyExperience() {
             <DailyError onRetry={() => void daily.refetch()} />
           ) : (
             <>
-              <section className="relative min-h-[250px] overflow-hidden rounded-[22px] bg-[var(--coach-surface-glass)] p-5">
-                <div className="relative z-10 flex items-center justify-between">
-                  <p className="daily-overline">DAILY ECHO</p>
-                  <button
-                    className="grid size-11 place-items-center rounded-full"
-                    onClick={() => setSettingsOpen(true)}
-                    aria-label="Daily Echo settings"
-                  >
-                    <Settings2 className="size-4" />
-                  </button>
-                </div>
-                <img
-                  src={echoArc}
-                  alt=""
-                  className="pointer-events-none absolute left-1/2 top-8 w-[550px] max-w-none -translate-x-1/2"
-                />
-                <img src={echoMarker} alt="" className="absolute left-7 top-24 size-[10px]" />
-                <div className="relative z-10 mt-24">
-                  {daily.data.echo.summary ? (
-                    <>
-                      <p className="font-display text-[22px] font-medium leading-7">
-                        {daily.data.echo.summary}
-                      </p>
-                      {daily.data.echo.takeaways?.length ? (
-                        <div className="mt-4">
-                          <p className="daily-overline">INSIGHTS</p>
-                          <ul className="mt-2 space-y-2 text-sm leading-5 text-[var(--coach-text-secondary)]">
-                            {daily.data.echo.takeaways.map((takeaway) => (
-                              <li key={takeaway}>{takeaway}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-display text-[22px] font-medium">
-                        No summary for this day.
-                      </p>
-                      <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">
-                        Your Daily summary and insights will appear here when available.
-                      </p>
-                    </>
-                  )}
-                </div>
-              </section>
+              <DailyEchoCard
+                date={selectedValue}
+                echo={daily.data.echo}
+                onSettings={() => setSettingsOpen(true)}
+              />
 
               <section aria-labelledby="period-moves-title">
                 <h2 id="period-moves-title" className="text-base font-medium">
@@ -196,7 +159,7 @@ export function VoloDailyExperience() {
           )}
         </main>
       </div>
-      <AppBottomNavigation onHistory={() => void navigate('/chat')} />
+      <AppBottomNavigation />
       <EchoSettingsSheet
         open={settingsOpen}
         value={scheduleValue}
@@ -205,6 +168,126 @@ export function VoloDailyExperience() {
       />
     </div>
   )
+}
+
+function DailyEchoCard({
+  date,
+  echo,
+  onSettings,
+}: {
+  date: string
+  echo: NonNullable<Awaited<ReturnType<typeof dailyApi.get>>>['echo']
+  onSettings: () => void
+}) {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const start = useMutation({
+    mutationFn: () => dailyApi.startEcho(date),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: ['volo-daily', date] })
+      void navigate(`/daily/echo/${result.echo_session.id}`)
+    },
+  })
+  const open = () => {
+    if (echo.status === 'in_progress' && echo.echo_session_id) {
+      void navigate(`/daily/echo/${echo.echo_session_id}`)
+      return
+    }
+    if (echo.status === 'completed' && echo.echo_session_id) {
+      void navigate(`/review/${echo.echo_session_id}`)
+      return
+    }
+    start.mutate()
+  }
+  const scheduledTime = formatEchoTime(echo.schedule?.local_time ?? '21:00')
+
+  return (
+    <article
+      className={`relative overflow-hidden rounded-[30px] bg-[var(--coach-surface-glass)] shadow-[var(--coach-shadow)] ${echo.status === 'completed' ? 'min-h-[323px]' : 'min-h-[264px]'}`}
+    >
+      <button
+        type="button"
+        className={`block w-full px-5 pb-5 pt-6 text-left focus-visible:outline-offset-[-3px] ${echo.status === 'completed' ? 'min-h-[323px]' : 'min-h-[264px]'}`}
+        onClick={open}
+        disabled={start.isPending}
+        aria-label={
+          echo.status === 'completed'
+            ? 'Open completed Daily Echo'
+            : echo.status === 'in_progress'
+              ? 'Continue Daily Echo'
+              : 'Start Daily Echo'
+        }
+      >
+        <span className="daily-overline block">DAILY ECHO</span>
+        {echo.status === 'completed' && echo.summary ? (
+          <>
+            <img
+              src={echoArc}
+              alt=""
+              className="pointer-events-none absolute left-1/2 top-8 w-[550px] max-w-none -translate-x-1/2"
+            />
+            <img src={echoMarker} alt="" className="absolute left-7 top-24 size-[10px]" />
+            <span className="relative z-10 mt-20 block font-display text-[22px] font-medium leading-7">
+              {echo.summary}
+            </span>
+            {echo.takeaways?.[0] ? (
+              <span className="relative z-10 mt-2 block text-base leading-5">
+                {echo.takeaways[0]}
+              </span>
+            ) : null}
+          </>
+        ) : (
+          <span className="mt-6 block">
+            {echo.status === 'in_progress' ? (
+              <>
+                <span className="block text-sm text-[var(--coach-text-tertiary)]">IN PROGRESS</span>
+                <span className="mt-7 block font-display text-[22px] font-medium leading-7">
+                  Your reflection is still open.
+                </span>
+                <span className="mt-2 block text-base">Continue →</span>
+              </>
+            ) : (
+              <>
+                <span className="block font-display text-[22px] font-medium leading-7">
+                  Your Echo is set for
+                </span>
+                <span className="mt-5 block font-display text-[28px] leading-none">
+                  {scheduledTime.time} {scheduledTime.period}
+                </span>
+                <span className="mt-9 block text-base">Take a moment when you’re ready.</span>
+                <span className="mt-1 block text-base">
+                  {start.isPending ? 'Starting…' : 'Start now →'}
+                </span>
+              </>
+            )}
+          </span>
+        )}
+      </button>
+      <button
+        type="button"
+        className="absolute right-2 top-2 z-20 grid size-11 place-items-center rounded-full"
+        onClick={onSettings}
+        aria-label="Daily Echo settings"
+      >
+        <Settings2 className="size-4" />
+      </button>
+      {start.isError ? (
+        <p className="absolute bottom-3 left-5 right-5 text-sm text-[var(--danger)]" role="alert">
+          Daily Echo could not start. Try again.
+        </p>
+      ) : null}
+    </article>
+  )
+}
+
+function formatEchoTime(localTime: string) {
+  const [hour = 0, minute = 0] = localTime.split(':').map(Number)
+  const period = hour >= 12 ? 'PM' : 'AM'
+  const displayHour = hour % 12 || 12
+  return {
+    time: `${String(displayHour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+    period,
+  }
 }
 
 function PeriodMoveCard({ move, date }: { move: PeriodMove; date: string }) {

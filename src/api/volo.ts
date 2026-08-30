@@ -12,9 +12,13 @@ export type VoloMessage = {
 
 export type VoloCard = {
   id: string
-  type: 'move_create' | 'move_revision' | 'session_end'
+  type: 'move_create' | 'move_revision' | 'session_end_offer' | 'session_end'
   status: 'pending' | 'confirmed' | 'rejected' | 'expired'
-  payload: { description?: string; title?: string }
+  payload: {
+    description?: string
+    topic_to_explore?: string
+    takeaway?: string
+  }
   related_move_id: string | null
   created_at: string
 }
@@ -86,12 +90,64 @@ export type DailyResponse = {
       local_time: string
       time_zone_identifier: string
     } | null
+    status: 'not_started' | 'in_progress' | 'completed'
+    echo_session_id: string | null
+    conversation_id: string | null
+    can_start: boolean
+    can_continue: boolean
     summary: string | null
     takeaways: string[] | null
     generated_at: string | null
   }
   period_moves: PeriodMove[]
   traces: []
+}
+
+export type EchoMessage = {
+  id: string
+  role: 'user' | 'assistant'
+  body: string
+  sequence: number
+  created_at: string
+}
+
+export type DailyEchoThread = {
+  echo_session: {
+    id: string
+    status: 'not_started' | 'in_progress' | 'completed'
+    local_date: string
+    conversation_id: string
+    completed_at: string | null
+    summary: string | null
+    takeaways: string[] | null
+    generated_at: string | null
+  }
+  conversation: { id: string; title: string; status: string }
+  messages: EchoMessage[]
+}
+
+export type ReviewItem = {
+  id: string
+  type: 'coach' | 'echo' | 'move'
+  title: string
+  summary: string
+  completed_at: string
+  date: string
+  move_count: number | null
+  related_move_id: string | null
+}
+
+export type ReviewDetail = {
+  id: string
+  type: 'coach' | 'echo' | 'move'
+  title: string
+  completed_at: string
+  pause: { topic_to_explore?: string; takeaway?: string } | null
+  summary: string | null
+  takeaways: string[] | null
+  related_move_id: string | null
+  moves: VoloMove[]
+  messages: EchoMessage[]
 }
 
 const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -138,12 +194,17 @@ export const coachApi = {
     apiFetch<{ card: VoloCard }>(`/v2/coach/sessions/${id}/end-suggestion`, {
       method: 'POST',
     }),
-  confirmCard: (id: string, finalPayload: { description: string } | { title: string }) =>
+  confirmCard: (
+    id: string,
+    finalPayload: { description: string } | { topic_to_explore: string; takeaway: string },
+  ) =>
     apiFetch<{ move: VoloMove | null; session: VoloSession }>(`/v2/coach/cards/${id}/confirm`, {
       method: 'POST',
       body: JSON.stringify({ final_payload: finalPayload }),
     }),
   rejectCard: (id: string) => apiFetch(`/v2/coach/cards/${id}/reject`, { method: 'POST' }),
+  acceptEndOffer: (id: string) =>
+    apiFetch<{ card: VoloCard }>(`/v2/coach/cards/${id}/accept-end`, { method: 'POST' }),
   stream: (
     id: string,
     input: { body: string; clientTempId: string },
@@ -168,6 +229,32 @@ export const dailyApi = {
         local_time: localTime,
         time_zone_identifier: timezone(),
       }),
+    }),
+  startEcho: (date: string) =>
+    apiFetch<{
+      echo_session: { id: string; status: string; conversation_id: string }
+      opening_message: EchoMessage
+    }>('/v2/daily/echo/sessions', {
+      method: 'POST',
+      body: JSON.stringify({ local_date: date, time_zone_identifier: timezone() }),
+    }),
+  getEchoThread: (id: string) =>
+    apiFetch<DailyEchoThread>(`/v2/daily/echo/sessions/${encodeURIComponent(id)}`),
+  streamEcho: (
+    id: string,
+    input: { body: string; clientTempId: string },
+    onEvent: (event: SseEvent) => void,
+    signal?: AbortSignal,
+  ) =>
+    streamPost(
+      `/v2/daily/echo/sessions/${encodeURIComponent(id)}/messages/stream`,
+      { body: input.body, client_temp_id: input.clientTempId },
+      onEvent,
+      signal,
+    ),
+  completeEcho: (id: string) =>
+    apiFetch(`/v2/daily/echo/sessions/${encodeURIComponent(id)}/complete`, {
+      method: 'POST',
     }),
   updateCheck: (
     moveId: string,
@@ -210,5 +297,22 @@ export const dailyApi = {
         time_zone_identifier: timezone(),
         times: input.times,
       }),
+    }),
+}
+
+export const reviewApi = {
+  activity: (month: string) =>
+    apiFetch<{ month: string; dates: string[] }>(
+      `/v2/review/activity?month=${encodeURIComponent(month)}`,
+    ),
+  day: (date: string) =>
+    apiFetch<{
+      date: string
+      groups: Array<{ type: 'coach' | 'echo' | 'move'; items: ReviewItem[] }>
+    }>(`/v2/review?date=${encodeURIComponent(date)}`),
+  detail: (id: string) => apiFetch<ReviewDetail>(`/v2/review/${encodeURIComponent(id)}`),
+  continue: (id: string) =>
+    apiFetch<{ session: VoloSession }>(`/v2/review/${encodeURIComponent(id)}/continue`, {
+      method: 'POST',
     }),
 }

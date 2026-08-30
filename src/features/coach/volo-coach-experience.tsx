@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Check, History, Pencil, RefreshCw, X } from 'lucide-react'
+import { CalendarClock, Check, ChevronDown, Pencil, RefreshCw, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
@@ -11,6 +11,7 @@ import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CoachOrb } from '@/features/coach/coach-orb'
+import { resolveScheduledSessionDestination, singleFlight } from '@/features/coach/schedule-routing'
 
 const today = () => new Date().toLocaleDateString('en-CA')
 
@@ -19,8 +20,6 @@ export function VoloCoachExperience() {
   const [searchParams] = useSearchParams()
   const sessionId = searchParams.get('session')
   const home = useQuery({ queryKey: ['volo-coach-home'], queryFn: coachApi.home })
-  const history = useQuery({ queryKey: ['volo-coach-history'], queryFn: coachApi.list })
-  const [historyOpen, setHistoryOpen] = useState(false)
 
   useEffect(() => {
     if (!sessionId && home.data?.current_session) {
@@ -39,19 +38,7 @@ export function VoloCoachExperience() {
       ) : (
         <CoachStart scheduled={home.data.scheduled_sessions} />
       )}
-      <AppBottomNavigation
-        onCoach={() => void navigate('/chat')}
-        onHistory={() => setHistoryOpen(true)}
-      />
-      <HistoryDialog
-        open={historyOpen}
-        sessions={history.data?.items ?? []}
-        onClose={() => setHistoryOpen(false)}
-        onSelect={(id) => {
-          setHistoryOpen(false)
-          void navigate(`/chat?session=${id}`)
-        }}
-      />
+      <AppBottomNavigation onCoach={() => void navigate('/chat')} />
     </div>
   )
 }
@@ -76,32 +63,41 @@ function CoachStart({
     },
   })
 
+  const latest = scheduled[0]
   return (
-    <main className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-5 pb-8 pt-[10vh]">
-      <CoachOrb className="mx-auto" />
-      <div className="mt-8 text-center">
-        <h1 className="font-display text-4xl font-medium leading-none">
-          I’m here to help you hear yourself.
-        </h1>
-        <p className="mx-auto mt-5 max-w-[20rem] text-base leading-6 text-[var(--coach-text-secondary)]">
-          Start now, or keep a quieter time for the conversation.
-        </p>
-      </div>
-
+    <main className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-[15px] pb-8 pt-4">
       {scheduled.length ? (
-        <section className="mt-10 space-y-3" aria-labelledby="scheduled-heading">
-          <h2 id="scheduled-heading" className="text-sm font-semibold">
-            Scheduled conversations
-          </h2>
-          {scheduled.map((session) => (
-            <ScheduledSession key={session.id} session={session} />
-          ))}
+        <>
+          <h1 className="mx-5 mt-1 text-lg font-semibold">Coach Schedule</h1>
+          <ScheduledSessionStack sessions={scheduled} className="mt-3" />
+          <section className="mt-10 text-center" aria-labelledby="next-session-heading">
+            <h2 id="next-session-heading" className="text-lg font-semibold">
+              Next Session
+            </h2>
+            <CoachOrb className="mx-auto mt-6" />
+            <h3 className="mt-7 text-wrap-balance text-4xl font-semibold leading-none">
+              {latest?.topic || latest?.title}
+            </h3>
+            <p className="mt-3 text-sm font-medium text-[var(--coach-text-secondary)]">
+              {formatAppointment(latest?.scheduled_at)}
+            </p>
+          </section>
+        </>
+      ) : (
+        <section className="pt-[8vh] text-center">
+          <CoachOrb className="mx-auto" />
+          <h1 className="mx-auto mt-8 max-w-[21rem] text-wrap-balance font-display text-4xl font-medium leading-none">
+            I’m here to help you hear yourself.
+          </h1>
+          <p className="mx-auto mt-5 max-w-[20rem] text-base leading-6 text-[var(--coach-text-secondary)]">
+            Start now, or keep a quieter time for the conversation.
+          </p>
         </section>
-      ) : null}
+      )}
 
       {scheduling ? (
         <form
-          className="mt-10 space-y-4 rounded-xl bg-[var(--coach-surface)] p-4"
+          className="daily-card mt-8 space-y-4 p-4"
           onSubmit={(event) => {
             event.preventDefault()
             create.mutate({
@@ -141,22 +137,27 @@ function CoachStart({
           </div>
         </form>
       ) : (
-        <div className="mt-10 space-y-2">
+        <div className="mt-9 space-y-1">
           <Button
             type="button"
-            className="h-[50px] w-full rounded-full"
+            className="h-[50px] w-full rounded-full bg-[var(--coach-surface)] text-[var(--coach-ink)] shadow-[0_6px_18px_rgb(52_51_48/8%)] hover:bg-[var(--coach-surface-glass-strong)]"
             disabled={create.isPending}
-            onClick={() => create.mutate({ startType: 'instant' })}
+            onClick={() =>
+              scheduled.length ? setScheduling(true) : create.mutate({ startType: 'instant' })
+            }
           >
-            Start now
+            {scheduled.length ? 'Schedule a Session' : 'Start now'}
           </Button>
           <Button
             type="button"
             variant="ghost"
             className="h-12 w-full rounded-full"
-            onClick={() => setScheduling(true)}
+            onClick={() =>
+              scheduled.length ? create.mutate({ startType: 'instant' }) : setScheduling(true)
+            }
           >
-            <CalendarClock /> Find a time
+            {scheduled.length ? null : <CalendarClock />}
+            {scheduled.length ? 'New Conversation' : 'Find a time'}
           </Button>
         </div>
       )}
@@ -164,15 +165,51 @@ function CoachStart({
   )
 }
 
-function ScheduledSession({
-  session,
+type ScheduledSessionValue = Awaited<ReturnType<typeof coachApi.home>>['scheduled_sessions'][number]
+
+function ScheduledSessionStack({
+  sessions,
+  className = '',
 }: {
-  session: Awaited<ReturnType<typeof coachApi.home>>['scheduled_sessions'][number]
+  sessions: ScheduledSessionValue[]
+  className?: string
 }) {
+  const [expanded, setExpanded] = useState(false)
+  if (!sessions.length) return null
+  return (
+    <section className={className} aria-label="Scheduled Coach sessions">
+      <div className={expanded ? 'space-y-3' : 'relative pb-4'}>
+        {expanded ? (
+          sessions.map((session) => <ScheduledSession key={session.id} session={session} />)
+        ) : (
+          <>
+            <div className="absolute inset-x-5 bottom-1 h-12 rounded-[22px] bg-white/55" />
+            <div className="absolute inset-x-3 bottom-2.5 h-12 rounded-[22px] bg-white/70" />
+            <ScheduledSession session={sessions[0]!} />
+          </>
+        )}
+      </div>
+      {sessions.length > 1 ? (
+        <button
+          type="button"
+          className="mx-auto flex min-h-11 items-center gap-1 px-4 text-sm font-medium text-[var(--coach-text-secondary)]"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? 'Show latest' : `Show all ${sessions.length}`}
+          <ChevronDown className={`size-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </button>
+      ) : null}
+    </section>
+  )
+}
+
+function ScheduledSession({ session }: { session: ScheduledSessionValue }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const startOnce = useMemo(() => singleFlight(() => coachApi.start(session.id)), [session.id])
   const start = useMutation({
-    mutationFn: () => coachApi.start(session.id),
+    mutationFn: startOnce,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] })
       void navigate(`/chat?session=${session.id}`)
@@ -182,32 +219,41 @@ function ScheduledSession({
     mutationFn: () => coachApi.cancel(session.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] }),
   })
+  const open = () => {
+    if (start.isPending || cancel.isPending) return
+    if (resolveScheduledSessionDestination(session.scheduled_at) === 'start') start.mutate()
+    else void navigate(`/chat/scheduled/${session.id}`)
+  }
   return (
-    <article className="rounded-xl bg-[var(--coach-surface)] px-4 py-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="truncate font-medium">{session.topic || session.title}</p>
-          <p className="mt-1 text-xs text-[var(--coach-text-tertiary)]">
-            {session.scheduled_at
-              ? new Date(session.scheduled_at).toLocaleString()
-              : 'Time not set'}
-            {session.schedule_state === 'expired' ? ' · passed, still available' : ''}
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-1">
-          <Button onClick={() => start.mutate()} disabled={start.isPending}>
-            Start
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label="Cancel scheduled conversation"
-            onClick={() => cancel.mutate()}
-          >
-            <X />
-          </Button>
-        </div>
-      </div>
+    <article className="relative z-10 mx-1 grid min-h-[116px] w-[calc(100%-8px)] grid-cols-[1fr_48px] overflow-hidden rounded-[22px] bg-[var(--coach-surface-glass)] shadow-[var(--coach-shadow)] backdrop-blur-md">
+      <button
+        type="button"
+        className="min-w-0 px-[18px] py-[18px] text-left focus-visible:outline-offset-[-3px]"
+        onClick={open}
+        disabled={start.isPending || cancel.isPending}
+      >
+        <span className="block text-pretty text-lg font-medium leading-6">
+          {session.topic || session.title}
+        </span>
+        <span className="mt-3 block text-xs text-[var(--coach-text-tertiary)]">
+          {formatAppointment(session.scheduled_at)}
+          {session.schedule_state === 'expired' ? ' · Passed, still available' : ''}
+        </span>
+      </button>
+      <button
+        type="button"
+        className="grid min-h-11 min-w-11 place-items-center self-start rounded-full text-[var(--coach-text-secondary)] focus-visible:outline-offset-[-3px]"
+        aria-label={`Cancel ${session.topic || session.title}`}
+        onClick={() => cancel.mutate()}
+        disabled={start.isPending || cancel.isPending}
+      >
+        <X className="size-5" />
+      </button>
+      {start.isError || cancel.isError ? (
+        <p className="col-span-2 px-[18px] pb-3 text-xs text-[var(--danger)]" role="alert">
+          Could not update this session. Try again.
+        </p>
+      ) : null}
     </article>
   )
 }
@@ -307,13 +353,10 @@ function SessionView({
         <span />
       </header>
       <div className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-5 pb-6">
-        {scheduled.length ? (
-          <div className="mb-6 space-y-2">
-            {scheduled.slice(0, 2).map((session) => (
-              <ScheduledSession key={session.id} session={session} />
-            ))}
-          </div>
-        ) : null}
+        <ScheduledSessionStack
+          sessions={scheduled.filter((session) => session.id !== sessionId)}
+          className="mb-6 pt-1"
+        />
         <div className="space-y-6" aria-live="polite">
           {displayMessages.map((message) => (
             <MessageBubble key={message.id} message={message} />
@@ -332,7 +375,11 @@ function SessionView({
               <RefreshCw className="size-4" /> Message failed. Retry
             </button>
           ) : null}
-          {!sending && thread.data.session.status === 'ongoing' ? (
+          {!sending &&
+          thread.data.session.status === 'ongoing' &&
+          !visibleCards.some(
+            (card) => card.type === 'session_end' || card.type === 'session_end_offer',
+          ) ? (
             <EndConversation sessionId={sessionId} />
           ) : null}
           <div ref={endRef} />
@@ -370,15 +417,17 @@ function MessageBubble({ message }: { message: VoloMessage }) {
 function CoachCard({ card, sessionId }: { card: VoloCard; sessionId: string }) {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(
-    card.type === 'session_end' ? (card.payload.title ?? '') : (card.payload.description ?? ''),
-  )
+  const [value, setValue] = useState(card.payload.description ?? '')
+  const [topicToExplore, setTopicToExplore] = useState(card.payload.topic_to_explore ?? '')
+  const [takeaway, setTakeaway] = useState(card.payload.takeaway ?? '')
   const [move, setMove] = useState<VoloMove | null>(null)
   const confirm = useMutation({
     mutationFn: () =>
       coachApi.confirmCard(
         card.id,
-        card.type === 'session_end' ? { title: value } : { description: value },
+        card.type === 'session_end'
+          ? { topic_to_explore: topicToExplore, takeaway }
+          : { description: value },
       ),
     onSuccess: async (result) => {
       setMove(result.move)
@@ -389,34 +438,91 @@ function CoachCard({ card, sessionId }: { card: VoloCard; sessionId: string }) {
     mutationFn: () => coachApi.rejectCard(card.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
   })
+  const acceptEnd = useMutation({
+    mutationFn: () => coachApi.acceptEndOffer(card.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
+  })
 
   if (move) return <ScheduleEditor move={move} />
-  if (card.type === 'session_end') {
+  if (card.type === 'session_end_offer') {
     return (
-      <article className="rounded-xl bg-[var(--coach-surface)] p-4">
-        <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">
-          A GOOD PLACE TO PAUSE
+      <article className="rounded-[22px] bg-[var(--coach-surface-glass-strong)] p-4 shadow-[var(--coach-shadow)]">
+        <p className="text-base font-medium">This feels like a useful place to pause.</p>
+        <p className="mt-2 text-sm leading-5 text-[var(--coach-text-secondary)]">
+          Pause here to shape an editable topic and takeaway, or keep exploring.
         </p>
-        {editing ? (
-          <Input
-            className="mt-3"
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-          />
-        ) : (
-          <p className="mt-3 text-lg font-semibold">{value}</p>
-        )}
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={() => confirm.mutate()} disabled={!value.trim() || confirm.isPending}>
-            <Check /> Confirm title
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button
+            className="rounded-full bg-[var(--coach-accent)] text-white hover:bg-[var(--coach-accent)]/90"
+            onClick={() => acceptEnd.mutate()}
+            disabled={acceptEnd.isPending}
+          >
+            Pause
           </Button>
-          <Button variant="ghost" onClick={() => setEditing((current) => !current)}>
-            <Pencil /> Edit
-          </Button>
-          <Button variant="ghost" onClick={() => reject.mutate()}>
+          <Button
+            className="rounded-full"
+            variant="ghost"
+            onClick={() => reject.mutate()}
+            disabled={reject.isPending}
+          >
             Continue
           </Button>
         </div>
+        {acceptEnd.isError || reject.isError ? (
+          <p className="mt-3 text-sm text-[var(--danger)]" role="alert">
+            The choice could not be saved. Try again.
+          </p>
+        ) : null}
+      </article>
+    )
+  }
+  if (card.type === 'session_end') {
+    return (
+      <article className="rounded-[22px] bg-[var(--coach-surface-glass-strong)] px-[14px] py-4 shadow-[var(--coach-shadow)]">
+        <label className="block">
+          <span className="text-[11px] font-medium text-[var(--coach-text-tertiary)]">
+            TOPIC TO EXPLORE
+          </span>
+          <textarea
+            className="mt-2 min-h-[54px] w-full resize-none border-0 border-b border-[var(--coach-border-strong)] bg-transparent px-0 pb-3 text-base leading-6 outline-none"
+            maxLength={120}
+            value={topicToExplore}
+            onChange={(event) => setTopicToExplore(event.target.value)}
+          />
+        </label>
+        <label className="mt-3 block">
+          <span className="text-[11px] font-medium text-[var(--coach-text-tertiary)]">
+            TAKE AWAY
+          </span>
+          <textarea
+            className="mt-2 min-h-[70px] w-full resize-y bg-transparent px-0 text-base leading-5 outline-none"
+            maxLength={500}
+            value={takeaway}
+            onChange={(event) => setTakeaway(event.target.value)}
+          />
+        </label>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button
+            className="rounded-full bg-[var(--coach-accent)] text-white hover:bg-[var(--coach-accent)]/90"
+            onClick={() => confirm.mutate()}
+            disabled={!topicToExplore.trim() || !takeaway.trim() || confirm.isPending}
+          >
+            <Check /> Confirm
+          </Button>
+          <Button
+            className="rounded-full"
+            variant="ghost"
+            onClick={() => reject.mutate()}
+            disabled={reject.isPending}
+          >
+            Continue
+          </Button>
+        </div>
+        {confirm.isError || reject.isError ? (
+          <p className="mt-3 text-sm text-[var(--danger)]" role="alert">
+            The pause card could not be saved. Try again.
+          </p>
+        ) : null}
       </article>
     )
   }
@@ -519,63 +625,6 @@ function EndConversation({ sessionId }: { sessionId: string }) {
   )
 }
 
-function HistoryDialog({
-  open,
-  sessions,
-  onClose,
-  onSelect,
-}: {
-  open: boolean
-  sessions: Awaited<ReturnType<typeof coachApi.list>>['items']
-  onClose: () => void
-  onSelect: (id: string) => void
-}) {
-  const ref = useRef<HTMLDialogElement>(null)
-  useEffect(() => {
-    if (open && !ref.current?.open) ref.current?.showModal()
-    if (!open && ref.current?.open) ref.current.close()
-  }, [open])
-  return (
-    <dialog
-      ref={ref}
-      className="coach-dialog m-0 h-dvh max-h-none w-[min(22.5rem,calc(100vw-1rem))] max-w-none bg-[var(--coach-surface)] p-0"
-      onClose={onClose}
-    >
-      <div className="safe-top safe-bottom flex h-full flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-[var(--coach-border)] px-4">
-          <h2 className="font-semibold">Conversations</h2>
-          <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close history">
-            <X />
-          </Button>
-        </header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          {sessions.length ? (
-            sessions.map((session) => (
-              <button
-                key={session.id}
-                className="mb-1 flex min-h-touch w-full items-start gap-3 rounded-lg px-3 py-3 text-left hover:bg-[var(--coach-surface-muted)]"
-                onClick={() => onSelect(session.id)}
-              >
-                <History className="mt-0.5 size-4 shrink-0" />
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">{session.title}</span>
-                  <span className="mt-1 block text-xs text-[var(--coach-text-tertiary)]">
-                    {session.status} · {new Date(session.last_active_at).toLocaleString()}
-                  </span>
-                </span>
-              </button>
-            ))
-          ) : (
-            <p className="p-4 text-sm text-[var(--coach-text-secondary)]">
-              Your Coach conversations will gather here.
-            </p>
-          )}
-        </div>
-      </div>
-    </dialog>
-  )
-}
-
 function CoachLoading() {
   return (
     <div className="app-canvas grid min-h-0 flex-1 place-items-center text-sm text-[var(--coach-text-secondary)]">
@@ -595,4 +644,14 @@ function CoachError({ onRetry }: { onRetry: () => void }) {
       </div>
     </div>
   )
+}
+
+function formatAppointment(value: string | null | undefined) {
+  if (!value) return 'Time not set'
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value))
 }

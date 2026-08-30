@@ -7,7 +7,6 @@ import { MoveCardSurface } from '@/components/cards/move-card-surface'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
-import { ConversationHistoryDialog } from '@/features/coach/conversation-history-dialog'
 import { CoachOrb } from '@/features/coach/coach-orb'
 import {
   defaultSchedule,
@@ -508,10 +507,7 @@ function CoachExperienceState({
 }: {
   initialSession: (typeof mockSessions)[number] | undefined
 }) {
-  const navigate = useNavigate()
   const [screen, setScreen] = useState<CoachScreen>('conversation')
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const historyButtonRef = useRef<HTMLButtonElement>(null)
   const [schedule, setSchedule] = useState(defaultSchedule)
   const [messages, setMessages] = useState<CoachMessage[]>(
     initialSession?.messages ?? previewMessages,
@@ -595,25 +591,6 @@ function CoachExperienceState({
     }, 720)
   }
 
-  function openSession(session: (typeof mockSessions)[number]) {
-    clearPendingReply()
-    setMessages(session.messages)
-    setTurn(0)
-    setMoveState('hidden')
-    setScreen('conversation')
-    setHistoryOpen(false)
-    void navigate(`/chat?session=${encodeURIComponent(session.id)}`)
-  }
-
-  function setHistoryOpenWithFocus(open: boolean) {
-    setHistoryOpen(open)
-    if (!open) {
-      window.requestAnimationFrame(() =>
-        window.requestAnimationFrame(() => historyButtonRef.current?.focus()),
-      )
-    }
-  }
-
   const coachChromeVisible = screen !== 'welcome' && screen !== 'schedule'
   return (
     <div className="app-canvas relative isolate flex h-dvh min-h-0 w-full flex-col overflow-hidden text-[var(--coach-ink)]">
@@ -653,18 +630,8 @@ function CoachExperienceState({
       </main>
 
       {coachChromeVisible ? (
-        <AppBottomNavigation
-          ref={historyButtonRef}
-          onCoach={() => setScreen('conversation')}
-          onHistory={() => setHistoryOpen(true)}
-        />
+        <AppBottomNavigation onCoach={() => setScreen('conversation')} />
       ) : null}
-
-      <ConversationHistoryDialog
-        open={historyOpen}
-        onOpenChange={setHistoryOpenWithFocus}
-        onSelect={openSession}
-      />
     </div>
   )
 }
