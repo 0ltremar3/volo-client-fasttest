@@ -24,7 +24,7 @@ export function AppBottomNavigation({ onCoach }: AppBottomNavigationProps) {
         alt=""
         width="430"
         height="133"
-        className="pointer-events-none absolute -left-5 -top-[14px] h-[133px] w-[430px] max-w-none"
+        className="pointer-events-none absolute -left-6 -top-[14px] h-[133px] w-[calc(100%+48px)] max-w-none min-[480px]:-left-5 min-[480px]:w-[430px]"
         style={{ filter: 'var(--coach-nav-surface-filter)' }}
         aria-hidden="true"
       />

@@ -50,10 +50,10 @@ export function VoloDailyExperience() {
   const queryClient = useQueryClient()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const scheduleValue: EchoSchedule = {
-    time: daily.data?.echo.schedule?.local_time ?? '21:00',
+    time: daily.data?.echo?.schedule?.local_time ?? '21:00',
     date: selectedValue,
     repeat: 'daily',
-    alarm: daily.data?.echo.schedule?.enabled ?? false,
+    alarm: daily.data?.echo?.schedule?.enabled ?? false,
   }
   const saveSchedule = useMutation({
     mutationFn: (value: EchoSchedule) => dailyApi.saveEchoSchedule(value.alarm, value.time),
@@ -133,7 +133,7 @@ export function VoloDailyExperience() {
 
               <VoloPeriodMoves moves={daily.data.period_moves} date={selectedValue} />
 
-              {moves.data?.items.some((move) => !move.schedule) ? (
+              {moves.data?.items?.some((move) => !move.schedule) ? (
                 <section>
                   <h2 className="text-base font-medium">Moves without a check plan</h2>
                   <div className="mt-4 space-y-3">
