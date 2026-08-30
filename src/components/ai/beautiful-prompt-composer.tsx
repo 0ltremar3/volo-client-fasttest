@@ -3,10 +3,14 @@ import { CoachPromptBar } from '@/components/ai/beautiful-ui/prompt-bar'
 export function BeautifulPromptComposer({
   placeholder = 'Write a message…',
   showInspirations = false,
+  disabled = false,
+  inputRef,
   onSend,
 }: {
   placeholder?: string
   showInspirations?: boolean
+  disabled?: boolean
+  inputRef?: React.RefObject<HTMLTextAreaElement | null>
   onSend: (text: string) => void
 }) {
   return (
@@ -14,6 +18,8 @@ export function BeautifulPromptComposer({
       <CoachPromptBar
         placeholder={placeholder}
         showInspirations={showInspirations}
+        disabled={disabled}
+        inputRef={inputRef}
         onSend={onSend}
       />
     </div>

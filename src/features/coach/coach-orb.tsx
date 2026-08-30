@@ -6,17 +6,34 @@ import { cn } from '@/lib/utils'
 type CoachOrbProps = {
   className?: string
   speaking?: boolean
+  size?: 'default' | 'pause'
 }
 
-export function CoachOrb({ className, speaking = false }: CoachOrbProps) {
+export function CoachOrb({ className, speaking = false, size = 'default' }: CoachOrbProps) {
+  const pause = size === 'pause'
   return (
     <span
-      className={cn('coach-orb relative block size-[120px]', className)}
+      className={cn(
+        'coach-orb relative block',
+        pause ? 'h-[94px] w-[76px]' : 'size-[120px]',
+        className,
+      )}
       data-speaking={speaking || undefined}
       aria-hidden="true"
     >
-      <span className="coach-orb__glow absolute inset-[24px_25px_12px] rounded-full" />
-      <img className="absolute inset-[13px_22px] h-[94px] w-[76px]" src={orbRing} alt="" />
+      <span
+        className={cn(
+          'coach-orb__glow absolute rounded-full',
+          pause ? 'coach-orb__glow--pause inset-[18px_11px_4px]' : 'inset-[24px_25px_12px]',
+        )}
+      />
+      <img
+        className={cn('absolute h-[94px] w-[76px]', pause ? 'inset-0' : 'inset-[13px_22px]')}
+        src={orbRing}
+        alt=""
+        width="76"
+        height="94"
+      />
     </span>
   )
 }

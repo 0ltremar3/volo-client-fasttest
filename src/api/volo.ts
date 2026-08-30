@@ -198,11 +198,15 @@ export const coachApi = {
     id: string,
     finalPayload: { description: string } | { topic_to_explore: string; takeaway: string },
   ) =>
-    apiFetch<{ move: VoloMove | null; session: VoloSession }>(`/v2/coach/cards/${id}/confirm`, {
-      method: 'POST',
-      body: JSON.stringify({ final_payload: finalPayload }),
-    }),
-  rejectCard: (id: string) => apiFetch(`/v2/coach/cards/${id}/reject`, { method: 'POST' }),
+    apiFetch<{ card: VoloCard; move: VoloMove | null; session: VoloSession }>(
+      `/v2/coach/cards/${id}/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ final_payload: finalPayload }),
+      },
+    ),
+  rejectCard: (id: string) =>
+    apiFetch<{ card: VoloCard }>(`/v2/coach/cards/${id}/reject`, { method: 'POST' }),
   acceptEndOffer: (id: string) =>
     apiFetch<{ card: VoloCard }>(`/v2/coach/cards/${id}/accept-end`, { method: 'POST' }),
   stream: (

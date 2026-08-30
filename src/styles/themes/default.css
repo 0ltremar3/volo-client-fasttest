@@ -77,6 +77,10 @@
   --coach-border-strong: #9a948e;
   --coach-accent: #f45f00;
   --coach-accent-muted: #fff0e6;
+  --coach-chrome-dark: #3d3a36;
+  --coach-on-dark: #fffcf6;
+  --coach-pause-sheet: #fffcf6;
+  --coach-sheet-handle: #dfdad4;
   --coach-mark-gradient: linear-gradient(
     180deg,
     #6d4b2a 0%,

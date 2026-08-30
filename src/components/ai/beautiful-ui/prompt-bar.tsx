@@ -9,6 +9,7 @@
 
 'use client'
 
+import { AudioWaveform } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 /* ─────────────────────────────────────────────────────────
@@ -554,20 +555,26 @@ export default function PromptBar({
 export function CoachPromptBar({
   placeholder = 'Say what feels present…',
   showInspirations = false,
+  disabled = false,
+  inputRef: providedInputRef,
   onSend,
 }: {
   placeholder?: string
   showInspirations?: boolean
+  disabled?: boolean
+  inputRef?: React.RefObject<HTMLTextAreaElement | null>
   onSend: (text: string) => void
 }) {
   const [draft, setDraft] = useState('')
   const [startersOpen, setStartersOpen] = useState(false)
   const [activeStarter, setActiveStarter] = useState(0)
   const rootRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const internalInputRef = useRef<HTMLTextAreaElement>(null)
+  const inputRef = providedInputRef ?? internalInputRef
   const triggerRef = useRef<HTMLButtonElement>(null)
   const starterRefs = useRef<(HTMLButtonElement | null)[]>([])
-  const canSend = draft.trim().length > 0
+  const hasDraft = draft.trim().length > 0
+  const canSend = hasDraft && !disabled
 
   useEffect(() => {
     if (!startersOpen) return
@@ -594,12 +601,12 @@ export function CoachPromptBar({
     onSend(draft.trim())
     setDraft('')
     setStartersOpen(false)
-    if (inputRef.current) inputRef.current.style.height = '28px'
+    if (inputRef.current) inputRef.current.style.height = '44px'
   }
 
   return (
     <div ref={rootRef} data-promptbar className="relative w-full">
-      {showInspirations && !draft ? (
+      {showInspirations && !draft && !disabled ? (
         <div
           className="coach-scrollbar-none -mx-5 mb-2 flex gap-3 overflow-x-auto px-5"
           aria-label="Inspiration options"
@@ -608,12 +615,13 @@ export function CoachPromptBar({
             <button
               key={starter}
               type="button"
+              disabled={disabled}
               onClick={() => {
                 setDraft(starter)
                 setStartersOpen(false)
                 inputRef.current?.focus()
               }}
-              className="coach-pressable flex min-h-touch shrink-0 touch-manipulation items-center whitespace-nowrap rounded-full text-sm font-medium text-[var(--coach-ink)] transition-transform duration-150 active:scale-[0.97]"
+              className="coach-pressable flex min-h-touch shrink-0 touch-manipulation items-center whitespace-nowrap rounded-full text-sm font-medium text-[var(--coach-ink)] transition-transform duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45"
             >
               <span className="inline-flex h-[30px] items-center rounded-full border border-[var(--coach-border-warm-subtle)] bg-[var(--coach-inspiration-surface)] px-[13px]">
                 {starter}
@@ -667,10 +675,14 @@ export function CoachPromptBar({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-[var(--bui-control-size)_minmax(0,1fr)_var(--bui-control-size)_var(--bui-control-size)] items-end gap-1 rounded-full border border-[var(--coach-border-warm)] bg-[var(--coach-surface-glass-strong)] p-1.5 shadow-[var(--coach-shadow)] transition-colors focus-within:border-[var(--coach-border-strong)]">
+      <div
+        className="grid min-h-12 grid-cols-[44px_minmax(0,1fr)_44px_44px] items-center rounded-full border border-[var(--coach-border-warm)] bg-[var(--coach-surface-glass-strong)] p-px shadow-[var(--coach-shadow)] transition-colors focus-within:border-[var(--coach-border-strong)]"
+        aria-busy={disabled || undefined}
+      >
         <button
           ref={triggerRef}
           type="button"
+          disabled={disabled}
           aria-label="Open conversation starters"
           aria-expanded={startersOpen}
           aria-controls={startersOpen ? 'coach-conversation-starters' : undefined}
@@ -684,21 +696,24 @@ export function CoachPromptBar({
             setActiveStarter(0)
             setStartersOpen(true)
           }}
-          className="flex size-[var(--bui-control-size)] items-center justify-center rounded-full text-ink-2 transition-[background-color,color,transform] hover:bg-hover hover:text-ink active:scale-[0.94]"
+          className="flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"
         >
-          <Icon size={16}>
-            <path d="M12 3l1.1 3.1L16 7.3l-2.9 1.2L12 12l-1.1-3.5L8 7.3l2.9-1.2L12 3z" />
-            <path d="M18.5 13l.7 2 1.8.8-1.8.7-.7 2-.7-2-1.8-.7 1.8-.8.7-2z" />
-          </Icon>
+          <span className="grid size-[26px] place-items-center rounded-full bg-[var(--coach-chrome-dark)] text-[var(--coach-on-dark)]">
+            <Icon size={14}>
+              <path d="M12 3l1.1 3.1L16 7.3l-2.9 1.2L12 12l-1.1-3.5L8 7.3l2.9-1.2L12 3z" />
+              <path d="M18.5 13l.7 2 1.8.8-1.8.7-.7 2-.7-2-1.8-.7 1.8-.8.7-2z" />
+            </Icon>
+          </span>
         </button>
         <textarea
           ref={inputRef}
           rows={1}
           value={draft}
+          disabled={disabled}
           onChange={(event) => {
             setDraft(event.target.value)
-            event.target.style.height = '0px'
-            event.target.style.height = `${Math.min(event.target.scrollHeight, 96)}px`
+            event.target.style.height = '44px'
+            event.target.style.height = `${Math.min(Math.max(event.target.scrollHeight, 44), 96)}px`
           }}
           onKeyDown={(event) => {
             if (event.key === 'Escape') setStartersOpen(false)
@@ -709,35 +724,47 @@ export function CoachPromptBar({
           }}
           placeholder={placeholder}
           aria-label="Prompt"
-          className="min-h-7 min-w-0 w-full resize-none bg-transparent px-1 py-[5px] text-[13px] leading-[18px] text-ink outline-none [overflow-wrap:anywhere] placeholder:text-ink-3"
+          className="h-11 min-h-11 min-w-0 w-full resize-none overflow-y-auto bg-transparent px-1 py-3 text-base leading-5 text-ink outline-none [overflow-wrap:anywhere] placeholder:text-[var(--coach-text-tertiary)] disabled:cursor-not-allowed disabled:opacity-55"
         />
         <button
           type="button"
           aria-label="Dictation unavailable"
           title="Voice input is not connected"
           disabled
-          className="flex size-[var(--bui-control-size)] items-center justify-center rounded-full text-ink-3 opacity-45"
+          className="flex size-11 items-center justify-center rounded-full text-ink-3 opacity-45"
         >
           <Icon size={15} strokeWidth={2}>
             <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
             <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3" />
           </Icon>
         </button>
-        <button
-          type="button"
-          aria-label="Send"
-          disabled={!canSend}
-          onClick={send}
-          className="flex size-[var(--bui-control-size)] items-center justify-center rounded-full transition-[background-color,color,transform] enabled:active:scale-[0.94]"
-          style={{
-            background: canSend ? 'var(--coach-accent)' : 'var(--line-strong)',
-            color: canSend ? 'var(--primary-foreground)' : 'var(--ink-2)',
-          }}
-        >
-          <Icon size={16} strokeWidth={2.4}>
-            <path d="M12 19V5M5 12l7-7 7 7" />
-          </Icon>
-        </button>
+        {hasDraft ? (
+          <button
+            type="button"
+            aria-label="Send"
+            disabled={!canSend}
+            onClick={send}
+            className="flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <span className="grid size-[26px] place-items-center rounded-full bg-[var(--coach-accent)] text-[var(--coach-on-dark)]">
+              <Icon size={16} strokeWidth={2.4}>
+                <path d="M12 19V5M5 12l7-7 7 7" />
+              </Icon>
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label="Voice chat unavailable"
+            title="Voice chat unavailable"
+            disabled
+            className="flex size-11 cursor-not-allowed items-center justify-center rounded-full"
+          >
+            <span className="grid size-[26px] place-items-center rounded-full bg-[var(--coach-accent)] text-[var(--coach-on-dark)]">
+              <AudioWaveform className="size-4" strokeWidth={2.2} aria-hidden="true" />
+            </span>
+          </button>
+        )}
       </div>
     </div>
   )

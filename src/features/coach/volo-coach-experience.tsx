@@ -3,7 +3,14 @@ import { CalendarClock, Check, ChevronDown, Pencil, RefreshCw, X } from 'lucide-
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
-import { coachApi, dailyApi, type VoloCard, type VoloMessage, type VoloMove } from '@/api/volo'
+import {
+  authApi,
+  coachApi,
+  dailyApi,
+  type VoloCard,
+  type VoloMessage,
+  type VoloMove,
+} from '@/api/volo'
 import { BeautifulPromptComposer } from '@/components/ai/beautiful-prompt-composer'
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
@@ -11,6 +18,16 @@ import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CoachOrb } from '@/features/coach/coach-orb'
+import {
+  CoachConversationHeader,
+  CoachFocusCard,
+  CoachPauseDialog,
+  type CoachPausePayload,
+} from '@/features/coach/coach-conversation-ui'
+import {
+  canRequestCoachEnd,
+  findPendingSessionEnd,
+} from '@/features/coach/coach-conversation-state'
 import { resolveScheduledSessionDestination, singleFlight } from '@/features/coach/schedule-routing'
 
 const today = () => new Date().toLocaleDateString('en-CA')
@@ -20,6 +37,7 @@ export function VoloCoachExperience() {
   const [searchParams] = useSearchParams()
   const sessionId = searchParams.get('session')
   const home = useQuery({ queryKey: ['volo-coach-home'], queryFn: coachApi.home })
+  const profile = useQuery({ queryKey: ['me'], queryFn: authApi.me })
 
   useEffect(() => {
     if (!sessionId && home.data?.current_session) {
@@ -36,7 +54,10 @@ export function VoloCoachExperience() {
       {sessionId ? (
         <SessionView sessionId={sessionId} scheduled={home.data.scheduled_sessions} />
       ) : (
-        <CoachStart scheduled={home.data.scheduled_sessions} />
+        <CoachStart
+          scheduled={home.data.scheduled_sessions}
+          displayName={profile.data?.profile.display_name ?? 'there'}
+        />
       )}
       <AppBottomNavigation onCoach={() => void navigate('/chat')} />
     </div>
@@ -45,8 +66,10 @@ export function VoloCoachExperience() {
 
 function CoachStart({
   scheduled,
+  displayName,
 }: {
   scheduled: Awaited<ReturnType<typeof coachApi.home>>['scheduled_sessions']
+  displayName: string
 }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -65,11 +88,13 @@ function CoachStart({
 
   const latest = scheduled[0]
   return (
-    <main className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-[15px] pb-8 pt-4">
+    <main className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-[15px] pb-8">
       {scheduled.length ? (
         <>
-          <h1 className="mx-5 mt-1 text-lg font-semibold">Coach Schedule</h1>
-          <ScheduledSessionStack sessions={scheduled} className="mt-3" />
+          <header className="safe-top flex h-[104px] items-end px-[21px] pb-[10px]">
+            <h1 className="text-lg font-semibold">Coach Schedule</h1>
+          </header>
+          <ScheduledSessionStack sessions={scheduled} />
           <section className="mt-10 text-center" aria-labelledby="next-session-heading">
             <h2 id="next-session-heading" className="text-lg font-semibold">
               Next Session
@@ -84,13 +109,18 @@ function CoachStart({
           </section>
         </>
       ) : (
-        <section className="pt-[8vh] text-center">
+        <section className="pt-[200px] text-center">
           <CoachOrb className="mx-auto" />
-          <h1 className="mx-auto mt-8 max-w-[21rem] text-wrap-balance font-display text-4xl font-medium leading-none">
-            I’m here to help you hear yourself.
+          <h1 className="mx-auto mt-[35px] max-w-[21rem] text-wrap-balance font-display text-4xl font-medium leading-none">
+            Hello, {displayName}.
           </h1>
-          <p className="mx-auto mt-5 max-w-[20rem] text-base leading-6 text-[var(--coach-text-secondary)]">
-            Start now, or keep a quieter time for the conversation.
+          <p className="mx-auto mt-2 max-w-[20rem] text-[26px] font-semibold leading-8">
+            I’m here to help you hear yourself.
+          </p>
+          <p className="mx-auto mt-5 max-w-[20rem] text-base leading-[18px] text-[var(--coach-text-secondary)]">
+            Make a little space for this conversation.
+            <br />
+            20–40 minutes is usually enough.
           </p>
         </section>
       )}
@@ -265,6 +295,7 @@ function SessionView({
   sessionId: string
   scheduled: Awaited<ReturnType<typeof coachApi.home>>['scheduled_sessions']
 }) {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const thread = useQuery({
     queryKey: ['volo-session', sessionId],
@@ -276,15 +307,68 @@ function SessionView({
   const [sending, setSending] = useState(false)
   const [failed, setFailed] = useState<{ body: string; clientTempId: string } | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
 
   const displayMessages = useMemo(
     () => messages ?? thread.data?.messages ?? [],
     [messages, thread.data?.messages],
   )
   const displayCards = useMemo(() => cards ?? thread.data?.cards ?? [], [cards, thread.data?.cards])
+  const pauseCard = findPendingSessionEnd(displayCards)
+  const visibleCards = displayCards.filter(
+    (card) => card.status === 'pending' && card.type !== 'session_end',
+  )
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [displayMessages, displayCards, streamText])
+
+  const prepareEnd = useMutation({
+    mutationFn: () => coachApi.endSuggestion(sessionId),
+    onSuccess: async (result) => {
+      setCards((current) => {
+        const next = current ?? thread.data?.cards ?? []
+        return [...next.filter((card) => card.id !== result.card.id), result.card]
+      })
+      await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
+    },
+  })
+
+  const confirmEnd = useMutation({
+    mutationFn: (payload: CoachPausePayload) => {
+      if (!pauseCard) throw new Error('Pause card is no longer available')
+      return coachApi.confirmCard(pauseCard.id, payload)
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
+        queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] }),
+        queryClient.invalidateQueries({ queryKey: ['volo-daily'] }),
+        queryClient.invalidateQueries({ queryKey: ['volo-review'] }),
+        queryClient.invalidateQueries({ queryKey: ['volo-review-activity'] }),
+      ])
+      void navigate('/daily', { replace: true })
+    },
+  })
+
+  const continueEnd = useMutation({
+    mutationFn: () => {
+      if (!pauseCard) throw new Error('Pause card is no longer available')
+      return coachApi.rejectCard(pauseCard.id)
+    },
+    onSuccess: async (result) => {
+      updateCard(result.card)
+      await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
+      window.requestAnimationFrame(() => composerRef.current?.focus())
+    },
+  })
+
+  function updateCard(nextCard: VoloCard) {
+    setCards((current) => {
+      const source = current ?? thread.data?.cards ?? []
+      return [...source.filter((card) => card.id !== nextCard.id), nextCard]
+    })
+  }
 
   async function send(body: string, retryId?: string) {
     const clientTempId = retryId ?? crypto.randomUUID()
@@ -342,61 +426,95 @@ function SessionView({
 
   if (thread.isPending) return <CoachLoading />
   if (thread.isError || !thread.data) return <CoachError onRetry={() => void thread.refetch()} />
-  const visibleCards = displayCards.filter((card) => card.status === 'pending')
+  const canPrepareEnd = canRequestCoachEnd({
+    sessionStatus: thread.data.session.status,
+    cards: displayCards,
+    sending,
+    preparing: prepareEnd.isPending,
+  })
+  const pauseError = confirmEnd.isError
+    ? 'This pause could not be saved. Your words are still here.'
+    : continueEnd.isError
+      ? 'The conversation could not be resumed. Try again.'
+      : null
   return (
-    <main className="flex min-h-0 flex-1 flex-col">
-      <header className="safe-top grid h-16 shrink-0 grid-cols-[2.75rem_1fr_2.75rem] items-center px-3">
-        <span />
-        <p className="truncate text-center text-base font-semibold">
-          {thread.data.session.title || 'Coach'}
-        </p>
-        <span />
-      </header>
-      <div className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-5 pb-6">
-        <ScheduledSessionStack
-          sessions={scheduled.filter((session) => session.id !== sessionId)}
-          className="mb-6 pt-1"
+    <>
+      <main className="flex min-h-0 flex-1 flex-col">
+        <CoachConversationHeader
+          onDone={() => prepareEnd.mutate()}
+          disabled={!canPrepareEnd}
+          busy={prepareEnd.isPending}
         />
-        <div className="space-y-6" aria-live="polite">
-          {displayMessages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
-          {streamText ? (
-            <p className="whitespace-pre-wrap pr-3 text-base font-medium leading-6">{streamText}</p>
-          ) : null}
-          {visibleCards.map((card) => (
-            <CoachCard key={card.id} card={card} sessionId={sessionId} />
-          ))}
-          {failed ? (
-            <button
-              className="flex min-h-touch items-center gap-2 text-sm text-[var(--coach-accent)]"
-              onClick={() => void send(failed.body, failed.clientTempId)}
-            >
-              <RefreshCw className="size-4" /> Message failed. Retry
-            </button>
-          ) : null}
-          {!sending &&
-          thread.data.session.status === 'ongoing' &&
-          !visibleCards.some(
-            (card) => card.type === 'session_end' || card.type === 'session_end_offer',
-          ) ? (
-            <EndConversation sessionId={sessionId} />
-          ) : null}
-          <div ref={endRef} />
+        <div className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-[15px] pb-6 pt-2">
+          <CoachFocusCard
+            title={thread.data.session.topic || thread.data.session.title || 'What feels present'}
+          />
+          <ScheduledSessionStack
+            sessions={scheduled.filter((session) => session.id !== sessionId)}
+            className="mb-6 mt-6"
+          />
+          <div className="space-y-6 px-[5px]" aria-live="polite">
+            {displayMessages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
+            {streamText ? (
+              <p className="whitespace-pre-wrap pr-3 text-base font-medium leading-6">
+                {streamText}
+              </p>
+            ) : null}
+            {visibleCards.map((card) => (
+              <CoachCard
+                key={card.id}
+                card={card}
+                sessionId={sessionId}
+                onCardChanged={updateCard}
+              />
+            ))}
+            {failed ? (
+              <button
+                className="flex min-h-touch items-center gap-2 text-sm text-[var(--coach-accent)]"
+                onClick={() => void send(failed.body, failed.clientTempId)}
+              >
+                <RefreshCw className="size-4" /> Message failed. Retry
+              </button>
+            ) : null}
+            {prepareEnd.isError ? (
+              <p className="text-center text-sm text-[var(--danger)]" role="alert">
+                Couldn’t prepare your pause. Try Done again.
+              </p>
+            ) : null}
+            <div ref={endRef} />
+          </div>
         </div>
-      </div>
-      {thread.data.session.status === 'ongoing' ? (
-        <BeautifulPromptComposer
-          placeholder="Say what feels present…"
-          showInspirations
-          onSend={(body) => void send(body)}
+        {thread.data.session.status === 'ongoing' ? (
+          <BeautifulPromptComposer
+            placeholder="Say what feels present…"
+            showInspirations
+            disabled={sending || prepareEnd.isPending || Boolean(pauseCard)}
+            inputRef={composerRef}
+            onSend={(body) => void send(body)}
+          />
+        ) : (
+          <p className="safe-bottom px-5 py-5 text-center text-sm text-[var(--coach-text-secondary)]">
+            This conversation is complete.
+          </p>
+        )}
+      </main>
+      {pauseCard ? (
+        <CoachPauseDialog
+          key={pauseCard.id}
+          initialPayload={{
+            topic_to_explore: pauseCard.payload.topic_to_explore ?? '',
+            takeaway: pauseCard.payload.takeaway ?? '',
+          }}
+          confirming={confirmEnd.isPending}
+          continuing={continueEnd.isPending}
+          error={pauseError}
+          onConfirm={(payload) => confirmEnd.mutate(payload)}
+          onKeepTalking={() => continueEnd.mutate()}
         />
-      ) : (
-        <p className="safe-bottom px-5 py-5 text-center text-sm text-[var(--coach-text-secondary)]">
-          This conversation is complete.
-        </p>
-      )}
-    </main>
+      ) : null}
+    </>
   )
 }
 
@@ -414,33 +532,41 @@ function MessageBubble({ message }: { message: VoloMessage }) {
   )
 }
 
-function CoachCard({ card, sessionId }: { card: VoloCard; sessionId: string }) {
+function CoachCard({
+  card,
+  sessionId,
+  onCardChanged,
+}: {
+  card: VoloCard
+  sessionId: string
+  onCardChanged: (card: VoloCard) => void
+}) {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(card.payload.description ?? '')
-  const [topicToExplore, setTopicToExplore] = useState(card.payload.topic_to_explore ?? '')
-  const [takeaway, setTakeaway] = useState(card.payload.takeaway ?? '')
   const [move, setMove] = useState<VoloMove | null>(null)
   const confirm = useMutation({
-    mutationFn: () =>
-      coachApi.confirmCard(
-        card.id,
-        card.type === 'session_end'
-          ? { topic_to_explore: topicToExplore, takeaway }
-          : { description: value },
-      ),
+    mutationFn: () => coachApi.confirmCard(card.id, { description: value }),
     onSuccess: async (result) => {
       setMove(result.move)
+      onCardChanged(result.card)
       await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
     },
   })
   const reject = useMutation({
     mutationFn: () => coachApi.rejectCard(card.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
+    onSuccess: async (result) => {
+      onCardChanged(result.card)
+      await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
+    },
   })
   const acceptEnd = useMutation({
     mutationFn: () => coachApi.acceptEndOffer(card.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
+    onSuccess: async (result) => {
+      onCardChanged({ ...card, status: 'rejected' })
+      onCardChanged(result.card)
+      await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
+    },
   })
 
   if (move) return <ScheduleEditor move={move} />
@@ -476,56 +602,7 @@ function CoachCard({ card, sessionId }: { card: VoloCard; sessionId: string }) {
       </article>
     )
   }
-  if (card.type === 'session_end') {
-    return (
-      <article className="rounded-[22px] bg-[var(--coach-surface-glass-strong)] px-[14px] py-4 shadow-[var(--coach-shadow)]">
-        <label className="block">
-          <span className="text-[11px] font-medium text-[var(--coach-text-tertiary)]">
-            TOPIC TO EXPLORE
-          </span>
-          <textarea
-            className="mt-2 min-h-[54px] w-full resize-none border-0 border-b border-[var(--coach-border-strong)] bg-transparent px-0 pb-3 text-base leading-6 outline-none"
-            maxLength={120}
-            value={topicToExplore}
-            onChange={(event) => setTopicToExplore(event.target.value)}
-          />
-        </label>
-        <label className="mt-3 block">
-          <span className="text-[11px] font-medium text-[var(--coach-text-tertiary)]">
-            TAKE AWAY
-          </span>
-          <textarea
-            className="mt-2 min-h-[70px] w-full resize-y bg-transparent px-0 text-base leading-5 outline-none"
-            maxLength={500}
-            value={takeaway}
-            onChange={(event) => setTakeaway(event.target.value)}
-          />
-        </label>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <Button
-            className="rounded-full bg-[var(--coach-accent)] text-white hover:bg-[var(--coach-accent)]/90"
-            onClick={() => confirm.mutate()}
-            disabled={!topicToExplore.trim() || !takeaway.trim() || confirm.isPending}
-          >
-            <Check /> Confirm
-          </Button>
-          <Button
-            className="rounded-full"
-            variant="ghost"
-            onClick={() => reject.mutate()}
-            disabled={reject.isPending}
-          >
-            Continue
-          </Button>
-        </div>
-        {confirm.isError || reject.isError ? (
-          <p className="mt-3 text-sm text-[var(--danger)]" role="alert">
-            The pause card could not be saved. Try again.
-          </p>
-        ) : null}
-      </article>
-    )
-  }
+  if (card.type === 'session_end') return null
   return (
     <div>
       <p className="mb-3 text-base font-medium">Here’s a Move that reflects what matters:</p>
@@ -602,25 +679,6 @@ function ScheduleEditor({ move }: { move: VoloMove }) {
       <Button className="mt-3" onClick={() => schedule.mutate()} disabled={schedule.isPending}>
         Save check plan
       </Button>
-    </div>
-  )
-}
-
-function EndConversation({ sessionId }: { sessionId: string }) {
-  const queryClient = useQueryClient()
-  const end = useMutation({
-    mutationFn: () => coachApi.endSuggestion(sessionId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
-  })
-  return (
-    <div className="pt-2 text-center">
-      <button
-        className="min-h-touch rounded-full px-5 text-sm font-medium text-[var(--coach-text-secondary)]"
-        onClick={() => end.mutate()}
-        disabled={end.isPending}
-      >
-        {end.isPending ? 'Finding the words…' : 'Pause and reflect'}
-      </button>
     </div>
   )
 }

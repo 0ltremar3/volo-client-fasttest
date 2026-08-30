@@ -1,4 +1,44 @@
-export type CoachScreen = 'welcome' | 'schedule' | 'home' | 'conversation' | 'summary'
+export type CoachScreen = 'welcome' | 'schedule' | 'home' | 'conversation'
+
+export type MockCoachHomeState = {
+  hasCurrentSession: boolean
+  hasScheduledSession: boolean
+}
+
+const mockCoachHomeKey = 'volo.mock.coach.home'
+const defaultMockCoachHome: MockCoachHomeState = {
+  hasCurrentSession: true,
+  hasScheduledSession: true,
+}
+
+export function parseMockCoachHomeState(value: string | null): MockCoachHomeState {
+  if (!value) return defaultMockCoachHome
+  try {
+    const parsed = JSON.parse(value) as Partial<MockCoachHomeState>
+    if (
+      typeof parsed.hasCurrentSession === 'boolean' &&
+      typeof parsed.hasScheduledSession === 'boolean'
+    ) {
+      return {
+        hasCurrentSession: parsed.hasCurrentSession,
+        hasScheduledSession: parsed.hasScheduledSession,
+      }
+    }
+  } catch {
+    // Invalid dev-only state falls back to the stable fixture.
+  }
+  return defaultMockCoachHome
+}
+
+export function readMockCoachHomeState() {
+  if (typeof window === 'undefined') return defaultMockCoachHome
+  return parseMockCoachHomeState(window.sessionStorage.getItem(mockCoachHomeKey))
+}
+
+export function writeMockCoachHomeState(value: MockCoachHomeState) {
+  if (typeof window === 'undefined') return
+  window.sessionStorage.setItem(mockCoachHomeKey, JSON.stringify(value))
+}
 
 export type CoachMessage = {
   id: string

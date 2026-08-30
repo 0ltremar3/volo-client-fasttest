@@ -48,6 +48,8 @@ Use short chips when a user may need help beginning a reply. Do not hide these p
 
 Reuse the official Beautiful UI-derived Coach prompt bar through its app adapter. The visual form is a white pill with a warm border and soft shadow. Every icon keeps a 44px touch target even when the visible glyph is smaller. Empty, filled, multiline, disabled voice, keyboard submit, and inspiration-filled states are required.
 
+The visible trailing action is stateful: an empty composer shows the 26px orange waveform button, while a non-empty composer shows the 26px orange send button. Voice chat and dictation remain visibly unavailable in Volo V2, so both voice controls are disabled and expose an accessible unavailable label; no microphone permission or audio protocol is implied.
+
 ### Move card
 
 Use when the conversation produces a concrete next action. It is not a chat bubble: it combines schedule metadata, an 18px action statement, source attribution, time, and accept/edit/skip recovery actions. Radius 22px, glass surface, white border, and the same warm elevation family as the Focus card.
@@ -58,7 +60,7 @@ Three real links only: Daily (`/daily`), Coach (`/chat`), and Review (`/review`)
 
 ### Top bar
 
-Coach contains only the centered `Coach` title. Daily uses the exported VOLO wordmark and a non-interactive profile brand glyph. Do not add new-conversation, account, or history controls to either top bar. Browser/PWA safe areas replace Figma's illustrative status bar and Dynamic Island.
+An ongoing Coach conversation uses the centered `Coach` title and the compact dark `Done` action on the right. `Done` prepares the editable pause summary but does not complete the session. Coach landing states keep their existing page-specific heading. Daily uses the exported VOLO wordmark and a non-interactive profile brand glyph. Do not add new-conversation, account, or history controls to either top bar. Browser/PWA safe areas replace Figma's illustrative status bar and Dynamic Island.
 
 ### Daily date and week strip
 
@@ -139,5 +141,7 @@ With `VITE_MOCK_MODE=false`, Coach, Daily, and Review use the Volo V2 backend. L
 Scheduled Coach cards use nodes `93:8839` and `93:9159`. The latest appointment sits above two translucent stack layers until expanded. The card's main region is one button; cancel is a separate 44px control. Card activation compares `Date.now()` with the absolute `scheduled_at` instant: due and expired appointments start immediately, while future appointments open the full-screen preview where `Start now` permits an early start.
 
 The Free Coach Pause card follows node `102:13177`. `TOPIC TO EXPLORE` and `TAKE AWAY` are both editable; Confirm sends both final fields, while Continue rejects only the pending card and keeps the session ongoing. An AI-proposed ending first renders a compact Pause/Continue offer; accepting it enters the same Pause-card generation path as the user's explicit Pause command.
+
+The explicit `Done` action follows node `96:12022`: it calls the existing end-suggestion path and opens the pending Pause as a full-height bottom sheet over the mounted conversation. `Into Your Day` confirms the final fields, completes the session, and replaces the route with `/daily`; `Keep talking` or Escape rejects only the pending Pause and returns focus to the composer. A pending Pause restores the sheet after reload. Backdrop clicks do not discard it.
 
 Review follows nodes `102:14569`, `291:11479`, and `291:11727`. The 350px month calendar uses a 36px orange selected circle and 6px activity dots. Only non-empty Coach, Echo, and Move groups render. Detail uses the confirmed Pause or Echo summary above confirmed Move cards and full read-only messages; its bottom command creates a new conversation.

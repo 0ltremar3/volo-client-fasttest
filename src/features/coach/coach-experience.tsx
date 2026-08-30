@@ -9,13 +9,21 @@ import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
 import { CoachOrb } from '@/features/coach/coach-orb'
 import {
+  CoachConversationHeader,
+  CoachFocusCard,
+  CoachPauseDialog,
+} from '@/features/coach/coach-conversation-ui'
+import { resolveCoachLanding } from '@/features/coach/coach-conversation-state'
+import {
   defaultSchedule,
   formatScheduleDate,
   formatScheduleTime,
   mockSessions,
   moveCopy,
   openingMessages,
+  readMockCoachHomeState,
   previewMessages,
+  writeMockCoachHomeState,
   type CoachMessage,
   type CoachSchedule,
   type CoachScreen,
@@ -26,55 +34,35 @@ import { VoloCoachExperience } from '@/features/coach/volo-coach-experience'
 
 type MoveState = 'hidden' | 'suggested' | 'editing' | 'added' | 'skipped'
 
-function CoachHeader() {
+function CoachHomeHeader() {
   return (
-    <header className="safe-top sticky top-0 z-30">
-      <div className="grid h-16 grid-cols-[2.75rem_1fr_2.75rem] items-center px-3">
-        <span aria-hidden="true" />
-        <p className="text-center text-base font-semibold text-[var(--coach-ink)]">Coach</p>
-        <span aria-hidden="true" />
-      </div>
+    <header className="safe-top relative z-30 flex h-[104px] shrink-0 items-end px-9 pb-[10px]">
+      <h1 className="text-lg font-semibold text-[var(--coach-ink)]">Coach Schedule</h1>
     </header>
   )
 }
 
 function FocusCard() {
   return (
-    <article className="min-h-[175px] rounded-[22px] border border-white/80 bg-[var(--coach-focus)] px-[22px] py-5 shadow-[var(--coach-card-shadow)] backdrop-blur-sm">
-      <p className="text-[11px] font-semibold tracking-[0.12em] text-[var(--coach-text-tertiary)]">
-        FOCUS
-      </p>
-      <h1 className="mt-4 max-w-[15.625rem] text-balance font-display text-[22px] font-semibold leading-[30px] text-[var(--coach-ink)]">
-        The cost of choice,
-        <br />
-        and what I truly want
-      </h1>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {['Career Choice', 'Inner Standards'].map((topic) => (
-          <span
-            key={topic}
-            className="inline-flex h-[22px] items-center rounded-full border border-[var(--coach-border-warm-subtle)] bg-[var(--coach-surface-glass-strong)] px-[10px] text-[11px] font-medium text-[var(--coach-ink)]"
-          >
-            {topic}
-          </span>
-        ))}
-      </div>
-    </article>
+    <CoachFocusCard
+      title="The cost of choice, and what I truly want"
+      topics={['Career Choice', 'Inner Standards']}
+    />
   )
 }
 
 function WelcomeScreen({ onSchedule, onStart }: { onSchedule: () => void; onStart: () => void }) {
   return (
-    <section className="flex flex-1 flex-col items-center px-6 pb-10 pt-[15vh] text-center">
+    <section className="flex flex-1 flex-col items-center px-[25px] pb-[145px] pt-[220px] text-center">
       <CoachOrb />
-      <div className="mt-8 w-full">
+      <div className="mt-[35px] w-full">
         <h1 className="font-display text-4xl font-medium leading-none tracking-[-0.02em] text-[var(--coach-ink)]">
           Hello, Jiayu.
         </h1>
-        <p className="mx-auto mt-3 max-w-[19rem] text-[1.625rem] font-semibold leading-none text-[var(--coach-ink)]">
+        <p className="mx-auto mt-2 max-w-[19rem] text-[1.625rem] font-semibold leading-8 text-[var(--coach-ink)]">
           I’m here to help you hear yourself.
         </p>
-        <p className="mx-auto mt-6 max-w-[20rem] text-base leading-5 text-[var(--coach-text-secondary)]">
+        <p className="mx-auto mt-5 max-w-[20rem] text-base leading-[18px] text-[var(--coach-text-secondary)]">
           Make a little space for this conversation.
           <br />
           20–40 minutes is usually enough.
@@ -207,7 +195,7 @@ function ScheduleScreen({
 
 function SessionCard({ schedule }: { schedule: CoachSchedule }) {
   return (
-    <article className="rounded-xl bg-[var(--coach-surface)] px-[18px] py-4 shadow-[var(--coach-shadow)]">
+    <article className="min-h-[116px] rounded-[22px] bg-[var(--coach-surface-glass)] px-[18px] py-[18px] shadow-[var(--coach-shadow)]">
       <p className="text-base font-medium leading-6 text-[var(--coach-ink)]">
         Set aside 30 minutes to explore what this direction is asking of you.
       </p>
@@ -224,21 +212,22 @@ function SessionCard({ schedule }: { schedule: CoachSchedule }) {
 function HomeScreen({
   schedule,
   onStart,
-  onSend,
+  onSchedule,
 }: {
   schedule: CoachSchedule
   onStart: () => void
-  onSend: (text: string) => void
+  onSchedule: () => void
 }) {
   return (
     <section className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
-        <p className="pt-8 text-center text-lg font-semibold">Next Session</p>
-        <CoachOrb className="mx-auto mt-8" />
+      <div className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+        <SessionCard schedule={schedule} />
+        <p className="mt-12 text-center text-lg font-semibold">Next Session</p>
+        <CoachOrb className="mx-auto mt-[35px]" />
         <button
           type="button"
           onClick={onStart}
-          className="group mt-8 block min-h-touch w-full text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="group mt-7 block min-h-touch w-full text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className="block text-4xl font-semibold leading-none tracking-[-0.03em]">
             {schedule.topic}
@@ -248,13 +237,23 @@ function HomeScreen({
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
           </span>
         </button>
-
-        <h2 className="mt-12 text-lg font-semibold">Coach Schedule</h2>
-        <div className="mt-3">
-          <SessionCard schedule={schedule} />
-        </div>
       </div>
-      <BeautifulPromptComposer placeholder="What’s on your mind?" onSend={onSend} />
+      <div className="shrink-0 px-[25px] pb-4 pt-2">
+        <Button
+          type="button"
+          onClick={onSchedule}
+          className="h-[50px] w-full rounded-full bg-[var(--coach-surface)] text-base font-medium text-[var(--coach-ink)] shadow-[var(--coach-shadow)] hover:bg-[var(--coach-surface-glass-strong)]"
+        >
+          Schedule a Session
+        </Button>
+        <button
+          type="button"
+          onClick={onStart}
+          className="mt-2 min-h-11 w-full rounded-full px-5 text-sm font-medium text-[var(--coach-text-secondary)]"
+        >
+          New Conversation
+        </button>
+      </div>
     </section>
   )
 }
@@ -378,7 +377,8 @@ function ConversationScreen({
   onMoveTextChange,
   onMoveStateChange,
   onSend,
-  onPause,
+  disabled,
+  inputRef,
 }: {
   messages: CoachMessage[]
   replying: boolean
@@ -387,7 +387,8 @@ function ConversationScreen({
   onMoveTextChange: (text: string) => void
   onMoveStateChange: (state: MoveState) => void
   onSend: (text: string) => void
-  onPause: () => void
+  disabled: boolean
+  inputRef: React.RefObject<HTMLTextAreaElement | null>
 }) {
   const endRef = useRef<HTMLDivElement>(null)
   const previousScrollStateRef = useRef({
@@ -441,63 +442,16 @@ function ConversationScreen({
             onSave={() => onMoveStateChange('suggested')}
           />
 
-          {!replying && (moveState === 'added' || moveState === 'skipped') ? (
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={onPause}
-                className="min-h-touch rounded-full px-5 text-sm font-medium text-[var(--coach-text-secondary)] hover:text-[var(--coach-ink)]"
-              >
-                Pause and reflect
-              </button>
-            </div>
-          ) : null}
           <div ref={endRef} />
         </div>
       </div>
       <BeautifulPromptComposer
         placeholder="Say what feels present…"
         showInspirations
+        disabled={disabled}
+        inputRef={inputRef}
         onSend={onSend}
       />
-    </section>
-  )
-}
-
-function SummaryScreen({ moveText, onContinue }: { moveText: string; onContinue: () => void }) {
-  return (
-    <section className="min-h-0 flex-1 overflow-y-auto px-5 pb-10 pt-8">
-      <CoachOrb className="mx-auto" />
-      <h1 className="mt-6 text-center font-display text-3xl font-medium leading-tight">
-        A good place to pause.
-      </h1>
-      <p className="mx-auto mt-3 max-w-[19rem] text-center text-sm leading-6 text-[var(--coach-text-secondary)]">
-        You’ve made something clear enough to carry forward.
-      </p>
-
-      <article className="mt-8 rounded-xl bg-[var(--coach-surface)] px-[18px] py-5 shadow-[var(--coach-card-shadow)]">
-        <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">TOPIC TO EXPLORE</p>
-        <p className="mt-3 text-lg font-semibold leading-6">
-          The cost of choosing — and what I really want
-        </p>
-        <div className="my-4 h-px bg-[var(--coach-border)]" />
-        <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">TAKE AWAY</p>
-        <p className="mt-2 text-sm leading-6 text-[var(--coach-text-secondary)]">
-          What’s holding me back isn’t a lack of options. It’s the fear that choosing one means
-          losing everything else.
-        </p>
-        <div className="my-4 h-px bg-[var(--coach-border)]" />
-        <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">MY MOVE</p>
-        <p className="mt-2 text-sm leading-6">{moveText}</p>
-      </article>
-
-      <Button
-        type="button"
-        onClick={onContinue}
-        className="mt-6 h-[50px] w-full rounded-full bg-[var(--coach-surface)] text-[var(--coach-ink)] shadow-[var(--coach-shadow)] hover:bg-[var(--coach-surface)]/90"
-      >
-        Return to Coach
-      </Button>
     </section>
   )
 }
@@ -507,7 +461,20 @@ function CoachExperienceState({
 }: {
   initialSession: (typeof mockSessions)[number] | undefined
 }) {
-  const [screen, setScreen] = useState<CoachScreen>('conversation')
+  const navigate = useNavigate()
+  const initialHome = readMockCoachHomeState()
+  const initialLanding = resolveCoachLanding(
+    Boolean(initialSession) || initialHome.hasCurrentSession,
+    initialHome.hasScheduledSession ? 1 : 0,
+  )
+  const [homeState, setHomeState] = useState(initialHome)
+  const [screen, setScreen] = useState<CoachScreen>(
+    initialLanding === 'session'
+      ? 'conversation'
+      : initialLanding === 'scheduled'
+        ? 'home'
+        : 'welcome',
+  )
   const [schedule, setSchedule] = useState(defaultSchedule)
   const [messages, setMessages] = useState<CoachMessage[]>(
     initialSession?.messages ?? previewMessages,
@@ -516,11 +483,17 @@ function CoachExperienceState({
   const [turn, setTurn] = useState(initialSession ? 0 : 2)
   const [moveState, setMoveState] = useState<MoveState>(initialSession ? 'hidden' : 'suggested')
   const [moveText, setMoveText] = useState(moveCopy)
+  const [pauseOpen, setPauseOpen] = useState(false)
+  const [preparingPause, setPreparingPause] = useState(false)
+  const [pauseAction, setPauseAction] = useState<'confirm' | 'continue' | null>(null)
   const timerRef = useRef<number | null>(null)
+  const endTimerRef = useRef<number | null>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(
     () => () => {
       if (timerRef.current) window.clearTimeout(timerRef.current)
+      if (endTimerRef.current) window.clearTimeout(endTimerRef.current)
     },
     [],
   )
@@ -536,7 +509,43 @@ function CoachExperienceState({
     setMessages(openingMessages)
     setTurn(0)
     setMoveState('hidden')
+    const nextHome = { ...homeState, hasCurrentSession: true }
+    setHomeState(nextHome)
+    writeMockCoachHomeState(nextHome)
     setScreen('conversation')
+  }
+
+  function scheduleConversation() {
+    const nextHome = { ...homeState, hasScheduledSession: true }
+    setHomeState(nextHome)
+    writeMockCoachHomeState(nextHome)
+    setScreen('home')
+  }
+
+  function preparePause() {
+    if (preparingPause || pauseOpen || replying) return
+    setPreparingPause(true)
+    endTimerRef.current = window.setTimeout(() => {
+      setPreparingPause(false)
+      setPauseOpen(true)
+      endTimerRef.current = null
+    }, 240)
+  }
+
+  function confirmPause() {
+    setPauseAction('confirm')
+    const nextHome = { ...homeState, hasCurrentSession: false }
+    setHomeState(nextHome)
+    writeMockCoachHomeState(nextHome)
+    void navigate('/daily', { replace: true })
+  }
+
+  function keepTalking() {
+    if (pauseAction) return
+    setPauseAction('continue')
+    setPauseOpen(false)
+    setPauseAction(null)
+    window.requestAnimationFrame(() => composerRef.current?.focus())
   }
 
   function sendMessage(text: string) {
@@ -595,7 +604,15 @@ function CoachExperienceState({
   return (
     <div className="app-canvas relative isolate flex h-dvh min-h-0 w-full flex-col overflow-hidden text-[var(--coach-ink)]">
       <AppAtmosphere />
-      {coachChromeVisible ? <CoachHeader /> : null}
+      {screen === 'conversation' ? (
+        <CoachConversationHeader
+          onDone={preparePause}
+          disabled={replying || preparingPause || pauseOpen}
+          busy={preparingPause}
+        />
+      ) : coachChromeVisible ? (
+        <CoachHomeHeader />
+      ) : null}
 
       <main className="flex min-h-0 flex-1 flex-col">
         {screen === 'welcome' ? (
@@ -606,11 +623,15 @@ function CoachExperienceState({
             value={schedule}
             onChange={setSchedule}
             onClose={() => setScreen('welcome')}
-            onSchedule={() => setScreen('home')}
+            onSchedule={scheduleConversation}
           />
         ) : null}
         {screen === 'home' ? (
-          <HomeScreen schedule={schedule} onStart={startConversation} onSend={sendMessage} />
+          <HomeScreen
+            schedule={schedule}
+            onStart={startConversation}
+            onSchedule={() => setScreen('schedule')}
+          />
         ) : null}
         {screen === 'conversation' ? (
           <ConversationScreen
@@ -621,16 +642,38 @@ function CoachExperienceState({
             onMoveTextChange={setMoveText}
             onMoveStateChange={setMoveState}
             onSend={sendMessage}
-            onPause={() => setScreen('summary')}
+            disabled={replying || preparingPause || pauseOpen}
+            inputRef={composerRef}
           />
-        ) : null}
-        {screen === 'summary' ? (
-          <SummaryScreen moveText={moveText} onContinue={() => setScreen('home')} />
         ) : null}
       </main>
 
       {coachChromeVisible ? (
-        <AppBottomNavigation onCoach={() => setScreen('conversation')} />
+        <AppBottomNavigation
+          onCoach={() =>
+            setScreen(
+              homeState.hasCurrentSession
+                ? 'conversation'
+                : homeState.hasScheduledSession
+                  ? 'home'
+                  : 'welcome',
+            )
+          }
+        />
+      ) : null}
+      {pauseOpen ? (
+        <CoachPauseDialog
+          key="mock-session-end"
+          initialPayload={{
+            topic_to_explore: 'The cost of choosing — and what I really want',
+            takeaway:
+              'What’s holding me back isn’t a lack of options. It’s the fear that choosing one means losing everything else.',
+          }}
+          confirming={pauseAction === 'confirm'}
+          continuing={pauseAction === 'continue'}
+          onConfirm={confirmPause}
+          onKeepTalking={keepTalking}
+        />
       ) : null}
     </div>
   )

@@ -61,7 +61,10 @@ the reminder sheet and saves one enabled switch and local time through
 Daily and Review from the same backend record.
 
 The Coach route opens on the Figma-aligned conversation state and includes appointment stacking,
-absolute-time start routing, scheduling, conversation, Move proposal, and editable Pause states. In real mode it uses
+absolute-time start routing, scheduling, conversation, Move proposal, and editable Pause states. The
+conversation header's `Done` action prepares the full-height Pause sheet; `Into Your Day` confirms its
+editable topic and takeaway, completes the session, and returns to Daily, while `Keep talking` rejects
+only the pending Pause. In real mode it uses
 `POST /v2/coach/sessions/:id/messages/stream`; assistant text streams from Mastra after the
 transformational-coach Skill is activated. Sessions, messages, retry ids, and pending cards persist
 in PostgreSQL. A Move is not written until its card is explicitly confirmed. Confirming a Pause
@@ -164,6 +167,8 @@ layout and transport messaging live in `src/components/ai/beautiful-prompt-compo
 The Coach composer reuses the adapted Prompt Bar through the application adapter. Source
 attribution and the MIT notice are preserved in `THIRD_PARTY_NOTICES.md`. Keep copied components
 behind the local token system and remove demo-only capabilities that the backend cannot support.
+Its empty state shows the designed orange waveform affordance and its non-empty state switches to
+the orange send action. Voice and dictation remain disabled visual states until an audio contract exists.
 
 ## Project shape
 
