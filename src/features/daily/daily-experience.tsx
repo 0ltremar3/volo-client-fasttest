@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Settings2 } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import calendarChevron from '@/assets/daily/calendar-chevron.svg'
 import echoArc from '@/assets/daily/echo-arc.svg'
@@ -10,7 +10,6 @@ import summaryDivider from '@/assets/daily/summary-divider.svg'
 import traceDotGlyph from '@/assets/daily/trace-dot-glyph.svg'
 import traceRail from '@/assets/daily/trace-rail.svg'
 import voloWordmark from '@/assets/daily/volo-wordmark.svg'
-import { MoveCardSurface } from '@/components/cards/move-card-surface'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import {
@@ -27,6 +26,7 @@ import {
   type EchoSchedule,
 } from '@/features/daily/daily-model'
 import { EchoSettingsSheet } from '@/features/daily/echo-settings-sheet'
+import { PeriodMoves, type PeriodMoveStatus } from '@/features/daily/period-moves'
 import { mockAuthEnabled } from '@/features/auth/mock-auth'
 import { VoloDailyExperience } from '@/features/daily/volo-daily-experience'
 
@@ -274,9 +274,12 @@ function DailyTracesCard({ traces }: { traces: DailyTrace[] }) {
 }
 
 function MockDailyExperience() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [echoSettingsOpen, setEchoSettingsOpen] = useState(false)
   const [echoSchedule, setEchoSchedule] = useState<EchoSchedule>(defaultEchoSchedule)
+  const [moveStatuses, setMoveStatuses] = useState<Record<string, PeriodMoveStatus>>({})
+  const [deletedMoveIds, setDeletedMoveIds] = useState<string[]>([])
   const echoButtonRef = useRef<HTMLDivElement>(null)
   const selectedDate = parseDailyDate(searchParams.get('date')) ?? parseDailyDate(defaultDailyDate)!
   const selectedValue = toDailyDateValue(selectedDate)
@@ -299,39 +302,20 @@ function MockDailyExperience() {
             <DailyEchoCard echo={record.echo} onSettings={() => setEchoSettingsOpen(true)} />
           </div>
 
-          <section className="w-full" aria-labelledby="period-moves-title">
-            <div className="mx-auto flex w-[calc(100%-10px)] max-w-[340px] items-center justify-between">
-              <h2 id="period-moves-title" className="text-base font-medium leading-5">
-                Period Moves
-              </h2>
-              {record.moves.length ? (
-                <span className="grid size-5 place-items-center rounded-full bg-[var(--coach-accent)] text-xs font-medium text-[var(--daily-badge-foreground)]">
-                  {record.moves.length}
-                </span>
-              ) : null}
-            </div>
-            {record.moves.length ? (
-              <div className="mt-[22px] space-y-[14px]">
-                {record.moves.map((move) => (
-                  <MoveCardSurface
-                    key={move.id}
-                    schedule={move.schedule}
-                    source={move.source}
-                    dueLabel={move.dueLabel}
-                  >
-                    {move.text}
-                  </MoveCardSurface>
-                ))}
-              </div>
-            ) : (
-              <div className="daily-card mt-[22px] px-[18px] py-6">
-                <p className="font-medium">No period moves for this day.</p>
-                <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">
-                  Choose another date to review a move already in progress.
-                </p>
-              </div>
-            )}
-          </section>
+          <PeriodMoves
+            items={record.moves
+              .filter((move) => !deletedMoveIds.includes(move.id))
+              .map((move) => ({
+                ...move,
+                status: moveStatuses[move.id] ?? move.status,
+              }))}
+            onStatusChange={(move, status) =>
+              setMoveStatuses((current) => ({ ...current, [move.id]: status }))
+            }
+            onRethink={() => void navigate('/chat')}
+            onDelete={(move) => setDeletedMoveIds((current) => [...current, move.id])}
+            onFindMove={() => void navigate('/chat')}
+          />
 
           <section className="w-full" aria-labelledby="daily-summary-title">
             <h2 id="daily-summary-title" className="daily-section-title px-[5px]">

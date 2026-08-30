@@ -4,13 +4,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
-  authApi,
-  coachApi,
-  dailyApi,
-  type VoloCard,
-  type VoloMessage,
-  type VoloMove,
-} from '@/api/volo'
+  getGetV2DailyQueryKey,
+  getGetV2MovesQueryKey,
+  usePostV2CoachCardsIdConfirm,
+  usePostV2CoachCardsIdReject,
+} from '@/api/generated/endpoints'
+import { authApi, coachApi, dailyApi, type VoloCard, type VoloMessage } from '@/api/volo'
 import { BeautifulPromptComposer } from '@/components/ai/beautiful-prompt-composer'
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
@@ -314,9 +313,12 @@ function SessionView({
     [messages, thread.data?.messages],
   )
   const displayCards = useMemo(() => cards ?? thread.data?.cards ?? [], [cards, thread.data?.cards])
-  const pauseCard = findPendingSessionEnd(displayCards)
+  const adjustmentMode = Boolean(thread.data?.session.related_move_id)
+  const pauseCard = adjustmentMode ? null : findPendingSessionEnd(displayCards)
   const visibleCards = displayCards.filter(
-    (card) => card.status === 'pending' && card.type !== 'session_end',
+    (card) =>
+      card.status === 'pending' &&
+      (adjustmentMode ? card.type === 'move_revision' : card.type !== 'session_end'),
   )
 
   useEffect(() => {
@@ -444,6 +446,7 @@ function SessionView({
           onDone={() => prepareEnd.mutate()}
           disabled={!canPrepareEnd}
           busy={prepareEnd.isPending}
+          showDone={!adjustmentMode}
         />
         <div className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-[15px] pb-6 pt-2">
           <CoachFocusCard
@@ -467,6 +470,8 @@ function SessionView({
                 key={card.id}
                 card={card}
                 sessionId={sessionId}
+                adjustmentMode={adjustmentMode}
+                relatedLocalDate={thread.data.session.related_local_date}
                 onCardChanged={updateCard}
               />
             ))}
@@ -535,29 +540,52 @@ function MessageBubble({ message }: { message: VoloMessage }) {
 function CoachCard({
   card,
   sessionId,
+  adjustmentMode,
+  relatedLocalDate,
   onCardChanged,
 }: {
   card: VoloCard
   sessionId: string
+  adjustmentMode: boolean
+  relatedLocalDate: string | null
   onCardChanged: (card: VoloCard) => void
 }) {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(card.payload.description ?? '')
-  const [move, setMove] = useState<VoloMove | null>(null)
-  const confirm = useMutation({
-    mutationFn: () => coachApi.confirmCard(card.id, { description: value }),
-    onSuccess: async (result) => {
-      setMove(result.move)
-      onCardChanged(result.card)
-      await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
+  const [move, setMove] = useState<{ id: string } | null>(null)
+  const confirm = usePostV2CoachCardsIdConfirm({
+    mutation: {
+      onSuccess: async (result) => {
+        onCardChanged(result.card)
+        if (card.type === 'move_revision') {
+          const returnDate = result.session.related_local_date ?? relatedLocalDate ?? today()
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
+            queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] }),
+            queryClient.invalidateQueries({ queryKey: getGetV2MovesQueryKey() }),
+            queryClient.invalidateQueries({
+              queryKey: getGetV2DailyQueryKey({ date: returnDate }),
+            }),
+          ])
+          void navigate(`/daily?date=${encodeURIComponent(returnDate)}`, { replace: true })
+          return
+        }
+        setMove(result.move)
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
+          queryClient.invalidateQueries({ queryKey: getGetV2MovesQueryKey() }),
+        ])
+      },
     },
   })
-  const reject = useMutation({
-    mutationFn: () => coachApi.rejectCard(card.id),
-    onSuccess: async (result) => {
-      onCardChanged(result.card)
-      await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
+  const reject = usePostV2CoachCardsIdReject({
+    mutation: {
+      onSuccess: async (result) => {
+        onCardChanged(result.card)
+        await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
+      },
     },
   })
   const acceptEnd = useMutation({
@@ -569,7 +597,7 @@ function CoachCard({
     },
   })
 
-  if (move) return <ScheduleEditor move={move} />
+  if (move && !adjustmentMode) return <ScheduleEditor move={move} />
   if (card.type === 'session_end_offer') {
     return (
       <article className="rounded-[22px] bg-[var(--coach-surface-glass-strong)] p-4 shadow-[var(--coach-shadow)]">
@@ -588,7 +616,7 @@ function CoachCard({
           <Button
             className="rounded-full"
             variant="ghost"
-            onClick={() => reject.mutate()}
+            onClick={() => reject.mutate({ id: card.id })}
             disabled={reject.isPending}
           >
             Continue
@@ -607,7 +635,7 @@ function CoachCard({
     <div>
       <p className="mb-3 text-base font-medium">Here’s a Move that reflects what matters:</p>
       <MoveCardSurface
-        schedule="Optional check plan"
+        schedule={adjustmentMode ? 'Schedule unchanged' : 'Optional check plan'}
         source="From this Coach conversation"
         dueLabel=""
       >
@@ -623,21 +651,36 @@ function CoachCard({
         )}
       </MoveCardSurface>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button onClick={() => confirm.mutate()} disabled={!value.trim() || confirm.isPending}>
-          Add Move
+        <Button
+          onClick={() =>
+            confirm.mutate({
+              id: card.id,
+              data: { final_payload: { description: value.trim() } },
+            })
+          }
+          disabled={!value.trim() || confirm.isPending}
+        >
+          {card.type === 'move_revision' ? 'Confirm Adjustment' : 'Add Move'}
         </Button>
         <Button variant="ghost" onClick={() => setEditing((current) => !current)}>
           <Pencil /> Edit
         </Button>
-        <Button variant="ghost" onClick={() => reject.mutate()}>
-          Skip
+        <Button variant="ghost" onClick={() => reject.mutate({ id: card.id })}>
+          {card.type === 'move_revision' ? 'Keep talking' : 'Skip'}
         </Button>
       </div>
+      {confirm.isError || reject.isError ? (
+        <p className="mt-3 text-sm text-[var(--danger)]" role="alert">
+          {card.type === 'move_revision'
+            ? 'This adjustment could not be saved. Try again.'
+            : 'This Move could not be saved. Try again.'}
+        </p>
+      ) : null}
     </div>
   )
 }
 
-function ScheduleEditor({ move }: { move: VoloMove }) {
+function ScheduleEditor({ move }: { move: { id: string } }) {
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily')
   const [time, setTime] = useState('21:00')
   const [saved, setSaved] = useState(false)

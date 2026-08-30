@@ -1,21 +1,38 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, CircleAlert, Settings2, Trash2, Wrench } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Settings2 } from 'lucide-react'
+import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import echoArc from '@/assets/daily/echo-arc.svg'
 import echoMarker from '@/assets/daily/echo-marker.svg'
 import profileGlyph from '@/assets/daily/profile-glyph.svg'
 import voloWordmark from '@/assets/daily/volo-wordmark.svg'
-import { dailyApi, type DailyCheck, type PeriodMove, type VoloMove } from '@/api/volo'
-import { MoveCardSurface } from '@/components/cards/move-card-surface'
+import {
+  getGetV2DailyQueryKey,
+  getGetV2MovesQueryKey,
+  useDeleteV2MovesId,
+  useGetV2Daily,
+  useGetV2Moves,
+  usePatchV2MovesIdChecksTimeId,
+  usePostV2MovesIdAdjustmentSession,
+  usePutV2MovesIdSchedule,
+} from '@/api/generated/endpoints'
+import type {
+  GetV2Daily200Echo,
+  GetV2Daily200PeriodMovesItem,
+  GetV2Daily200PeriodMovesItemChecksItem,
+  GetV2Moves200ItemsItem,
+} from '@/api/generated/models'
+import { dailyApi } from '@/api/volo'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EchoSettingsSheet } from '@/features/daily/echo-settings-sheet'
+import { PeriodMoves, type PeriodMoveItem } from '@/features/daily/period-moves'
 import {
   formatDailyDate,
+  formatIsoWeekday,
   getWeekDates,
   parseDailyDate,
   toDailyDateValue,
@@ -28,11 +45,8 @@ export function VoloDailyExperience() {
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedValue = searchParams.get('date') ?? today()
   const selectedDate = parseDailyDate(selectedValue) ?? new Date(`${today()}T00:00:00Z`)
-  const daily = useQuery({
-    queryKey: ['volo-daily', selectedValue],
-    queryFn: () => dailyApi.get(selectedValue),
-  })
-  const moves = useQuery({ queryKey: ['volo-moves'], queryFn: dailyApi.listMoves })
+  const daily = useGetV2Daily({ date: selectedValue })
+  const moves = useGetV2Moves()
   const queryClient = useQueryClient()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const scheduleValue: EchoSchedule = {
@@ -45,7 +59,9 @@ export function VoloDailyExperience() {
     mutationFn: (value: EchoSchedule) => dailyApi.saveEchoSchedule(value.alarm, value.time),
     onSuccess: async () => {
       setSettingsOpen(false)
-      await queryClient.invalidateQueries({ queryKey: ['volo-daily', selectedValue] })
+      await queryClient.invalidateQueries({
+        queryKey: getGetV2DailyQueryKey({ date: selectedValue }),
+      })
     },
   })
   return (
@@ -115,23 +131,7 @@ export function VoloDailyExperience() {
                 onSettings={() => setSettingsOpen(true)}
               />
 
-              <section aria-labelledby="period-moves-title">
-                <h2 id="period-moves-title" className="text-base font-medium">
-                  Period Moves
-                </h2>
-                <div className="mt-5 space-y-4">
-                  {daily.data.period_moves.length ? (
-                    daily.data.period_moves.map((move) => (
-                      <PeriodMoveCard key={move.id} move={move} date={selectedValue} />
-                    ))
-                  ) : (
-                    <EmptyBlock
-                      title="No checks for this day."
-                      body="A confirmed Move appears here after you add a check plan."
-                    />
-                  )}
-                </div>
-              </section>
+              <VoloPeriodMoves moves={daily.data.period_moves} date={selectedValue} />
 
               {moves.data?.items.some((move) => !move.schedule) ? (
                 <section>
@@ -176,7 +176,7 @@ function DailyEchoCard({
   onSettings,
 }: {
   date: string
-  echo: NonNullable<Awaited<ReturnType<typeof dailyApi.get>>>['echo']
+  echo: GetV2Daily200Echo
   onSettings: () => void
 }) {
   const navigate = useNavigate()
@@ -290,119 +290,100 @@ function formatEchoTime(localTime: string) {
   }
 }
 
-function PeriodMoveCard({ move, date }: { move: PeriodMove; date: string }) {
+function VoloPeriodMoves({ moves, date }: { moves: GetV2Daily200PeriodMovesItem[]; date: string }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const update = useMutation({
-    mutationFn: ({
-      check,
-      status,
-    }: {
-      check: DailyCheck
-      status: Exclude<DailyCheck['status'], null>
-    }) =>
-      status === 'needs_adjustment'
-        ? dailyApi.adjustmentSession(move.id, check.schedule_time_id, date)
-        : dailyApi.updateCheck(move.id, check.schedule_time_id, date, status),
-    onSuccess: async (result, variables) => {
-      if (variables.status === 'needs_adjustment') {
-        const adjustment = result as { session: { id: string } }
-        void navigate(`/chat?session=${adjustment.session.id}`)
-      }
-      await queryClient.invalidateQueries({ queryKey: ['volo-daily', date] })
-    },
-  })
-  const remove = useMutation({
-    mutationFn: () => dailyApi.deleteMove(move.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['volo-daily', date] }),
-  })
-  const scheduleLabel = move.schedule.times.map((time) => time.local_time).join(' / ')
+  const checksByItemId = new Map<
+    string,
+    { move: GetV2Daily200PeriodMovesItem; check: GetV2Daily200PeriodMovesItemChecksItem }
+  >()
+  const items = moves.flatMap((move) =>
+    move.checks.map((check) => {
+      const id = `${move.id}:${check.schedule_time_id}`
+      checksByItemId.set(id, { move, check })
+      return {
+        id,
+        schedule: formatMoveSchedule(move),
+        text: move.description,
+        source: 'From Coach',
+        dueLabel: `${date === today() ? 'Today' : date} ${check.local_time}`,
+        status: check.status,
+      } satisfies PeriodMoveItem
+    }),
+  )
+  const update = usePatchV2MovesIdChecksTimeId()
+  const adjustment = usePostV2MovesIdAdjustmentSession()
+  const remove = useDeleteV2MovesId()
+
+  async function invalidateMoves() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getGetV2DailyQueryKey({ date }) }),
+      queryClient.invalidateQueries({ queryKey: getGetV2MovesQueryKey() }),
+    ])
+  }
+
+  function getCheck(item: PeriodMoveItem) {
+    const value = checksByItemId.get(item.id)
+    if (!value) throw new Error('Move check is unavailable')
+    return value
+  }
+
   return (
-    <div>
-      <MoveCardSurface
-        schedule={`${move.schedule.rule.frequency} · ${scheduleLabel}`}
-        source="From Coach"
-        dueLabel={date}
-        status={
-          <button onClick={() => remove.mutate()} aria-label="Delete Move">
-            <Trash2 className="size-4" />
-          </button>
-        }
-      >
-        {move.description}
-      </MoveCardSurface>
-      <div className="mt-2 space-y-2 px-2">
-        {move.checks.map((check) => (
-          <div key={check.schedule_time_id} className="flex items-center gap-2 text-xs">
-            <time className="w-11 font-semibold">{check.local_time}</time>
-            <CheckButton
-              active={check.status === 'progressing'}
-              label="Progress"
-              icon={<Check />}
-              onClick={() => update.mutate({ check, status: 'progressing' })}
-            />
-            <CheckButton
-              active={check.status === 'stuck'}
-              label="Stuck"
-              icon={<CircleAlert />}
-              onClick={() => update.mutate({ check, status: 'stuck' })}
-            />
-            <CheckButton
-              active={check.status === 'needs_adjustment'}
-              label="Adjust"
-              icon={<Wrench />}
-              onClick={() => {
-                if (window.confirm('Open Coach to adjust this Move?'))
-                  update.mutate({ check, status: 'needs_adjustment' })
-              }}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
+    <PeriodMoves
+      items={items}
+      onStatusChange={async (item, status) => {
+        const { move, check } = getCheck(item)
+        await update.mutateAsync({
+          id: move.id,
+          timeId: check.schedule_time_id,
+          data: { local_date: date, status },
+        })
+        await invalidateMoves()
+      }}
+      onRethink={async (item) => {
+        const { move, check } = getCheck(item)
+        const result = await adjustment.mutateAsync({
+          id: move.id,
+          data: {
+            schedule_time_id: check.schedule_time_id,
+            local_date: date,
+            time_zone_identifier: timezone(),
+          },
+        })
+        await invalidateMoves()
+        void navigate(`/chat?session=${result.session.id}`)
+      }}
+      onDelete={async (item) => {
+        const { move } = getCheck(item)
+        await remove.mutateAsync({ id: move.id })
+        await invalidateMoves()
+      }}
+      onFindMove={() => void navigate('/chat')}
+    />
   )
 }
 
-function CheckButton({
-  active,
-  label,
-  icon,
-  onClick,
-}: {
-  active: boolean
-  label: string
-  icon: ReactNode
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      aria-pressed={active}
-      onClick={onClick}
-      className={`grid size-10 place-items-center rounded-full ${active ? 'bg-[var(--coach-accent)] text-white' : 'bg-[var(--coach-surface-muted)] text-[var(--coach-text-secondary)]'}`}
-    >
-      {<span className="[&_svg]:size-4">{icon}</span>}
-    </button>
-  )
+function formatMoveSchedule(move: GetV2Daily200PeriodMovesItem) {
+  const times = move.schedule.times.map((time) => time.local_time).join(' / ')
+  const rule = move.schedule.rule
+  if (rule.frequency === 'daily') return `Every day  ·  ${times}`
+  if (rule.frequency === 'weekly') {
+    return `Every ${rule.weekdays.map(formatIsoWeekday).join(', ')}  ·  ${times}`
+  }
+  return `${'monthEnd' in rule ? 'Last day monthly' : `Monthly on day ${rule.day}`}  ·  ${times}`
 }
 
-function UnscheduledMove({ move }: { move: VoloMove }) {
+function UnscheduledMove({ move }: { move: GetV2Moves200ItemsItem }) {
   const queryClient = useQueryClient()
   const [time, setTime] = useState('21:00')
-  const schedule = useMutation({
-    mutationFn: () =>
-      dailyApi.scheduleMove(move.id, {
-        rule: { frequency: 'daily' },
-        startLocalDate: today(),
-        times: [time],
-      }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['volo-moves'] }),
-        queryClient.invalidateQueries({ queryKey: ['volo-daily'] }),
-      ])
+  const schedule = usePutV2MovesIdSchedule({
+    mutation: {
+      onSuccess: async () => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetV2MovesQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getGetV2DailyQueryKey() }),
+        ])
+      },
     },
   })
   return (
@@ -410,12 +391,29 @@ function UnscheduledMove({ move }: { move: VoloMove }) {
       <p className="font-medium">{move.description}</p>
       <div className="mt-3 flex gap-2">
         <Input type="time" value={time} onChange={(event) => setTime(event.target.value)} />
-        <Button onClick={() => schedule.mutate()} disabled={schedule.isPending}>
+        <Button
+          onClick={() =>
+            schedule.mutate({
+              id: move.id,
+              data: {
+                rule: { frequency: 'daily' },
+                start_local_date: today(),
+                time_zone_identifier: timezone(),
+                times: [time],
+              },
+            })
+          }
+          disabled={schedule.isPending}
+        >
           Daily
         </Button>
       </div>
     </div>
   )
+}
+
+function timezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone
 }
 
 function EmptyBlock({ title, body }: { title: string; body: string }) {

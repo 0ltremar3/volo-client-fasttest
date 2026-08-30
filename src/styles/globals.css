@@ -254,6 +254,39 @@
     backdrop-filter: blur(2px);
   }
 
+  .move-status-dialog {
+    position: fixed;
+    inset-inline-start: 50%;
+    inset-block-start: auto;
+    inset-block-end: 0;
+    width: min(390px, 100vw);
+    height: min(550px, 70svh);
+    transform: translateX(-50%);
+    overflow: hidden;
+    border: 0;
+    border-radius: 30px 30px 0 0;
+    background: var(--daily-move-sheet);
+    box-shadow: 0 -8px 30px rgb(61 59 54 / 10%);
+    backdrop-filter: blur(15px);
+    animation: coach-sheet-in var(--duration-normal) var(--ease-out);
+  }
+
+  .move-status-dialog::backdrop,
+  .move-delete-dialog::backdrop {
+    background: rgb(29 27 24 / 28%);
+    backdrop-filter: blur(2px);
+  }
+
+  .move-delete-dialog {
+    width: min(290px, calc(100vw - 40px));
+    overflow: hidden;
+    border: 1px solid var(--coach-border-warm-subtle);
+    border-radius: 14px;
+    background: var(--daily-move-dialog);
+    box-shadow: 0 8px 24px rgb(29 27 24 / 16%);
+    animation: pop-in var(--duration-normal) var(--ease-out);
+  }
+
   .echo-settings-chip {
     display: inline-flex;
     min-height: 44px;

@@ -12,6 +12,10 @@ export default defineConfig({
   api: {
     input: {
       target: openApiSchema,
+      filters: {
+        mode: 'include',
+        tags: [/^Volo/u],
+      },
     },
     output: {
       target: './src/api/generated/endpoints.ts',
@@ -21,6 +25,12 @@ export default defineConfig({
       clean: true,
       prettier: true,
       override: {
+        fetch: {
+          includeHttpResponseReturnType: false,
+        },
+        query: {
+          signal: false,
+        },
         mutator: {
           path: './src/api/client.ts',
           name: 'apiFetch',

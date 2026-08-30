@@ -11,12 +11,15 @@ export type DailyEcho = {
   traceCount: number
 }
 
+export type PeriodMoveStatus = 'progressing' | 'stuck' | 'needs_adjustment' | null
+
 export type DailyMove = {
   id: string
   schedule: string
   text: string
   source: string
   dueLabel: string
+  status: PeriodMoveStatus
 }
 
 export type DailySummary = {
@@ -75,6 +78,7 @@ export const dailyRecords: Record<string, DailyRecord> = {
         text: 'Write down three costs I’m willing to bear for the new direction.',
         source: 'From  “The Cost of Choice”',
         dueLabel: 'Today 21:00',
+        status: 'stuck',
       },
       {
         id: 'costs-new-direction-2',
@@ -82,6 +86,7 @@ export const dailyRecords: Record<string, DailyRecord> = {
         text: 'Write down three costs I’m willing to bear for the new direction.',
         source: 'From  “The Cost of Choice”',
         dueLabel: 'Today 21:00',
+        status: 'progressing',
       },
     ],
     summary: {
@@ -117,6 +122,17 @@ export function parseDailyDate(value: string | null) {
 
 export function formatDailyDate(date: Date, options: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat('en', { ...options, timeZone: 'UTC' }).format(date)
+}
+
+export function formatIsoWeekday(day: number) {
+  return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day - 1] ?? String(day)
+}
+
+export function getPeriodMoveStatusLabel(status: PeriodMoveStatus) {
+  if (status === 'progressing') return 'On Track'
+  if (status === 'stuck') return 'Drifting'
+  if (status === 'needs_adjustment') return 'Needs a Rethink'
+  return 'Check in'
 }
 
 export function formatEchoScheduleDate(value: string) {

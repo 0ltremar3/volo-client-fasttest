@@ -1,6 +1,6 @@
 # Volo Application Design System
 
-Sources of truth: the Coach section and [Daily Ver2 node](https://www.figma.com/design/sPJrdSkCdw3ZnHuBXNmjsp/light-mode?node-id=102-15348&m=dev) in the light-mode Figma file. Coach implementation detail comes from its speaking, quick-reply, Focus-card, and Move-card states; Daily long-form order comes from nodes `37:9371` and `37:9628`. Product behavior remains a frontend-only mock until backend contracts exist.
+Sources of truth: the Coach section and [Daily Ver2 node](https://www.figma.com/design/sPJrdSkCdw3ZnHuBXNmjsp/light-mode?node-id=102-15348&m=dev) in the light-mode Figma file. Coach implementation detail comes from its speaking, quick-reply, Focus-card, and Move-card states; Daily long-form order comes from nodes `37:9371` and `37:9628`. Period Move interaction follows nodes `289:2874`, `274:10052`, `274:11137`, `274:7586`, and `274:10521`.
 
 ## 1. Visual theme and atmosphere
 
@@ -60,7 +60,7 @@ Three real links only: Daily (`/daily`), Coach (`/chat`), and Review (`/review`)
 
 ### Top bar
 
-An ongoing Coach conversation uses the centered `Coach` title and the compact dark `Done` action on the right. `Done` prepares the editable pause summary but does not complete the session. Coach landing states keep their existing page-specific heading. Daily uses the exported VOLO wordmark and a non-interactive profile brand glyph. Do not add new-conversation, account, or history controls to either top bar. Browser/PWA safe areas replace Figma's illustrative status bar and Dynamic Island.
+An ongoing Coach conversation uses the centered `Coach` title and the compact dark `Done` action on the right. `Done` prepares the editable pause summary but does not complete the session. Move adjustment mode hides `Done`, because confirming the revision is the only completion action. Coach landing states keep their existing page-specific heading. Daily uses the exported VOLO wordmark and a non-interactive profile brand glyph. Do not add new-conversation, account, or history controls to either top bar. Browser/PWA safe areas replace Figma's illustrative status bar and Dynamic Island.
 
 ### Daily date and week strip
 
@@ -134,7 +134,7 @@ The settings button remains independent from the card's main action. Starting, r
 
 ## 11. Connected product states
 
-With `VITE_MOCK_MODE=false`, Coach, Daily, and Review use the Volo V2 backend. Loading uses stable skeleton surfaces, network failures keep retry actions near the failed work, and completed sessions are read-only. Coach and Echo token deltas stream into the active reply; persisted messages and cards replace optimistic state after reload. Pending Move and Pause cards remain visually distinct from chat bubbles. A Period Move groups all of its due times inside one card and gives each time an independent, icon-labelled three-state control; no percentage or progress bar is introduced.
+With `VITE_MOCK_MODE=false`, Coach, Daily, and Review use the Volo V2 backend. Loading uses stable skeleton surfaces, network failures keep retry actions near the failed work, and completed sessions are read-only. Coach and Echo token deltas stream into the active reply; persisted messages and cards replace optimistic state after reload. Pending Move and Pause cards remain visually distinct from chat bubbles. Period Moves use compact cards with one card per scheduled check so every due time keeps its independent backend status. The full card opens a modal check-in sheet for On Track or Drifting; its separate `Needs a Rethink` action opens Coach. A card already in `needs_adjustment` displays that label and its primary action immediately resumes the same adjustment. Adjustment revision cards use `Confirm Adjustment`, state that the Schedule is unchanged, never open ScheduleEditor, and return to the selected Daily date after confirmation. Deletion requires a separate confirmation dialog. The section collapses from its header and the empty state routes to Coach. No percentage or progress bar is introduced.
 
 ## 12. Coach appointments, Pause, and Review
 

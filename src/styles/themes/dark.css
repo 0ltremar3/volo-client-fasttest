@@ -42,6 +42,11 @@
   --daily-decoration-filter: invert(1) brightness(0.72) sepia(0.2);
   --daily-badge-foreground: #171615;
   --daily-profile-background: #3d3a36;
+  --daily-move-on-track: #d9692f;
+  --daily-move-drifting: #8f6c96;
+  --daily-move-status-foreground: #fffaf5;
+  --daily-move-sheet: rgb(37 35 33 / 97%);
+  --daily-move-dialog: #282522;
   --echo-settings-sheet: rgb(37 35 33 / 94%);
   --echo-settings-popup: rgb(48 45 42 / 96%);
   --echo-settings-selection: #3b3530;

@@ -54,7 +54,11 @@ Set `VITE_MOCK_MODE=false` in production builds.
 | `/debug`                     | Request and runtime inspection            | Configuration skeleton         |
 
 After sign-in, `/` redirects to `/daily`. Daily includes the Figma-aligned week strip, an actionable
-Daily Echo card, Period Moves, and empty hardware traces. The card starts or resumes the selected
+Daily Echo card, collapsible Period Moves, and empty hardware traces. Move cards open an
+accessible check-in sheet for On Track, Drifting, or a Coach rethink. The four persisted values remain
+distinct: an unchecked Move shows `Check in`, while `needs_adjustment` shows `Needs a Rethink` and
+reopens the Move's original Coach session through the idempotent adjustment endpoint. Destructive deletion
+uses a separate confirmation dialog and the empty state links back to Coach. The Echo card starts or resumes the selected
 day's Evening Reflection through the V2 Echo lifecycle. Its independent settings icon still opens
 the reminder sheet and saves one enabled switch and local time through
 `PUT /v2/daily/echo/schedule`. Completing an Echo persists the generated summary and exposes it in
@@ -70,8 +74,14 @@ transformational-coach Skill is activated. Sessions, messages, retry ids, and pe
 in PostgreSQL. A Move is not written until its card is explicitly confirmed. Confirming a Pause
 uses the user's final topic and takeaway; Continue leaves the session ongoing.
 
+When Coach opens an adjusted Move, the original conversation history remains in place and the
+header hides the ordinary Done/Pause path. A `move_revision` card confirms only revised wording,
+keeps the existing Schedule, and returns to the originating Daily date. Rejecting it keeps the same
+conversation ongoing so the Daily card can resume it later.
+
 Review replaces the former History dialogs. `/review?date=YYYY-MM-DD` owns calendar state, marks
-activity dates, and groups completed Coach, Echo, and Move-adjustment sessions. Detail pages show the
+activity dates, and groups completed Coach and Echo sessions. Move adjustments reuse their source
+Coach session rather than creating a separate Review entry. Detail pages show the
 confirmed Pause or Echo summary, confirmed Moves, and full read-only messages. Continue creates a
 new Free Coach session without reopening the completed source.
 
@@ -114,8 +124,9 @@ Generate the client with a real schema:
 OPENAPI_SCHEMA=/absolute/path/to/openapi.yaml npm run generate:api
 ```
 
-Generated output is written to `src/api/generated/` and must not be edited manually. The command
-intentionally fails with a clear message when `OPENAPI_SCHEMA` is missing.
+Generated output is written to `src/api/generated/`, is committed with the application, and must not
+be edited manually. Generation is limited to backend operations tagged `Volo *`, avoiding unrelated
+catch-all auth routes. The command intentionally fails with a clear message when `OPENAPI_SCHEMA` is missing.
 
 Use generated TanStack Query hooks in feature modules. Shared request behavior belongs in
 `src/api/client.ts`; page modules should not call `fetch` directly. Authentication headers,

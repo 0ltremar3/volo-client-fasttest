@@ -12,26 +12,32 @@ export function CoachConversationHeader({
   onDone,
   disabled = false,
   busy = false,
+  showDone = true,
 }: {
   onDone: () => void
   disabled?: boolean
   busy?: boolean
+  showDone?: boolean
 }) {
   return (
     <header className="safe-top relative z-30 grid min-h-16 shrink-0 grid-cols-[57px_1fr_57px] items-center px-5 backdrop-blur-[15px]">
       <span aria-hidden="true" />
       <p className="text-center text-base font-semibold text-[var(--coach-ink)]">Coach</p>
-      <button
-        type="button"
-        className="flex h-11 w-[57px] items-center rounded-full text-sm font-medium text-[var(--coach-on-dark)] transition-[opacity,transform] enabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45"
-        onClick={onDone}
-        disabled={disabled}
-        aria-busy={busy || undefined}
-      >
-        <span className="block h-[30px] w-[57px] rounded-full bg-[var(--coach-chrome-dark)] px-[10px] leading-[30px] shadow-[0_2px_2px_rgb(61_59_54/10%)]">
-          Done
-        </span>
-      </button>
+      {showDone ? (
+        <button
+          type="button"
+          className="flex h-11 w-[57px] items-center rounded-full text-sm font-medium text-[var(--coach-on-dark)] transition-[opacity,transform] enabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45"
+          onClick={onDone}
+          disabled={disabled}
+          aria-busy={busy || undefined}
+        >
+          <span className="block h-[30px] w-[57px] rounded-full bg-[var(--coach-chrome-dark)] px-[10px] leading-[30px] shadow-[0_2px_2px_rgb(61_59_54/10%)]">
+            Done
+          </span>
+        </button>
+      ) : (
+        <span aria-hidden="true" />
+      )}
     </header>
   )
 }
