@@ -5,16 +5,22 @@ export type StreamingTextStatus = 'streaming' | 'complete' | 'failed'
 export function StreamingText({
   text,
   status,
+  tail = '',
   onCopy,
   onRetry,
 }: {
   text: string
   status: StreamingTextStatus
+  tail?: string
   onCopy: () => void
   onRetry?: () => void
 }) {
   const streaming = status === 'streaming'
   const showActions = status === 'complete' || status === 'failed'
+  const appendedText = streaming && tail && text.endsWith(tail) ? tail : ''
+  const stableText = appendedText ? text.slice(0, -appendedText.length) : text
+
+  if (streaming && !text) return <CoachThinkingState />
 
   return (
     <div className="min-w-0 pr-3">
@@ -22,7 +28,15 @@ export function StreamingText({
         className="text-pretty whitespace-pre-wrap break-words text-base font-medium leading-6"
         aria-hidden={streaming || undefined}
       >
-        {text}
+        {stableText}
+        {appendedText ? (
+          <span
+            key={text.length}
+            className="animate-[coach-stream-delta_160ms_var(--ease-standard)_both]"
+          >
+            {appendedText}
+          </span>
+        ) : null}
         {streaming ? (
           <span
             className="ml-1 inline-block h-[1em] w-px translate-y-[0.15em] bg-[var(--coach-accent)] motion-safe:animate-pulse"
@@ -59,6 +73,25 @@ export function StreamingText({
           ) : null}
         </div>
       ) : null}
+    </div>
+  )
+}
+
+const driveDelays = [90, 180, 270, 0, 90, 180, 90, 180, 270]
+
+function CoachThinkingState() {
+  return (
+    <div role="status" className="flex min-h-6 w-fit items-center gap-2.5 text-sm">
+      <span aria-hidden="true" className="grid shrink-0 grid-cols-[repeat(3,4px)] gap-[1.5px]">
+        {driveDelays.map((delay, index) => (
+          <span
+            key={index}
+            className="coach-thinking-cell size-1 rounded-[1px] bg-[var(--coach-ink)]"
+            style={{ animationDelay: `${delay}ms` }}
+          />
+        ))}
+      </span>
+      <span className="font-medium text-[var(--coach-text-secondary)]">Reflecting</span>
     </div>
   )
 }

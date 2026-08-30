@@ -54,6 +54,8 @@ The visible trailing action is stateful: an empty composer shows the 26px orange
 
 Use when the conversation produces a concrete next action. It is not a chat bubble: it combines schedule metadata, an 18px action statement, source attribution, time, and accept/edit/skip recovery actions. Radius 22px, glass surface, white border, and the same warm elevation family as the Focus card.
 
+Pending Move cards expose confirm, edit, and skip actions. Confirmed Move cards stay anchored after their source assistant message, use a quiet `Added` or `Adjusted` status, reduce visual emphasis, and expose no repeat actions. Rejected and expired cards are omitted from the active conversation.
+
 ### Bottom navigation
 
 Three real links only: Daily (`/daily`), Coach (`/chat`), and Review (`/review`). Review uses the exact Figma-exported 32px history glyph rather than a library approximation. The Coach mark sits in a small raised notch and uses the orange ring asset. Navigation is semantic, keyboard accessible, safe-area aware, and at least 93px high including the device inset.
@@ -123,6 +125,8 @@ Don't:
 ## 9. Motion philosophy
 
 Motion communicates state, never personality theatre. Button press feedback uses `transform: scale(0.97)` over 120–160ms. Menus use a trigger-origin ease-out transition under 200ms. Newly generated Move content may rise by 8px while fading in over 200–240ms. Keyboard navigation receives no movement animation. All motion is disabled or reduced under `prefers-reduced-motion`, and hover-only effects are gated to fine pointers.
+
+Coach waiting uses a compact 3×3 pixel wave with a plain `Reflecting` label until the first real SSE delta arrives. Real delta text is never delayed or split again; only the newly arrived tail receives a brief 160ms fade. Reduced motion freezes the pixel grid and removes the delta movement.
 
 ## 10. Daily Echo settings
 

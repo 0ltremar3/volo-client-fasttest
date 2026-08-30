@@ -73,6 +73,8 @@ only the pending Pause. In real mode it uses
 transformational-coach Skill is activated. Sessions, messages, retry ids, and pending cards persist
 in PostgreSQL. A Move is not written until its card is explicitly confirmed. Confirming a Pause
 uses the user's final topic and takeaway; Continue leaves the session ongoing.
+Confirmed Move cards remain in the conversation at their original assistant-message position with
+a read-only Added or Adjusted state; rejected and expired cards stay hidden.
 
 When Coach opens an adjusted Move, the original conversation history remains in place and the
 header hides the ordinary Done/Pause path. A `move_revision` card confirms only revised wording,
@@ -185,6 +187,8 @@ Its empty state shows the designed orange waveform affordance and its non-empty 
 the orange send action. Voice and dictation remain disabled visual states until an audio contract exists.
 Coach replies use the controlled `StreamingText` primitive with real SSE text, reduced-motion-safe
 cursor feedback, stable completion accessibility, and copy/retry actions only after streaming stops.
+Before the first delta it shows a compact Reflecting pixel wave; each real delta renders immediately
+with a brief tail fade rather than a simulated typing timer.
 
 ## Project shape
 

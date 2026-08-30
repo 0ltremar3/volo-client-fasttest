@@ -6,6 +6,7 @@ import {
   buildCoachTimeline,
   coachTurnReducer,
   createCoachTurnState,
+  getCoachCardPresentation,
 } from '@/features/coach/coach-turn-state'
 
 const assistant: VoloMessage = {
@@ -33,6 +34,18 @@ function event(event: VoloCoachStreamEvent) {
 }
 
 describe('Coach turn state', () => {
+  it('keeps confirmed Move cards read-only and hides rejected or expired cards', () => {
+    expect(getCoachCardPresentation(card, false)).toBe('interactive')
+    expect(getCoachCardPresentation({ ...card, status: 'confirmed' }, false)).toBe('confirmed')
+    expect(getCoachCardPresentation({ ...card, status: 'rejected' }, false)).toBeNull()
+    expect(getCoachCardPresentation({ ...card, status: 'expired' }, false)).toBeNull()
+    expect(getCoachCardPresentation({ ...card, status: 'confirmed' }, true)).toBe('confirmed')
+    expect(getCoachCardPresentation(card, true)).toBeNull()
+    expect(
+      getCoachCardPresentation({ ...card, type: 'move_revision', status: 'pending' }, true),
+    ).toBe('interactive')
+  })
+
   it('replaces the draft and anchors a card after its assistant message', () => {
     let state = createCoachTurnState()
     state = coachTurnReducer(state, {
@@ -50,6 +63,7 @@ describe('Coach turn state', () => {
     )
     state = coachTurnReducer(state, event({ event: 'assistant_delta', data: { text: 'Partial' } }))
     expect(state.draft?.text).toBe('Partial')
+    expect(state.draft?.tail).toBe('Partial')
     state = coachTurnReducer(
       state,
       event({

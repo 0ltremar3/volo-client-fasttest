@@ -33,6 +33,7 @@ import {
   buildCoachTimeline,
   coachTurnReducer,
   createCoachTurnState,
+  getCoachCardPresentation,
 } from '@/features/coach/coach-turn-state'
 import { resolveScheduledSessionDestination, singleFlight } from '@/features/coach/schedule-routing'
 
@@ -467,6 +468,7 @@ function SessionView({
                     <StreamingText
                       key={item.id}
                       text={item.draft.text}
+                      tail={item.draft.tail}
                       status={item.draft.status}
                       onCopy={() => void navigator.clipboard.writeText(item.draft.text)}
                       onRetry={turnState.failed ? retryFailedTurn : undefined}
@@ -474,13 +476,12 @@ function SessionView({
                   )
                 }
                 const card = item.card
-                const visible =
-                  card.status === 'pending' &&
-                  (adjustmentMode ? card.type === 'move_revision' : card.type !== 'session_end')
-                return visible ? (
+                const presentation = getCoachCardPresentation(card, adjustmentMode)
+                return presentation ? (
                   <CoachCard
                     key={item.id}
                     card={card}
+                    presentation={presentation}
                     sessionId={sessionId}
                     adjustmentMode={adjustmentMode}
                     relatedLocalDate={thread.data.session.related_local_date}
@@ -554,12 +555,14 @@ function MessageBubble({ message }: { message: VoloMessage }) {
 
 function CoachCard({
   card,
+  presentation,
   sessionId,
   adjustmentMode,
   relatedLocalDate,
   onCardChanged,
 }: {
   card: VoloCard
+  presentation: 'interactive' | 'confirmed'
   sessionId: string
   adjustmentMode: boolean
   relatedLocalDate: string | null
@@ -570,6 +573,7 @@ function CoachCard({
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(card.payload.description ?? '')
   const [move, setMove] = useState<{ id: string } | null>(null)
+  const readOnly = presentation === 'confirmed'
   const confirm = usePostV2CoachCardsIdConfirm({
     mutation: {
       onSuccess: async (result) => {
@@ -612,7 +616,7 @@ function CoachCard({
     },
   })
 
-  if (move && !adjustmentMode) return <ScheduleEditor move={move} />
+  if (move && !adjustmentMode && !readOnly) return <ScheduleEditor move={move} />
   if (card.type === 'session_end_offer') {
     return (
       <article className="rounded-[22px] bg-[var(--coach-surface-glass-strong)] p-4 shadow-[var(--coach-shadow)]">
@@ -647,14 +651,22 @@ function CoachCard({
   }
   if (card.type === 'session_end') return null
   return (
-    <div>
+    <div className={readOnly ? 'opacity-70' : undefined} aria-disabled={readOnly || undefined}>
       <p className="mb-3 text-base font-medium">Here’s a Move that reflects what matters:</p>
       <MoveCardSurface
         schedule={adjustmentMode ? 'Schedule unchanged' : 'Optional check plan'}
         source="From this Coach conversation"
         dueLabel=""
+        status={
+          readOnly ? (
+            <span className="inline-flex items-center gap-1 font-medium text-[var(--coach-text-secondary)]">
+              <Check className="size-3.5" />
+              {card.type === 'move_revision' ? 'Adjusted' : 'Added'}
+            </span>
+          ) : null
+        }
       >
-        {editing ? (
+        {editing && !readOnly ? (
           <textarea
             className="w-full resize-none rounded-lg bg-[var(--coach-surface-muted)] p-3"
             rows={3}
@@ -665,26 +677,28 @@ function CoachCard({
           value
         )}
       </MoveCardSurface>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button
-          onClick={() =>
-            confirm.mutate({
-              id: card.id,
-              data: { final_payload: { description: value.trim() } },
-            })
-          }
-          disabled={!value.trim() || confirm.isPending}
-        >
-          {card.type === 'move_revision' ? 'Confirm Adjustment' : 'Add Move'}
-        </Button>
-        <Button variant="ghost" onClick={() => setEditing((current) => !current)}>
-          <Pencil /> Edit
-        </Button>
-        <Button variant="ghost" onClick={() => reject.mutate({ id: card.id })}>
-          {card.type === 'move_revision' ? 'Keep talking' : 'Skip'}
-        </Button>
-      </div>
-      {confirm.isError || reject.isError ? (
+      {!readOnly ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            onClick={() =>
+              confirm.mutate({
+                id: card.id,
+                data: { final_payload: { description: value.trim() } },
+              })
+            }
+            disabled={!value.trim() || confirm.isPending}
+          >
+            {card.type === 'move_revision' ? 'Confirm Adjustment' : 'Add Move'}
+          </Button>
+          <Button variant="ghost" onClick={() => setEditing((current) => !current)}>
+            <Pencil /> Edit
+          </Button>
+          <Button variant="ghost" onClick={() => reject.mutate({ id: card.id })}>
+            {card.type === 'move_revision' ? 'Keep talking' : 'Skip'}
+          </Button>
+        </div>
+      ) : null}
+      {!readOnly && (confirm.isError || reject.isError) ? (
         <p className="mt-3 text-sm text-[var(--danger)]" role="alert">
           {card.type === 'move_revision'
             ? 'This adjustment could not be saved. Try again.'

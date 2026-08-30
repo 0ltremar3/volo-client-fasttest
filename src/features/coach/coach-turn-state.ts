@@ -9,6 +9,7 @@ export type CoachTurnState = {
   draft: {
     id: string
     text: string
+    tail: string
     status: 'streaming' | 'failed'
     clientTempId: string
   } | null
@@ -68,6 +69,7 @@ export function coachTurnReducer(state: CoachTurnState, action: CoachTurnAction)
         draft: {
           id: `draft-${action.clientTempId}`,
           text: '',
+          tail: '',
           status: 'streaming',
           clientTempId: action.clientTempId,
         },
@@ -115,6 +117,18 @@ export function buildCoachTimeline(state: CoachTurnState): CoachTimelineItem[] {
   return items
 }
 
+export function getCoachCardPresentation(
+  card: VoloCard,
+  adjustmentMode: boolean,
+): 'interactive' | 'confirmed' | null {
+  if (card.status === 'confirmed') {
+    return card.type === 'move_create' || card.type === 'move_revision' ? 'confirmed' : null
+  }
+  if (card.status !== 'pending' || card.type === 'session_end') return null
+  if (adjustmentMode) return card.type === 'move_revision' ? 'interactive' : null
+  return card.type === 'move_revision' ? null : 'interactive'
+}
+
 function reduceStreamEvent(state: CoachTurnState, event: VoloCoachStreamEvent): CoachTurnState {
   switch (event.event) {
     case 'user_message_stored': {
@@ -134,7 +148,14 @@ function reduceStreamEvent(state: CoachTurnState, event: VoloCoachStreamEvent): 
     }
     case 'assistant_delta':
       return state.draft
-        ? { ...state, draft: { ...state.draft, text: state.draft.text + event.data.text } }
+        ? {
+            ...state,
+            draft: {
+              ...state.draft,
+              text: state.draft.text + event.data.text,
+              tail: event.data.text,
+            },
+          }
         : state
     case 'assistant_message_done':
       return {
