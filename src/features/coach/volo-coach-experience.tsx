@@ -419,6 +419,10 @@ function SessionView({
     }
   }
 
+  function retryFailedTurn() {
+    if (turnState.failed) void send(turnState.failed.body, turnState.failed.clientTempId)
+  }
+
   if (thread.isPending) return <CoachLoading />
   if (thread.isError || !thread.data) return <CoachError onRetry={() => void thread.refetch()} />
   const canPrepareEnd = canRequestCoachEnd({
@@ -465,11 +469,7 @@ function SessionView({
                       text={item.draft.text}
                       status={item.draft.status}
                       onCopy={() => void navigator.clipboard.writeText(item.draft.text)}
-                      onRetry={
-                        turnState.failed
-                          ? () => void send(turnState.failed!.body, turnState.failed!.clientTempId)
-                          : undefined
-                      }
+                      onRetry={turnState.failed ? retryFailedTurn : undefined}
                     />
                   )
                 }
@@ -493,7 +493,7 @@ function SessionView({
                   text=""
                   status="failed"
                   onCopy={() => undefined}
-                  onRetry={() => void send(turnState.failed!.body, turnState.failed!.clientTempId)}
+                  onRetry={retryFailedTurn}
                 />
               ) : null}
               {prepareEnd.isError ? (

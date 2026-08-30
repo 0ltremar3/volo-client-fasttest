@@ -1,7 +1,7 @@
 import type { VoloCoachStreamEvent } from '@/api/sse'
 import type { VoloCard, VoloMessage } from '@/api/volo'
 
-type ActiveTurn = { body: string; clientTempId: string }
+type ActiveTurn = { body: string; clientTempId: string; createdAt: string }
 
 export type CoachTurnState = {
   messages: VoloMessage[]
@@ -18,7 +18,6 @@ export type CoachTurnState = {
 
 export type CoachTurnAction =
   | { type: 'hydrate'; messages: VoloMessage[]; cards: VoloCard[] }
-  | { type: 'reset'; messages?: VoloMessage[]; cards?: VoloCard[] }
   | { type: 'start'; body: string; clientTempId: string; createdAt: string }
   | { type: 'event'; event: VoloCoachStreamEvent }
   | { type: 'card_changed'; card: VoloCard }
@@ -46,10 +45,12 @@ export function coachTurnReducer(state: CoachTurnState, action: CoachTurnAction)
         messages: upsertMessages(state.messages, action.messages),
         cards: upsertCards(state.cards, action.cards),
       }
-    case 'reset':
-      return createCoachTurnState(action.messages, action.cards)
     case 'start': {
-      const active = { body: action.body, clientTempId: action.clientTempId }
+      const active = {
+        body: action.body,
+        clientTempId: action.clientTempId,
+        createdAt: action.createdAt,
+      }
       const hasUser = state.messages.some(
         (message) => message.client_temp_id === action.clientTempId,
       )
@@ -127,7 +128,7 @@ function reduceStreamEvent(state: CoachTurnState, event: VoloCoachStreamEvent): 
         body: state.active.body,
         sequence: event.data.sequence,
         client_temp_id: state.active.clientTempId,
-        created_at: optimistic?.created_at ?? new Date().toISOString(),
+        created_at: optimistic?.created_at ?? state.active.createdAt,
       }
       return { ...state, messages: upsertMessages(state.messages, [stored]) }
     }

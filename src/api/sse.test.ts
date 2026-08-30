@@ -100,18 +100,23 @@ describe('Volo Coach SSE', () => {
 
   it('turns an error event into a coded error immediately', async () => {
     const onEvent = vi.fn()
+    const cancel = vi.fn()
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            'event: error\ndata: {"code":"UPSTREAM_TIMEOUT","message":"Try again"}\n\n',
+          ),
+        )
+      },
+      cancel,
+    })
     vi.stubGlobal(
       'fetch',
       vi
         .fn()
         .mockResolvedValue(
-          new Response(
-            byteStream(
-              'event: error\ndata: {"code":"UPSTREAM_TIMEOUT","message":"Try again"}\n\n' +
-                'event: done\ndata: {}\n\n',
-            ),
-            { headers: { 'Content-Type': 'text/event-stream' } },
-          ),
+          new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } }),
         ),
     )
 
@@ -119,5 +124,6 @@ describe('Volo Coach SSE', () => {
       new VoloCoachStreamError('UPSTREAM_TIMEOUT', 'Try again'),
     )
     expect(onEvent).not.toHaveBeenCalled()
+    expect(cancel).toHaveBeenCalledOnce()
   })
 })

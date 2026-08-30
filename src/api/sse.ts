@@ -117,10 +117,14 @@ async function* readSseEvents(body: ReadableStream<Uint8Array>) {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let completed = false
   try {
     while (true) {
       const { value, done } = await reader.read()
-      if (done) break
+      if (done) {
+        completed = true
+        break
+      }
       buffer += decoder.decode(value, { stream: true })
       let boundary = findEventBoundary(buffer)
       while (boundary) {
@@ -134,6 +138,7 @@ async function* readSseEvents(body: ReadableStream<Uint8Array>) {
     const trailing = parseBlock(buffer)
     if (trailing) yield trailing
   } finally {
+    if (!completed) await reader.cancel().catch(() => undefined)
     reader.releaseLock()
   }
 }

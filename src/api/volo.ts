@@ -3,32 +3,14 @@ import {
   streamPost,
   streamVoloCoachPost,
   type SseEvent,
+  type VoloCoachCard,
+  type VoloCoachMessage,
   type VoloCoachStreamEvent,
 } from '@/api/sse'
 
-export type VoloMessage = {
-  id: string
-  role: 'user' | 'assistant'
-  body: string
-  sequence: number
-  client_temp_id: string | null
-  created_at: string
-}
+export type VoloMessage = Omit<VoloCoachMessage, 'model_provider' | 'model_name'>
 
-export type VoloCard = {
-  id: string
-  message_id: string | null
-  type: 'move_create' | 'move_revision' | 'session_end_offer' | 'session_end'
-  status: 'pending' | 'confirmed' | 'rejected' | 'expired'
-  payload: {
-    description?: string
-    topic_to_explore?: string
-    takeaway?: string
-  }
-  related_move_id: string | null
-  created_at: string
-  decided_at: string | null
-}
+export type VoloCard = VoloCoachCard
 
 export type VoloSession = {
   id: string
