@@ -305,7 +305,6 @@ function SessionView({
   const [streamText, setStreamText] = useState('')
   const [sending, setSending] = useState(false)
   const [failed, setFailed] = useState<{ body: string; clientTempId: string } | null>(null)
-  const endRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
 
   const displayMessages = useMemo(
@@ -313,6 +312,12 @@ function SessionView({
     [messages, thread.data?.messages],
   )
   const displayCards = useMemo(() => cards ?? thread.data?.cards ?? [], [cards, thread.data?.cards])
+  const conversationRef = useRef<HTMLDivElement>(null)
+  const previousScrollContentRef = useRef({
+    messages: displayMessages,
+    cards: displayCards,
+    streamText,
+  })
   const adjustmentMode = Boolean(thread.data?.session.related_move_id)
   const pauseCard = adjustmentMode ? null : findPendingSessionEnd(displayCards)
   const visibleCards = displayCards.filter(
@@ -322,7 +327,20 @@ function SessionView({
   )
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const previous = previousScrollContentRef.current
+    const changed =
+      previous.messages !== displayMessages ||
+      previous.cards !== displayCards ||
+      previous.streamText !== streamText
+    previousScrollContentRef.current = {
+      messages: displayMessages,
+      cards: displayCards,
+      streamText,
+    }
+    if (!changed) return
+
+    const conversation = conversationRef.current
+    conversation?.scrollTo({ top: conversation.scrollHeight, behavior: 'smooth' })
   }, [displayMessages, displayCards, streamText])
 
   const prepareEnd = useMutation({
@@ -448,47 +466,51 @@ function SessionView({
           busy={prepareEnd.isPending}
           showDone={!adjustmentMode}
         />
-        <div className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-[15px] pb-6 pt-2">
+        <div
+          ref={conversationRef}
+          className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-[15px] pb-6 pt-2"
+        >
           <CoachFocusCard
             title={thread.data.session.topic || thread.data.session.title || 'What feels present'}
           />
-          <ScheduledSessionStack
-            sessions={scheduled.filter((session) => session.id !== sessionId)}
-            className="mb-6 mt-6"
-          />
-          <div className="space-y-6 px-[5px]" aria-live="polite">
-            {displayMessages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-            {streamText ? (
-              <p className="whitespace-pre-wrap pr-3 text-base font-medium leading-6">
-                {streamText}
-              </p>
-            ) : null}
-            {visibleCards.map((card) => (
-              <CoachCard
-                key={card.id}
-                card={card}
-                sessionId={sessionId}
-                adjustmentMode={adjustmentMode}
-                relatedLocalDate={thread.data.session.related_local_date}
-                onCardChanged={updateCard}
-              />
-            ))}
-            {failed ? (
-              <button
-                className="flex min-h-touch items-center gap-2 text-sm text-[var(--coach-accent)]"
-                onClick={() => void send(failed.body, failed.clientTempId)}
-              >
-                <RefreshCw className="size-4" /> Message failed. Retry
-              </button>
-            ) : null}
-            {prepareEnd.isError ? (
-              <p className="text-center text-sm text-[var(--danger)]" role="alert">
-                Couldn’t prepare your pause. Try Done again.
-              </p>
-            ) : null}
-            <div ref={endRef} />
+          <div className="mt-6">
+            <ScheduledSessionStack
+              sessions={scheduled.filter((session) => session.id !== sessionId)}
+              className="mb-6"
+            />
+            <div className="space-y-6 px-[5px]" aria-live="polite">
+              {displayMessages.map((message) => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
+              {streamText ? (
+                <p className="whitespace-pre-wrap pr-3 text-base font-medium leading-6">
+                  {streamText}
+                </p>
+              ) : null}
+              {visibleCards.map((card) => (
+                <CoachCard
+                  key={card.id}
+                  card={card}
+                  sessionId={sessionId}
+                  adjustmentMode={adjustmentMode}
+                  relatedLocalDate={thread.data.session.related_local_date}
+                  onCardChanged={updateCard}
+                />
+              ))}
+              {failed ? (
+                <button
+                  className="flex min-h-touch items-center gap-2 text-sm text-[var(--coach-accent)]"
+                  onClick={() => void send(failed.body, failed.clientTempId)}
+                >
+                  <RefreshCw className="size-4" /> Message failed. Retry
+                </button>
+              ) : null}
+              {prepareEnd.isError ? (
+                <p className="text-center text-sm text-[var(--danger)]" role="alert">
+                  Couldn’t prepare your pause. Try Done again.
+                </p>
+              ) : null}
+            </div>
           </div>
         </div>
         {thread.data.session.status === 'ongoing' ? (
