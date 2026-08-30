@@ -1,5 +1,10 @@
 import { apiFetch } from '@/api/client'
-import { streamPost, type SseEvent } from '@/api/sse'
+import {
+  streamPost,
+  streamVoloCoachPost,
+  type SseEvent,
+  type VoloCoachStreamEvent,
+} from '@/api/sse'
 
 export type VoloMessage = {
   id: string
@@ -12,6 +17,7 @@ export type VoloMessage = {
 
 export type VoloCard = {
   id: string
+  message_id: string | null
   type: 'move_create' | 'move_revision' | 'session_end_offer' | 'session_end'
   status: 'pending' | 'confirmed' | 'rejected' | 'expired'
   payload: {
@@ -21,6 +27,7 @@ export type VoloCard = {
   }
   related_move_id: string | null
   created_at: string
+  decided_at: string | null
 }
 
 export type VoloSession = {
@@ -212,10 +219,10 @@ export const coachApi = {
   stream: (
     id: string,
     input: { body: string; clientTempId: string },
-    onEvent: (event: SseEvent) => void,
+    onEvent: (event: VoloCoachStreamEvent) => void,
     signal?: AbortSignal,
   ) =>
-    streamPost(
+    streamVoloCoachPost(
       `/v2/coach/sessions/${id}/messages/stream`,
       { body: input.body, client_temp_id: input.clientTempId },
       onEvent,

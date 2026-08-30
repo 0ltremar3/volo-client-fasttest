@@ -12,6 +12,11 @@ import type { PostV2CoachCardsIdReject200CardPayload } from './postV2CoachCardsI
 export type PostV2CoachCardsIdReject200Card = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   id: string;
+  /**
+   * @nullable
+   * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+   */
+  message_id: string | null;
   type: PostV2CoachCardsIdReject200CardType;
   status: PostV2CoachCardsIdReject200CardStatus;
   payload: PostV2CoachCardsIdReject200CardPayload;

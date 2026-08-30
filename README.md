@@ -135,8 +135,11 @@ credentials, and refresh behavior remain unset until the backend contract define
 ## AI streaming
 
 Coach and Daily Echo POST SSE streaming are isolated in `src/api/sse.ts`. Feature modules receive
-parsed Volo events and do not parse transport frames. Message retries reuse the same
-`client_temp_id`. A durable offline queue and background replay remain out of scope.
+parsed Volo events and do not parse transport frames. The Coach adapter validates event payloads,
+Content-Type, `assistant_message_done`, and `done`, converts server error events into coded errors,
+and accepts an `AbortSignal`. Its reducer upserts messages and cards, anchors cards by `message_id`,
+and reuses the same `client_temp_id` for retries. A durable offline queue and background replay
+remain out of scope.
 
 ## Themes
 
@@ -180,6 +183,8 @@ attribution and the MIT notice are preserved in `THIRD_PARTY_NOTICES.md`. Keep c
 behind the local token system and remove demo-only capabilities that the backend cannot support.
 Its empty state shows the designed orange waveform affordance and its non-empty state switches to
 the orange send action. Voice and dictation remain disabled visual states until an audio contract exists.
+Coach replies use the controlled `StreamingText` primitive with real SSE text, reduced-motion-safe
+cursor feedback, stable completion accessibility, and copy/retry actions only after streaming stops.
 
 ## Project shape
 

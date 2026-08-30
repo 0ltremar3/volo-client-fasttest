@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarClock, Check, ChevronDown, Pencil, RefreshCw, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
@@ -9,8 +9,10 @@ import {
   usePostV2CoachCardsIdConfirm,
   usePostV2CoachCardsIdReject,
 } from '@/api/generated/endpoints'
+import { VoloCoachStreamError } from '@/api/sse'
 import { authApi, coachApi, dailyApi, type VoloCard, type VoloMessage } from '@/api/volo'
 import { BeautifulPromptComposer } from '@/components/ai/beautiful-prompt-composer'
+import { StreamingText } from '@/components/ai/beautiful-ui/streaming-text'
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
@@ -27,6 +29,11 @@ import {
   canRequestCoachEnd,
   findPendingSessionEnd,
 } from '@/features/coach/coach-conversation-state'
+import {
+  buildCoachTimeline,
+  coachTurnReducer,
+  createCoachTurnState,
+} from '@/features/coach/coach-turn-state'
 import { resolveScheduledSessionDestination, singleFlight } from '@/features/coach/schedule-routing'
 
 const today = () => new Date().toLocaleDateString('en-CA')
@@ -51,7 +58,11 @@ export function VoloCoachExperience() {
     <div className="app-canvas relative isolate flex h-dvh min-h-0 w-full flex-col overflow-hidden text-[var(--coach-ink)]">
       <AppAtmosphere />
       {sessionId ? (
-        <SessionView sessionId={sessionId} scheduled={home.data.scheduled_sessions} />
+        <SessionView
+          key={sessionId}
+          sessionId={sessionId}
+          scheduled={home.data.scheduled_sessions}
+        />
       ) : (
         <CoachStart
           scheduled={home.data.scheduled_sessions}
@@ -300,56 +311,39 @@ function SessionView({
     queryKey: ['volo-session', sessionId],
     queryFn: () => coachApi.get(sessionId),
   })
-  const [messages, setMessages] = useState<VoloMessage[] | null>(null)
-  const [cards, setCards] = useState<VoloCard[] | null>(null)
-  const [streamText, setStreamText] = useState('')
-  const [sending, setSending] = useState(false)
-  const [failed, setFailed] = useState<{ body: string; clientTempId: string } | null>(null)
+  const [turnState, dispatch] = useReducer(coachTurnReducer, undefined, () =>
+    createCoachTurnState(),
+  )
+  const streamControllerRef = useRef<AbortController | null>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
-
-  const displayMessages = useMemo(
-    () => messages ?? thread.data?.messages ?? [],
-    [messages, thread.data?.messages],
-  )
-  const displayCards = useMemo(() => cards ?? thread.data?.cards ?? [], [cards, thread.data?.cards])
+  const timeline = useMemo(() => buildCoachTimeline(turnState), [turnState])
+  const sending = turnState.active !== null
   const conversationRef = useRef<HTMLDivElement>(null)
-  const previousScrollContentRef = useRef({
-    messages: displayMessages,
-    cards: displayCards,
-    streamText,
-  })
   const adjustmentMode = Boolean(thread.data?.session.related_move_id)
-  const pauseCard = adjustmentMode ? null : findPendingSessionEnd(displayCards)
-  const visibleCards = displayCards.filter(
-    (card) =>
-      card.status === 'pending' &&
-      (adjustmentMode ? card.type === 'move_revision' : card.type !== 'session_end'),
-  )
+  const pauseCard = adjustmentMode ? null : findPendingSessionEnd(turnState.cards)
 
   useEffect(() => {
-    const previous = previousScrollContentRef.current
-    const changed =
-      previous.messages !== displayMessages ||
-      previous.cards !== displayCards ||
-      previous.streamText !== streamText
-    previousScrollContentRef.current = {
-      messages: displayMessages,
-      cards: displayCards,
-      streamText,
-    }
-    if (!changed) return
-
     const conversation = conversationRef.current
     conversation?.scrollTo({ top: conversation.scrollHeight, behavior: 'smooth' })
-  }, [displayMessages, displayCards, streamText])
+  }, [timeline])
+
+  useEffect(() => {
+    if (thread.data) {
+      dispatch({ type: 'hydrate', messages: thread.data.messages, cards: thread.data.cards })
+    }
+  }, [thread.data])
+
+  useEffect(
+    () => () => {
+      streamControllerRef.current?.abort()
+    },
+    [],
+  )
 
   const prepareEnd = useMutation({
     mutationFn: () => coachApi.endSuggestion(sessionId),
     onSuccess: async (result) => {
-      setCards((current) => {
-        const next = current ?? thread.data?.cards ?? []
-        return [...next.filter((card) => card.id !== result.card.id), result.card]
-      })
+      dispatch({ type: 'card_changed', card: result.card })
       await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
     },
   })
@@ -384,63 +378,44 @@ function SessionView({
   })
 
   function updateCard(nextCard: VoloCard) {
-    setCards((current) => {
-      const source = current ?? thread.data?.cards ?? []
-      return [...source.filter((card) => card.id !== nextCard.id), nextCard]
-    })
+    dispatch({ type: 'card_changed', card: nextCard })
   }
 
   async function send(body: string, retryId?: string) {
     const clientTempId = retryId ?? crypto.randomUUID()
-    const optimistic: VoloMessage = {
-      id: `local-${clientTempId}`,
-      role: 'user',
+    const controller = new AbortController()
+    streamControllerRef.current?.abort()
+    streamControllerRef.current = controller
+    dispatch({
+      type: 'start',
       body,
-      sequence: displayMessages.length + 1,
-      client_temp_id: clientTempId,
-      created_at: new Date().toISOString(),
-    }
-    if (!retryId)
-      setMessages((current) => [...(current ?? thread.data?.messages ?? []), optimistic])
-    setFailed(null)
-    setSending(true)
-    setStreamText('')
+      clientTempId,
+      createdAt: new Date().toISOString(),
+    })
     try {
-      await coachApi.stream(sessionId, { body, clientTempId }, (event) => {
-        if (event.event === 'user_message_stored') {
-          const stored = event.data as { message_id: string; sequence: number }
-          setMessages((current) =>
-            (current ?? thread.data?.messages ?? []).map((message) =>
-              message.id === `local-${clientTempId}`
-                ? { ...message, id: stored.message_id, sequence: stored.sequence }
-                : message,
-            ),
-          )
-        }
-        if (event.event === 'assistant_delta') {
-          setStreamText((current) => current + String((event.data as { text?: string }).text ?? ''))
-        }
-        if (event.event === 'assistant_message_done') {
-          setMessages((current) => [
-            ...(current ?? thread.data?.messages ?? []),
-            event.data as VoloMessage,
-          ])
-          setStreamText('')
-        }
-        if (event.event === 'card_created')
-          setCards((current) => [...(current ?? thread.data?.cards ?? []), event.data as VoloCard])
-        if (event.event === 'error')
-          throw new Error(String((event.data as { message?: string }).message))
-      })
+      await coachApi.stream(
+        sessionId,
+        { body, clientTempId },
+        (event) => dispatch({ type: 'event', event }),
+        controller.signal,
+      )
+      dispatch({ type: 'success' })
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
         queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] }),
       ])
-    } catch {
-      setFailed({ body, clientTempId })
+    } catch (error) {
+      if (controller.signal.aborted) {
+        dispatch({ type: 'cancel' })
+        return
+      }
+      dispatch({
+        type: 'fail',
+        code: error instanceof VoloCoachStreamError ? error.code : 'NETWORK_ERROR',
+        message: error instanceof Error ? error.message : 'Message failed',
+      })
     } finally {
-      setSending(false)
-      setStreamText('')
+      if (streamControllerRef.current === controller) streamControllerRef.current = null
     }
   }
 
@@ -448,7 +423,7 @@ function SessionView({
   if (thread.isError || !thread.data) return <CoachError onRetry={() => void thread.refetch()} />
   const canPrepareEnd = canRequestCoachEnd({
     sessionStatus: thread.data.session.status,
-    cards: displayCards,
+    cards: turnState.cards,
     sending,
     preparing: prepareEnd.isPending,
   })
@@ -478,32 +453,48 @@ function SessionView({
               sessions={scheduled.filter((session) => session.id !== sessionId)}
               className="mb-6"
             />
-            <div className="space-y-6 px-[5px]" aria-live="polite">
-              {displayMessages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
-              ))}
-              {streamText ? (
-                <p className="whitespace-pre-wrap pr-3 text-base font-medium leading-6">
-                  {streamText}
-                </p>
-              ) : null}
-              {visibleCards.map((card) => (
-                <CoachCard
-                  key={card.id}
-                  card={card}
-                  sessionId={sessionId}
-                  adjustmentMode={adjustmentMode}
-                  relatedLocalDate={thread.data.session.related_local_date}
-                  onCardChanged={updateCard}
+            <div className="space-y-6 px-[5px]">
+              {timeline.map((item) => {
+                if (item.kind === 'message') {
+                  return <MessageBubble key={item.id} message={item.message} />
+                }
+                if (item.kind === 'draft') {
+                  return (
+                    <StreamingText
+                      key={item.id}
+                      text={item.draft.text}
+                      status={item.draft.status}
+                      onCopy={() => void navigator.clipboard.writeText(item.draft.text)}
+                      onRetry={
+                        turnState.failed
+                          ? () => void send(turnState.failed!.body, turnState.failed!.clientTempId)
+                          : undefined
+                      }
+                    />
+                  )
+                }
+                const card = item.card
+                const visible =
+                  card.status === 'pending' &&
+                  (adjustmentMode ? card.type === 'move_revision' : card.type !== 'session_end')
+                return visible ? (
+                  <CoachCard
+                    key={item.id}
+                    card={card}
+                    sessionId={sessionId}
+                    adjustmentMode={adjustmentMode}
+                    relatedLocalDate={thread.data.session.related_local_date}
+                    onCardChanged={updateCard}
+                  />
+                ) : null
+              })}
+              {turnState.failed && !turnState.draft ? (
+                <StreamingText
+                  text=""
+                  status="failed"
+                  onCopy={() => undefined}
+                  onRetry={() => void send(turnState.failed!.body, turnState.failed!.clientTempId)}
                 />
-              ))}
-              {failed ? (
-                <button
-                  className="flex min-h-touch items-center gap-2 text-sm text-[var(--coach-accent)]"
-                  onClick={() => void send(failed.body, failed.clientTempId)}
-                >
-                  <RefreshCw className="size-4" /> Message failed. Retry
-                </button>
               ) : null}
               {prepareEnd.isError ? (
                 <p className="text-center text-sm text-[var(--danger)]" role="alert">
@@ -553,9 +544,11 @@ function MessageBubble({ message }: { message: VoloMessage }) {
       </p>
     </div>
   ) : (
-    <p className="text-pretty whitespace-pre-wrap pr-3 text-base font-medium leading-6">
-      {message.body}
-    </p>
+    <StreamingText
+      text={message.body}
+      status="complete"
+      onCopy={() => void navigator.clipboard.writeText(message.body)}
+    />
   )
 }
 

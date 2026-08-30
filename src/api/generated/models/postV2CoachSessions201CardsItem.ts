@@ -12,6 +12,11 @@ import type { PostV2CoachSessions201CardsItemPayload } from './postV2CoachSessio
 export type PostV2CoachSessions201CardsItem = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   id: string;
+  /**
+   * @nullable
+   * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+   */
+  message_id: string | null;
   type: PostV2CoachSessions201CardsItemType;
   status: PostV2CoachSessions201CardsItemStatus;
   payload: PostV2CoachSessions201CardsItemPayload;
