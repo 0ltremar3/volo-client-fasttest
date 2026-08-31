@@ -45,7 +45,7 @@ Set `VITE_MOCK_MODE=false` in production builds.
 | Route                        | Purpose                                   | Current state                  |
 | ---------------------------- | ----------------------------------------- | ------------------------------ |
 | `/login`                     | Mock password or real email OTP sign-in   | Mode-selected authentication   |
-| `/daily`                     | Daily Echo, moves, and traces             | Mock fixtures or Volo V2 data  |
+| `/daily`                     | Date navigator and Period Moves           | Echo card and traces hidden    |
 | `/daily/echo/:echoId`        | Resumable Daily Echo conversation         | Persisted Volo V2 Echo         |
 | `/chat`                      | Coach experience                          | Mock flow or persisted Volo V2 |
 | `/chat/scheduled/:sessionId` | Scheduled-session preview and early start | Persisted Volo V2 Coach        |
@@ -54,16 +54,16 @@ Set `VITE_MOCK_MODE=false` in production builds.
 | `/debug`                     | Request and runtime inspection            | Configuration skeleton         |
 
 After sign-in, `/` redirects to `/daily`. Daily includes a continuous date navigator (center-snapping
-day strip plus month grid), an actionable Daily Echo card, collapsible active Period Moves, and empty
-hardware traces. Move cards come from
+day strip plus month grid) and collapsible active Period Moves. The Daily Echo card and traces
+section are temporarily hidden: without hardware, traces stay empty; Daily Summary uses only the
+Echo conversation; Echo does not create Move cards or topics; the same-day session can pause and
+resume; and the scheduled local time is a reminder, not an entry gate. Move cards come from
 `GET /v2/moves` and open an accessible check-in sheet for On Track, Drifting, or a Coach rethink. The
 sheet’s edit control opens a nested Schedule sheet for Date, Time, Repeat, and Alarm. Check state is the two-state Move evaluation for the operation day; Coach adjustment is
 separate and reopens the Move's original session through the idempotent adjustment endpoint. Destructive deletion
-uses a separate confirmation dialog and the empty state links back to Coach. The Echo card starts or resumes the selected
-day's Evening Reflection through the V2 Echo lifecycle. Its independent settings icon still opens
-the reminder sheet and saves one enabled switch and local time through
-`PUT /v2/daily/echo/schedule`. Completing an Echo persists the generated summary and exposes it in
-Daily and Review from the same backend record.
+uses a separate confirmation dialog and the empty state links back to Coach. The Echo conversation
+route and `/v2/daily/echo/*` lifecycle remain in place for the next Echo slice. Completing an Echo
+still persists the generated summary for Review from the same backend record.
 
 The Coach route opens on the Figma-aligned conversation state and includes appointment stacking on
 home, Next Session preview routing, absolute-time start routing, scheduling, conversation, Move

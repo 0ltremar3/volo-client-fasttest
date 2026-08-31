@@ -28,6 +28,16 @@ import { PeriodMoves, type PeriodMoveStatus } from '@/features/daily/period-move
 import { mockAuthEnabled } from '@/features/auth/mock-auth'
 import { VoloDailyExperience } from '@/features/daily/volo-daily-experience'
 
+// TODO(volo-echo): hide Daily Echo card and traces until the hardware-free Echo model is confirmed.
+// - Without hardware, traces stay empty; do not render the traces section.
+// - Daily Summary is generated only from the Daily Echo conversation (no hardware traces).
+// - Echo does not create Move cards or topics; it is an independent conversation.
+// - Echo supports temporary exit and resume of the same day's session.
+// - The scheduled local time is a reminder only; it does not gate entry.
+const showMockDailyEchoCard = false
+const showMockDailyTraces = false
+const showMockDailySummary = true
+
 function DailyHeader() {
   return (
     <header className="safe-top grid h-24 shrink-0 grid-cols-[2rem_1fr_2rem] items-center px-5">
@@ -249,9 +259,11 @@ function MockDailyExperience() {
           className={`mx-auto mt-10 flex w-[calc(100%-30px)] max-w-[360px] flex-col items-center gap-9 pb-12 ${dateExpanded ? 'hidden' : ''}`}
           aria-hidden={dateExpanded}
         >
-          <div ref={echoButtonRef} className="w-full max-w-[350px]">
-            <DailyEchoCard echo={record.echo} onSettings={() => setEchoSettingsOpen(true)} />
-          </div>
+          {showMockDailyEchoCard ? (
+            <div ref={echoButtonRef} className="w-full max-w-[350px]">
+              <DailyEchoCard echo={record.echo} onSettings={() => setEchoSettingsOpen(true)} />
+            </div>
+          ) : null}
 
           <PeriodMoves
             items={record.moves
@@ -275,28 +287,32 @@ function MockDailyExperience() {
             onFindMove={() => void navigate('/chat')}
           />
 
-          <section className="w-full" aria-labelledby="daily-summary-title">
-            <h2 id="daily-summary-title" className="daily-section-title px-[5px]">
-              DAILY SUMMARY
-            </h2>
-            <div className="mt-6 space-y-3">
-              <DailySummaryCard summary={record.summary} />
-              <DailyTracesCard traces={record.traces} />
-            </div>
-          </section>
+          {showMockDailySummary || showMockDailyTraces ? (
+            <section className="w-full" aria-labelledby="daily-summary-title">
+              <h2 id="daily-summary-title" className="daily-section-title px-[5px]">
+                DAILY SUMMARY
+              </h2>
+              <div className="mt-6 space-y-3">
+                {showMockDailySummary ? <DailySummaryCard summary={record.summary} /> : null}
+                {showMockDailyTraces ? <DailyTracesCard traces={record.traces} /> : null}
+              </div>
+            </section>
+          ) : null}
         </main>
       </div>
 
       <AppBottomNavigation />
-      <EchoSettingsSheet
-        open={echoSettingsOpen}
-        value={echoSchedule}
-        onClose={closeEchoSettings}
-        onSave={(nextSchedule) => {
-          setEchoSchedule(nextSchedule)
-          closeEchoSettings()
-        }}
-      />
+      {showMockDailyEchoCard ? (
+        <EchoSettingsSheet
+          open={echoSettingsOpen}
+          value={echoSchedule}
+          onClose={closeEchoSettings}
+          onSave={(nextSchedule) => {
+            setEchoSchedule(nextSchedule)
+            closeEchoSettings()
+          }}
+        />
+      ) : null}
     </div>
   )
 }

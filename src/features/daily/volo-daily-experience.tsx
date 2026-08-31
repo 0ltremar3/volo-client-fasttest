@@ -29,6 +29,15 @@ import { formatIsoWeekday, parseDailyDate, type EchoSchedule } from '@/features/
 
 const today = () => new Date().toLocaleDateString('en-CA')
 
+// TODO(volo-echo): hide Daily Echo card and traces until the hardware-free Echo model is confirmed.
+// - Without hardware, traces stay empty; do not render the traces section.
+// - Daily Summary is generated only from the Daily Echo conversation (no hardware traces).
+// - Echo does not create Move cards or topics; it is an independent conversation.
+// - Echo supports temporary exit and resume of the same day's session.
+// - The scheduled local time is a reminder only; it does not gate entry.
+const showDailyEchoCard = false
+const showDailyTraces = false
+
 export function VoloDailyExperience() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedDate = searchParams.get('date')
@@ -99,34 +108,40 @@ export function VoloDailyExperience() {
             />
           ) : (
             <>
-              <DailyEchoCard
-                date={selectedValue}
-                echo={daily.data.echo}
-                onSettings={() => setSettingsOpen(true)}
-              />
+              {showDailyEchoCard ? (
+                <DailyEchoCard
+                  date={selectedValue}
+                  echo={daily.data.echo}
+                  onSettings={() => setSettingsOpen(true)}
+                />
+              ) : null}
 
               <VoloPeriodMoves moves={moves.data.items} />
 
-              <section aria-labelledby="daily-traces-title">
-                <h2 id="daily-traces-title" className="daily-section-title">
-                  TRACES
-                </h2>
-                <EmptyBlock
-                  title="No traces for this day."
-                  body="Hardware traces will appear here in a later version."
-                />
-              </section>
+              {showDailyTraces ? (
+                <section aria-labelledby="daily-traces-title">
+                  <h2 id="daily-traces-title" className="daily-section-title">
+                    TRACES
+                  </h2>
+                  <EmptyBlock
+                    title="No traces for this day."
+                    body="Hardware traces will appear here in a later version."
+                  />
+                </section>
+              ) : null}
             </>
           )}
         </main>
       </div>
       <AppBottomNavigation />
-      <EchoSettingsSheet
-        open={settingsOpen}
-        value={scheduleValue}
-        onClose={() => setSettingsOpen(false)}
-        onSave={(value) => saveSchedule.mutate(value)}
-      />
+      {showDailyEchoCard ? (
+        <EchoSettingsSheet
+          open={settingsOpen}
+          value={scheduleValue}
+          onClose={() => setSettingsOpen(false)}
+          onSave={(value) => saveSchedule.mutate(value)}
+        />
+      ) : null}
     </div>
   )
 }
@@ -349,7 +364,9 @@ function EmptyBlock({ title, body }: { title: string; body: string }) {
 function DailySkeleton() {
   return (
     <div className="space-y-4" aria-label="Loading Daily">
-      <div className="h-[250px] animate-pulse rounded-[22px] bg-[var(--coach-surface-muted)]" />
+      {showDailyEchoCard ? (
+        <div className="h-[250px] animate-pulse rounded-[22px] bg-[var(--coach-surface-muted)]" />
+      ) : null}
       <div className="h-36 animate-pulse rounded-[22px] bg-[var(--coach-surface-muted)]" />
     </div>
   )
