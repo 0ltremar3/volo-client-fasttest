@@ -12,14 +12,12 @@ import {
   getGetV2MovesQueryKey,
   useDeleteV2MovesId,
   useGetV2Daily,
-  usePatchV2MovesIdChecksTimeId,
+  useGetV2Moves,
+  usePatchV2MovesIdCheck,
   usePostV2MovesIdAdjustmentSession,
+  usePutV2MovesIdSchedule,
 } from '@/api/generated/endpoints'
-import type {
-  GetV2Daily200Echo,
-  GetV2Daily200PeriodMovesItem,
-  GetV2Daily200PeriodMovesItemChecksItem,
-} from '@/api/generated/models'
+import type { GetV2Daily200Echo, GetV2Moves200ItemsItem } from '@/api/generated/models'
 import { dailyApi } from '@/api/volo'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
@@ -42,6 +40,7 @@ export function VoloDailyExperience() {
   const selectedValue = searchParams.get('date') ?? today()
   const selectedDate = parseDailyDate(selectedValue) ?? new Date(`${today()}T00:00:00Z`)
   const daily = useGetV2Daily({ date: selectedValue })
+  const moves = useGetV2Moves()
   const queryClient = useQueryClient()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const scheduleValue: EchoSchedule = {
@@ -114,10 +113,15 @@ export function VoloDailyExperience() {
         </section>
 
         <main className="mx-auto mt-10 flex w-[calc(100%-30px)] max-w-[360px] flex-col gap-9 pb-12">
-          {daily.isPending ? (
+          {daily.isPending || moves.isPending ? (
             <DailySkeleton />
-          ) : daily.isError || !daily.data ? (
-            <DailyError onRetry={() => void daily.refetch()} />
+          ) : daily.isError || moves.isError || !daily.data || !moves.data ? (
+            <DailyError
+              onRetry={() => {
+                void daily.refetch()
+                void moves.refetch()
+              }}
+            />
           ) : (
             <>
               <DailyEchoCard
@@ -126,7 +130,7 @@ export function VoloDailyExperience() {
                 onSettings={() => setSettingsOpen(true)}
               />
 
-              <VoloPeriodMoves moves={daily.data.period_moves} date={selectedValue} />
+              <VoloPeriodMoves moves={moves.data.items} />
 
               <section aria-labelledby="daily-traces-title">
                 <h2 id="daily-traces-title" className="daily-section-title">
@@ -272,71 +276,73 @@ function formatEchoTime(localTime: string) {
   }
 }
 
-function VoloPeriodMoves({ moves, date }: { moves: GetV2Daily200PeriodMovesItem[]; date: string }) {
+function VoloPeriodMoves({ moves }: { moves: GetV2Moves200ItemsItem[] }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const checksByItemId = new Map<
-    string,
-    { move: GetV2Daily200PeriodMovesItem; check: GetV2Daily200PeriodMovesItemChecksItem }
-  >()
-  const items = moves.flatMap((move) =>
-    move.checks.map((check) => {
-      const id = `${move.id}:${check.schedule_time_id}`
-      checksByItemId.set(id, { move, check })
-      return {
-        id,
+  const moveById = new Map(moves.map((move) => [move.id, move]))
+  const items = moves.map(
+    (move) =>
+      ({
+        id: move.id,
         schedule: formatMoveSchedule(move),
         text: move.description,
         source: 'From Coach',
-        dueLabel: `${date === today() ? 'Today' : date} ${check.local_time}`,
-        status: check.status,
-      } satisfies PeriodMoveItem
-    }),
+        dueLabel: move.next_check_time
+          ? `${move.next_check_time.local_date === today() ? 'Today' : move.next_check_time.local_date} ${move.next_check_time.local_time}`
+          : 'No upcoming check',
+        status: move.check?.status ?? null,
+        scheduleValue: {
+          startLocalDate: move.schedule.start_local_date,
+          localTime: move.schedule.local_time,
+          rule: move.schedule.rule,
+          alarmEnabled: move.schedule.alarm_enabled,
+        },
+      }) satisfies PeriodMoveItem,
   )
-  const update = usePatchV2MovesIdChecksTimeId()
+  const update = usePatchV2MovesIdCheck()
   const adjustment = usePostV2MovesIdAdjustmentSession()
+  const updateSchedule = usePutV2MovesIdSchedule()
   const remove = useDeleteV2MovesId()
 
   async function invalidateMoves() {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: getGetV2DailyQueryKey({ date }) }),
-      queryClient.invalidateQueries({ queryKey: getGetV2MovesQueryKey() }),
-    ])
+    await queryClient.invalidateQueries({ queryKey: getGetV2MovesQueryKey() })
   }
 
-  function getCheck(item: PeriodMoveItem) {
-    const value = checksByItemId.get(item.id)
-    if (!value) throw new Error('Move check is unavailable')
-    return value
+  function getMove(item: PeriodMoveItem) {
+    const move = moveById.get(item.id)
+    if (!move) throw new Error('Move is unavailable')
+    return move
   }
 
   return (
     <PeriodMoves
       items={items}
       onStatusChange={async (item, status) => {
-        const { move, check } = getCheck(item)
-        await update.mutateAsync({
-          id: move.id,
-          timeId: check.schedule_time_id,
-          data: { local_date: date, status },
-        })
+        const move = getMove(item)
+        await update.mutateAsync({ id: move.id, data: { status } })
         await invalidateMoves()
       }}
       onRethink={async (item) => {
-        const { move, check } = getCheck(item)
-        const result = await adjustment.mutateAsync({
-          id: move.id,
-          data: {
-            schedule_time_id: check.schedule_time_id,
-            local_date: date,
-            time_zone_identifier: timezone(),
-          },
-        })
+        const move = getMove(item)
+        const result = await adjustment.mutateAsync({ id: move.id })
         await invalidateMoves()
         void navigate(`/chat?session=${result.session.id}`)
       }}
+      onScheduleChange={async (item, schedule) => {
+        const move = getMove(item)
+        await updateSchedule.mutateAsync({
+          id: move.id,
+          data: {
+            start_local_date: schedule.startLocalDate,
+            local_time: schedule.localTime,
+            rule: schedule.rule,
+            alarm_enabled: schedule.alarmEnabled,
+          },
+        })
+        await invalidateMoves()
+      }}
       onDelete={async (item) => {
-        const { move } = getCheck(item)
+        const move = getMove(item)
         await remove.mutateAsync({ id: move.id })
         await invalidateMoves()
       }}
@@ -345,18 +351,15 @@ function VoloPeriodMoves({ moves, date }: { moves: GetV2Daily200PeriodMovesItem[
   )
 }
 
-function formatMoveSchedule(move: GetV2Daily200PeriodMovesItem) {
-  const times = move.schedule.times.map((time) => time.local_time).join(' / ')
+function formatMoveSchedule(move: GetV2Moves200ItemsItem) {
+  const time = move.schedule.local_time
   const rule = move.schedule.rule
-  if (rule.frequency === 'daily') return `Every day  ·  ${times}`
+  if (rule.frequency === 'none') return `${move.schedule.start_local_date}  ·  ${time}`
+  if (rule.frequency === 'daily') return `Every day  ·  ${time}`
   if (rule.frequency === 'weekly') {
-    return `Every ${rule.weekdays.map(formatIsoWeekday).join(', ')}  ·  ${times}`
+    return `Every ${rule.weekdays.map(formatIsoWeekday).join(', ')}  ·  ${time}`
   }
-  return `${'monthEnd' in rule ? 'Last day monthly' : `Monthly on day ${rule.day}`}  ·  ${times}`
-}
-
-function timezone() {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone
+  return `Monthly on day ${rule.day}  ·  ${time}`
 }
 
 function EmptyBlock({ title, body }: { title: string; body: string }) {

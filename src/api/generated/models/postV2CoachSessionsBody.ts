@@ -5,24 +5,7 @@
  * Generated OpenAPI document from Fastify route schemas. Keep route-level schema in sync with handler behavior when changing APIs.
  * OpenAPI spec version: 0.1.0
  */
-import type { PostV2CoachSessionsBodyStartType } from './postV2CoachSessionsBodyStartType';
+import type { PostV2CoachSessionsBodyOneOf } from './postV2CoachSessionsBodyOneOf';
+import type { PostV2CoachSessionsBodyOneOfThree } from './postV2CoachSessionsBodyOneOfThree';
 
-export type PostV2CoachSessionsBody = {
-  start_type: PostV2CoachSessionsBodyStartType;
-  /**
-   * @minLength 1
-   * @maxLength 160
-   * @nullable
-   */
-  topic?: string | null;
-  /**
-   * @nullable
-   * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
-   */
-  scheduled_at?: string | null;
-  /**
-   * @minLength 1
-   * @maxLength 120
-   */
-  time_zone_identifier: string;
-};
+export type PostV2CoachSessionsBody = PostV2CoachSessionsBodyOneOf | PostV2CoachSessionsBodyOneOfThree;

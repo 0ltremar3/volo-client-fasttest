@@ -5,9 +5,9 @@
  * Generated OpenAPI document from Fastify route schemas. Keep route-level schema in sync with handler behavior when changing APIs.
  * OpenAPI spec version: 0.1.0
  */
-import type { GetV2Moves200ItemsItemScheduleRuleAnyOf } from './getV2Moves200ItemsItemScheduleRuleAnyOf';
-import type { GetV2Moves200ItemsItemScheduleRuleAnyOfThree } from './getV2Moves200ItemsItemScheduleRuleAnyOfThree';
-import type { GetV2Moves200ItemsItemScheduleRuleAnyOfFive } from './getV2Moves200ItemsItemScheduleRuleAnyOfFive';
-import type { GetV2Moves200ItemsItemScheduleRuleAnyOfSeven } from './getV2Moves200ItemsItemScheduleRuleAnyOfSeven';
+import type { GetV2Moves200ItemsItemScheduleRuleOneOf } from './getV2Moves200ItemsItemScheduleRuleOneOf';
+import type { GetV2Moves200ItemsItemScheduleRuleOneOfThree } from './getV2Moves200ItemsItemScheduleRuleOneOfThree';
+import type { GetV2Moves200ItemsItemScheduleRuleOneOfFive } from './getV2Moves200ItemsItemScheduleRuleOneOfFive';
+import type { GetV2Moves200ItemsItemScheduleRuleOneOfSeven } from './getV2Moves200ItemsItemScheduleRuleOneOfSeven';
 
-export type GetV2Moves200ItemsItemScheduleRule = GetV2Moves200ItemsItemScheduleRuleAnyOf | GetV2Moves200ItemsItemScheduleRuleAnyOfThree | GetV2Moves200ItemsItemScheduleRuleAnyOfFive | GetV2Moves200ItemsItemScheduleRuleAnyOfSeven;
+export type GetV2Moves200ItemsItemScheduleRule = GetV2Moves200ItemsItemScheduleRuleOneOf | GetV2Moves200ItemsItemScheduleRuleOneOfThree | GetV2Moves200ItemsItemScheduleRuleOneOfFive | GetV2Moves200ItemsItemScheduleRuleOneOfSeven;

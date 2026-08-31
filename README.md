@@ -54,10 +54,10 @@ Set `VITE_MOCK_MODE=false` in production builds.
 | `/debug`                     | Request and runtime inspection            | Configuration skeleton         |
 
 After sign-in, `/` redirects to `/daily`. Daily includes the Figma-aligned week strip, an actionable
-Daily Echo card, collapsible scheduled Period Moves, and empty hardware traces. Move cards open an
-accessible check-in sheet for On Track, Drifting, or a Coach rethink. The four persisted values remain
-distinct: an unchecked Move shows `Check in`, while `needs_adjustment` shows `Needs a Rethink` and
-reopens the Move's original Coach session through the idempotent adjustment endpoint. Destructive deletion
+Daily Echo card, collapsible active Period Moves, and empty hardware traces. Move cards come from
+`GET /v2/moves` and open an accessible sheet for On Track, Drifting, Date, Time, Repeat, Alarm, or a
+Coach rethink. Check state is the two-state Move evaluation for the operation day; Coach adjustment is
+separate and reopens the Move's original session through the idempotent adjustment endpoint. Destructive deletion
 uses a separate confirmation dialog and the empty state links back to Coach. The Echo card starts or resumes the selected
 day's Evening Reflection through the V2 Echo lifecycle. Its independent settings icon still opens
 the reminder sheet and saves one enabled switch and local time through

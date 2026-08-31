@@ -308,11 +308,18 @@ function MockDailyExperience() {
               .map((move) => ({
                 ...move,
                 status: moveStatuses[move.id] ?? move.status,
+                scheduleValue: {
+                  startLocalDate: selectedValue,
+                  localTime: '21:00',
+                  rule: { frequency: 'daily' as const },
+                  alarmEnabled: false,
+                },
               }))}
             onStatusChange={(move, status) =>
               setMoveStatuses((current) => ({ ...current, [move.id]: status }))
             }
             onRethink={() => void navigate('/chat')}
+            onScheduleChange={() => undefined}
             onDelete={(move) => setDeletedMoveIds((current) => [...current, move.id])}
             onFindMove={() => void navigate('/chat')}
           />

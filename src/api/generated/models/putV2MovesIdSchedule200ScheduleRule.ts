@@ -5,9 +5,9 @@
  * Generated OpenAPI document from Fastify route schemas. Keep route-level schema in sync with handler behavior when changing APIs.
  * OpenAPI spec version: 0.1.0
  */
-import type { PutV2MovesIdSchedule200ScheduleRuleAnyOf } from './putV2MovesIdSchedule200ScheduleRuleAnyOf';
-import type { PutV2MovesIdSchedule200ScheduleRuleAnyOfThree } from './putV2MovesIdSchedule200ScheduleRuleAnyOfThree';
-import type { PutV2MovesIdSchedule200ScheduleRuleAnyOfFive } from './putV2MovesIdSchedule200ScheduleRuleAnyOfFive';
-import type { PutV2MovesIdSchedule200ScheduleRuleAnyOfSeven } from './putV2MovesIdSchedule200ScheduleRuleAnyOfSeven';
+import type { PutV2MovesIdSchedule200ScheduleRuleOneOf } from './putV2MovesIdSchedule200ScheduleRuleOneOf';
+import type { PutV2MovesIdSchedule200ScheduleRuleOneOfThree } from './putV2MovesIdSchedule200ScheduleRuleOneOfThree';
+import type { PutV2MovesIdSchedule200ScheduleRuleOneOfFive } from './putV2MovesIdSchedule200ScheduleRuleOneOfFive';
+import type { PutV2MovesIdSchedule200ScheduleRuleOneOfSeven } from './putV2MovesIdSchedule200ScheduleRuleOneOfSeven';
 
-export type PutV2MovesIdSchedule200ScheduleRule = PutV2MovesIdSchedule200ScheduleRuleAnyOf | PutV2MovesIdSchedule200ScheduleRuleAnyOfThree | PutV2MovesIdSchedule200ScheduleRuleAnyOfFive | PutV2MovesIdSchedule200ScheduleRuleAnyOfSeven;
+export type PutV2MovesIdSchedule200ScheduleRule = PutV2MovesIdSchedule200ScheduleRuleOneOf | PutV2MovesIdSchedule200ScheduleRuleOneOfThree | PutV2MovesIdSchedule200ScheduleRuleOneOfFive | PutV2MovesIdSchedule200ScheduleRuleOneOfSeven;

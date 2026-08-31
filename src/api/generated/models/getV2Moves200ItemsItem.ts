@@ -7,6 +7,8 @@
  */
 import type { GetV2Moves200ItemsItemStatus } from './getV2Moves200ItemsItemStatus';
 import type { GetV2Moves200ItemsItemSchedule } from './getV2Moves200ItemsItemSchedule';
+import type { GetV2Moves200ItemsItemNextCheckTime } from './getV2Moves200ItemsItemNextCheckTime';
+import type { GetV2Moves200ItemsItemCheck } from './getV2Moves200ItemsItemCheck';
 
 export type GetV2Moves200ItemsItem = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
@@ -27,6 +29,9 @@ export type GetV2Moves200ItemsItem = {
   created_at: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$ */
   updated_at: string;
-  /** @nullable */
   schedule: GetV2Moves200ItemsItemSchedule;
+  /** @nullable */
+  next_check_time: GetV2Moves200ItemsItemNextCheckTime;
+  /** @nullable */
+  check: GetV2Moves200ItemsItemCheck;
 };

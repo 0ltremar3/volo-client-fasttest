@@ -3,13 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { formatIsoWeekday, getPeriodMoveStatusLabel } from '@/features/daily/daily-model'
 
 describe('Daily Move presentation', () => {
-  it('keeps all four persisted status values distinct', () => {
+  it('keeps the two persisted status values distinct', () => {
     expect([
       getPeriodMoveStatusLabel(null),
       getPeriodMoveStatusLabel('progressing'),
       getPeriodMoveStatusLabel('stuck'),
-      getPeriodMoveStatusLabel('needs_adjustment'),
-    ]).toEqual(['Check in', 'On Track', 'Drifting', 'Needs a Rethink'])
+    ]).toEqual(['Check in', 'On Track', 'Drifting'])
   })
 
   it('maps ISO weekday 7 to Sunday', () => {

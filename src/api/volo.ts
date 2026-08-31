@@ -35,32 +35,26 @@ export type SessionThread = {
   cards: VoloCard[]
 }
 
-export type DailyCheck = {
-  schedule_time_id: string
+export type VoloCheck = {
+  id: string
+  move_id: string
   local_date: string
-  local_time: string
-  status: 'progressing' | 'stuck' | 'needs_adjustment' | null
-  checked_at: string | null
-  is_overdue: boolean
+  status: 'progressing' | 'stuck'
+  checked_at: string
 }
 
-export type PeriodMove = {
-  id: string
-  description: string
-  revision: number
-  source_session_id: string | null
-  schedule: {
-    id: string
-    rule:
-      | { frequency: 'daily' }
-      | { frequency: 'weekly'; weekdays: number[] }
-      | { frequency: 'monthly'; day: number }
-      | { frequency: 'monthly'; monthEnd: true }
-    start_local_date: string
-    time_zone_identifier: string
-    times: Array<{ id: string; local_time: string }>
-  }
-  checks: DailyCheck[]
+export type RepeatRule =
+  | { frequency: 'none' }
+  | { frequency: 'daily' }
+  | { frequency: 'weekly'; weekdays: number[] }
+  | { frequency: 'monthly'; day: number }
+
+export type MoveSchedule = {
+  rule: RepeatRule
+  start_local_date: string
+  local_time: string
+  alarm_enabled: boolean
+  status: 'active' | 'ended'
 }
 
 export type VoloMove = {
@@ -68,7 +62,16 @@ export type VoloMove = {
   description: string
   revision: number
   source_session_id: string | null
-  schedule: PeriodMove['schedule'] | null
+}
+
+export type PeriodMove = VoloMove & {
+  schedule: MoveSchedule
+  next_check_time: {
+    at: string
+    local_date: string
+    local_time: string
+  } | null
+  check: VoloCheck | null
 }
 
 export type DailyResponse = {
@@ -89,7 +92,6 @@ export type DailyResponse = {
     takeaways: string[] | null
     generated_at: string | null
   }
-  period_moves: PeriodMove[]
   traces: []
 }
 
@@ -177,12 +179,16 @@ export const coachApi = {
   create: (input: { startType: 'instant' | 'scheduled'; topic?: string; scheduledAt?: string }) =>
     apiFetch<{ session: VoloSession; opening_message: VoloMessage | null }>('/v2/coach/sessions', {
       method: 'POST',
-      body: JSON.stringify({
-        start_type: input.startType,
-        topic: input.topic || null,
-        scheduled_at: input.scheduledAt || null,
-        time_zone_identifier: timezone(),
-      }),
+      body: JSON.stringify(
+        input.startType === 'instant'
+          ? { start_type: 'instant' }
+          : {
+              start_type: 'scheduled',
+              topic: input.topic,
+              scheduled_at: input.scheduledAt,
+              time_zone_identifier: timezone(),
+            },
+      ),
     }),
   start: (id: string) =>
     apiFetch<{ session: VoloSession; opening_message: VoloMessage }>(
@@ -260,37 +266,24 @@ export const dailyApi = {
     apiFetch(`/v2/daily/echo/sessions/${encodeURIComponent(id)}/complete`, {
       method: 'POST',
     }),
-  updateCheck: (
-    moveId: string,
-    timeId: string,
-    localDate: string,
-    status: Exclude<DailyCheck['status'], null>,
-  ) =>
-    apiFetch(`/v2/moves/${moveId}/checks/${timeId}`, {
+  updateCheck: (moveId: string, status: VoloCheck['status']) =>
+    apiFetch(`/v2/moves/${moveId}/check`, {
       method: 'PATCH',
-      body: JSON.stringify({ local_date: localDate, status }),
+      body: JSON.stringify({ status }),
     }),
-  adjustmentSession: (moveId: string, timeId: string, localDate: string) =>
+  adjustmentSession: (moveId: string) =>
     apiFetch<{ session: VoloSession }>(`/v2/moves/${moveId}/adjustment-session`, {
       method: 'POST',
-      body: JSON.stringify({
-        schedule_time_id: timeId,
-        local_date: localDate,
-        time_zone_identifier: timezone(),
-      }),
     }),
   deleteMove: (moveId: string) => apiFetch(`/v2/moves/${moveId}`, { method: 'DELETE' }),
-  listMoves: () => apiFetch<{ items: VoloMove[] }>('/v2/moves'),
+  listMoves: () => apiFetch<{ items: PeriodMove[] }>('/v2/moves'),
   scheduleMove: (
     moveId: string,
     input: {
-      rule:
-        | { frequency: 'daily' }
-        | { frequency: 'weekly'; weekdays: number[] }
-        | { frequency: 'monthly'; day: number }
-        | { frequency: 'monthly'; month_end: true }
+      rule: RepeatRule
       startLocalDate: string
-      times: string[]
+      localTime: string
+      alarmEnabled: boolean
     },
   ) =>
     apiFetch(`/v2/moves/${moveId}/schedule`, {
@@ -298,8 +291,8 @@ export const dailyApi = {
       body: JSON.stringify({
         rule: input.rule,
         start_local_date: input.startLocalDate,
-        time_zone_identifier: timezone(),
-        times: input.times,
+        local_time: input.localTime,
+        alarm_enabled: input.alarmEnabled,
       }),
     }),
 }

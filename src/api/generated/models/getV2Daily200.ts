@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { GetV2Daily200Echo } from './getV2Daily200Echo';
-import type { GetV2Daily200PeriodMovesItem } from './getV2Daily200PeriodMovesItem';
 
 export type GetV2Daily200 = {
   /** @pattern ^\d{4}-\d{2}-\d{2}$ */
@@ -17,7 +16,6 @@ export type GetV2Daily200 = {
    */
   time_zone_identifier: string;
   echo: GetV2Daily200Echo;
-  period_moves: GetV2Daily200PeriodMovesItem[];
   /** @maxItems 0 */
   traces: unknown[];
 };

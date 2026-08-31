@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { resolveScheduledSessionDestination, singleFlight } from './schedule-routing'
+import {
+  resolveScheduledSessionDestination,
+  singleFlight,
+  sortScheduledSessionsByTime,
+} from './schedule-routing'
 
 describe('scheduled Coach routing', () => {
   const scheduledAt = '2026-08-30T12:00:00.000Z'
@@ -30,5 +34,15 @@ describe('scheduled Coach routing', () => {
     await expect(first).rejects.toThrow('network')
     await expect(start()).resolves.toBe('started')
     expect(action).toHaveBeenCalledTimes(2)
+  })
+
+  it('orders scheduled sessions by soonest appointment time', () => {
+    expect(
+      sortScheduledSessionsByTime([
+        { id: 'later', scheduled_at: '2026-09-05T13:00:00.000Z' },
+        { id: 'missing', scheduled_at: null },
+        { id: 'sooner', scheduled_at: '2026-08-29T13:00:00.000Z' },
+      ]).map((session) => session.id),
+    ).toEqual(['sooner', 'later', 'missing'])
   })
 })

@@ -79,7 +79,6 @@ export function mockReviewDetail(id: string): ReviewDetail | null {
                 description: moveCopy,
                 revision: 1,
                 source_session_id: coach.id,
-                schedule: null,
               },
             ]
           : [],

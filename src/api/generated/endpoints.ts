@@ -41,8 +41,8 @@ import type {
   GetV2ReviewParams,
   PatchV2MovesId200,
   PatchV2MovesIdBody,
-  PatchV2MovesIdChecksTimeId200,
-  PatchV2MovesIdChecksTimeIdBody,
+  PatchV2MovesIdCheck200,
+  PatchV2MovesIdCheckBody,
   PostV2CoachCardsIdAcceptEnd200,
   PostV2CoachCardsIdConfirm200,
   PostV2CoachCardsIdConfirmBody,
@@ -57,7 +57,6 @@ import type {
   PostV2DailyEchoSessionsBody,
   PostV2DailyEchoSessionsIdMessagesStreamBody,
   PostV2MovesIdAdjustmentSession201,
-  PostV2MovesIdAdjustmentSessionBody,
   PutV2DailyEchoSchedule200,
   PutV2DailyEchoScheduleBody,
   PutV2MovesIdSchedule200,
@@ -434,8 +433,8 @@ export const postV2CoachSessionsIdStart = async (id: string, options?: RequestIn
   {      
     ...options,
     method: 'POST'
-    
-    
+
+
   }
 );}
 
@@ -1730,37 +1729,35 @@ const {mutation: mutationOptions} = options ?
       return useMutation(mutationOptions, queryClient);
     }
     
-export const getPatchV2MovesIdChecksTimeIdUrl = (id: string,
-    timeId: string,) => {
+export const getPatchV2MovesIdCheckUrl = (id: string,) => {
 
 
   
 
-  return `/v2/moves/${id}/checks/${timeId}`
+  return `/v2/moves/${id}/check`
 }
 
-export const patchV2MovesIdChecksTimeId = async (id: string,
-    timeId: string,
-    patchV2MovesIdChecksTimeIdBody: PatchV2MovesIdChecksTimeIdBody, options?: RequestInit): Promise<PatchV2MovesIdChecksTimeId200> => {
+export const patchV2MovesIdCheck = async (id: string,
+    patchV2MovesIdCheckBody: PatchV2MovesIdCheckBody, options?: RequestInit): Promise<PatchV2MovesIdCheck200> => {
   
-  return apiFetch<PatchV2MovesIdChecksTimeId200>(getPatchV2MovesIdChecksTimeIdUrl(id,timeId),
+  return apiFetch<PatchV2MovesIdCheck200>(getPatchV2MovesIdCheckUrl(id),
   {      
     ...options,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      patchV2MovesIdChecksTimeIdBody,)
+      patchV2MovesIdCheckBody,)
   }
 );}
 
 
 
 
-export const getPatchV2MovesIdChecksTimeIdMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchV2MovesIdChecksTimeId>>, TError,{id: string;timeId: string;data: PatchV2MovesIdChecksTimeIdBody}, TContext>, }
-): UseMutationOptions<Awaited<ReturnType<typeof patchV2MovesIdChecksTimeId>>, TError,{id: string;timeId: string;data: PatchV2MovesIdChecksTimeIdBody}, TContext> => {
+export const getPatchV2MovesIdCheckMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchV2MovesIdCheck>>, TError,{id: string;data: PatchV2MovesIdCheckBody}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof patchV2MovesIdCheck>>, TError,{id: string;data: PatchV2MovesIdCheckBody}, TContext> => {
 
-const mutationKey = ['patchV2MovesIdChecksTimeId'];
+const mutationKey = ['patchV2MovesIdCheck'];
 const {mutation: mutationOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1770,10 +1767,10 @@ const {mutation: mutationOptions} = options ?
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchV2MovesIdChecksTimeId>>, {id: string;timeId: string;data: PatchV2MovesIdChecksTimeIdBody}> = (props) => {
-          const {id,timeId,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchV2MovesIdCheck>>, {id: string;data: PatchV2MovesIdCheckBody}> = (props) => {
+          const {id,data} = props ?? {};
 
-          return  patchV2MovesIdChecksTimeId(id,timeId,data,)
+          return  patchV2MovesIdCheck(id,data,)
         }
 
         
@@ -1781,20 +1778,20 @@ const {mutation: mutationOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PatchV2MovesIdChecksTimeIdMutationResult = NonNullable<Awaited<ReturnType<typeof patchV2MovesIdChecksTimeId>>>
-    export type PatchV2MovesIdChecksTimeIdMutationBody = PatchV2MovesIdChecksTimeIdBody
-    export type PatchV2MovesIdChecksTimeIdMutationError = unknown
+    export type PatchV2MovesIdCheckMutationResult = NonNullable<Awaited<ReturnType<typeof patchV2MovesIdCheck>>>
+    export type PatchV2MovesIdCheckMutationBody = PatchV2MovesIdCheckBody
+    export type PatchV2MovesIdCheckMutationError = unknown
 
-    export const usePatchV2MovesIdChecksTimeId = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchV2MovesIdChecksTimeId>>, TError,{id: string;timeId: string;data: PatchV2MovesIdChecksTimeIdBody}, TContext>, }
+    export const usePatchV2MovesIdCheck = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchV2MovesIdCheck>>, TError,{id: string;data: PatchV2MovesIdCheckBody}, TContext>, }
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof patchV2MovesIdChecksTimeId>>,
+        Awaited<ReturnType<typeof patchV2MovesIdCheck>>,
         TError,
-        {id: string;timeId: string;data: PatchV2MovesIdChecksTimeIdBody},
+        {id: string;data: PatchV2MovesIdCheckBody},
         TContext
       > => {
 
-      const mutationOptions = getPatchV2MovesIdChecksTimeIdMutationOptions(options);
+      const mutationOptions = getPatchV2MovesIdCheckMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }
@@ -1807,25 +1804,25 @@ export const getPostV2MovesIdAdjustmentSessionUrl = (id: string,) => {
   return `/v2/moves/${id}/adjustment-session`
 }
 
-export const postV2MovesIdAdjustmentSession = async (id: string,
-    postV2MovesIdAdjustmentSessionBody: PostV2MovesIdAdjustmentSessionBody, options?: RequestInit): Promise<PostV2MovesIdAdjustmentSession201> => {
-  
-  return apiFetch<PostV2MovesIdAdjustmentSession201>(getPostV2MovesIdAdjustmentSessionUrl(id),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      postV2MovesIdAdjustmentSessionBody,)
-  }
-);}
+export const postV2MovesIdAdjustmentSession = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PostV2MovesIdAdjustmentSession201> => {
+  return apiFetch<PostV2MovesIdAdjustmentSession201>(
+    getPostV2MovesIdAdjustmentSessionUrl(id),
+    {
+      ...options,
+      method: 'POST',
+    },
+  )
+}
 
 
 
 
 export const getPostV2MovesIdAdjustmentSessionMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV2MovesIdAdjustmentSession>>, TError,{id: string;data: PostV2MovesIdAdjustmentSessionBody}, TContext>, }
-): UseMutationOptions<Awaited<ReturnType<typeof postV2MovesIdAdjustmentSession>>, TError,{id: string;data: PostV2MovesIdAdjustmentSessionBody}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV2MovesIdAdjustmentSession>>, TError,{id: string}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof postV2MovesIdAdjustmentSession>>, TError,{id: string}, TContext> => {
 
 const mutationKey = ['postV2MovesIdAdjustmentSession'];
 const {mutation: mutationOptions} = options ?
@@ -1837,10 +1834,10 @@ const {mutation: mutationOptions} = options ?
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postV2MovesIdAdjustmentSession>>, {id: string;data: PostV2MovesIdAdjustmentSessionBody}> = (props) => {
-          const {id,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postV2MovesIdAdjustmentSession>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
 
-          return  postV2MovesIdAdjustmentSession(id,data,)
+          return  postV2MovesIdAdjustmentSession(id,)
         }
 
         
@@ -1849,15 +1846,15 @@ const {mutation: mutationOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PostV2MovesIdAdjustmentSessionMutationResult = NonNullable<Awaited<ReturnType<typeof postV2MovesIdAdjustmentSession>>>
-    export type PostV2MovesIdAdjustmentSessionMutationBody = PostV2MovesIdAdjustmentSessionBody
+
     export type PostV2MovesIdAdjustmentSessionMutationError = unknown
 
     export const usePostV2MovesIdAdjustmentSession = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV2MovesIdAdjustmentSession>>, TError,{id: string;data: PostV2MovesIdAdjustmentSessionBody}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV2MovesIdAdjustmentSession>>, TError,{id: string}, TContext>, }
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof postV2MovesIdAdjustmentSession>>,
         TError,
-        {id: string;data: PostV2MovesIdAdjustmentSessionBody},
+        {id: string},
         TContext
       > => {
 

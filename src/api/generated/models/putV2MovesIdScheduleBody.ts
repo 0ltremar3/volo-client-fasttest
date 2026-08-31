@@ -11,14 +11,7 @@ export type PutV2MovesIdScheduleBody = {
   rule: PutV2MovesIdScheduleBodyRule;
   /** @pattern ^\d{4}-\d{2}-\d{2}$ */
   start_local_date: string;
-  /**
-   * @minLength 1
-   * @maxLength 120
-   */
-  time_zone_identifier: string;
-  /**
-   * @minItems 1
-   * @maxItems 24
-   */
-  times: string[];
+  /** @pattern ^([01]\d|2[0-3]):[0-5]\d$ */
+  local_time: string;
+  alarm_enabled: boolean;
 };

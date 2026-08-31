@@ -3,6 +3,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
+import { Input } from '@/components/ui/input'
+import type { RepeatRule } from '@/api/volo'
 import { getPeriodMoveStatusLabel, type PeriodMoveStatus } from '@/features/daily/daily-model'
 import { cn } from '@/lib/utils'
 
@@ -15,6 +17,12 @@ export type PeriodMoveItem = {
   source: string
   dueLabel: string
   status: PeriodMoveStatus
+  scheduleValue: {
+    startLocalDate: string
+    localTime: string
+    rule: RepeatRule
+    alarmEnabled: boolean
+  }
 }
 
 type PeriodMovesProps = {
@@ -24,6 +32,10 @@ type PeriodMovesProps = {
     status: Exclude<PeriodMoveStatus, null>,
   ) => Promise<void> | void
   onRethink: (item: PeriodMoveItem) => Promise<void> | void
+  onScheduleChange: (
+    item: PeriodMoveItem,
+    schedule: PeriodMoveItem['scheduleValue'],
+  ) => Promise<void> | void
   onDelete: (item: PeriodMoveItem) => Promise<void> | void
   onFindMove: () => void
 }
@@ -37,10 +49,6 @@ const statusCopy = {
     label: 'Drifting',
     description: 'I haven’t made much progress yet.',
   },
-  needs_adjustment: {
-    label: 'Needs a Rethink',
-    description: 'I want to revisit this Move with Coach.',
-  },
 } as const
 
 const selectableStatuses = ['progressing', 'stuck'] as const
@@ -49,6 +57,7 @@ export function PeriodMoves({
   items,
   onStatusChange,
   onRethink,
+  onScheduleChange,
   onDelete,
   onFindMove,
 }: PeriodMovesProps) {
@@ -121,12 +130,6 @@ export function PeriodMoves({
                 onAction={(event) => {
                   triggerRef.current = event.currentTarget
                   setError(null)
-                  if (item.status === 'needs_adjustment') {
-                    if (!pending) {
-                      void run(() => onRethink(item), 'Coach could not open this Move. Try again.')
-                    }
-                    return
-                  }
                   setActiveId(item.id)
                 }}
                 status={
@@ -138,8 +141,6 @@ export function PeriodMoves({
                           'bg-[var(--daily-move-on-track)] text-[var(--daily-move-status-foreground)]',
                         item.status === 'stuck' &&
                           'bg-[var(--daily-move-drifting)] text-[var(--daily-move-status-foreground)]',
-                        item.status === 'needs_adjustment' &&
-                          'bg-[var(--coach-surface-glass-strong)] text-[var(--coach-ink)]',
                         item.status === null &&
                           'bg-[var(--coach-surface-muted)] text-[var(--coach-text-secondary)]',
                       )}
@@ -197,6 +198,12 @@ export function PeriodMoves({
           onRethink={async () => {
             await run(() => onRethink(activeItem), 'Coach could not open this Move. Try again.')
           }}
+          onScheduleChange={async (schedule) => {
+            await run(
+              () => onScheduleChange(activeItem, schedule),
+              'This schedule could not be saved. Try again.',
+            )
+          }}
           onDelete={() => {
             setError(null)
             setDeleteId(activeItem.id)
@@ -238,6 +245,7 @@ function MoveStatusDialog({
   onClose,
   onStatusChange,
   onRethink,
+  onScheduleChange,
   onDelete,
 }: {
   item: PeriodMoveItem
@@ -246,9 +254,11 @@ function MoveStatusDialog({
   onClose: () => void
   onStatusChange: (status: Exclude<PeriodMoveStatus, null>) => Promise<void>
   onRethink: () => Promise<void>
+  onScheduleChange: (schedule: PeriodMoveItem['scheduleValue']) => Promise<void>
   onDelete: () => void
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const [schedule, setSchedule] = useState(item.scheduleValue)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -269,7 +279,7 @@ function MoveStatusDialog({
         if (!pending) dialogRef.current?.close()
       }}
     >
-      <div className="safe-bottom flex h-full flex-col px-5 pb-5">
+      <div className="safe-bottom flex h-full flex-col overflow-y-auto px-5 pb-5">
         <span
           className="mx-auto mt-3 h-1 w-[60px] rounded-full bg-[var(--coach-sheet-handle)]"
           aria-hidden="true"
@@ -330,6 +340,146 @@ function MoveStatusDialog({
           })}
         </div>
 
+        <fieldset className="mt-5 border-t border-[var(--coach-border)] pt-4">
+          <legend className="text-sm font-semibold">Schedule</legend>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <label className="text-xs font-medium text-[var(--coach-text-secondary)]">
+              Date
+              <Input
+                type="date"
+                className="mt-1 bg-[var(--coach-surface-glass)]"
+                value={schedule.startLocalDate}
+                disabled={pending}
+                onChange={(event) =>
+                  setSchedule((current) => ({
+                    ...current,
+                    startLocalDate: event.target.value,
+                    rule: ruleForFrequency(
+                      current.rule.frequency,
+                      event.target.value,
+                      current.rule,
+                    ),
+                  }))
+                }
+              />
+            </label>
+            <label className="text-xs font-medium text-[var(--coach-text-secondary)]">
+              Time
+              <Input
+                type="time"
+                className="mt-1 bg-[var(--coach-surface-glass)]"
+                value={schedule.localTime}
+                disabled={pending}
+                onChange={(event) =>
+                  setSchedule((current) => ({ ...current, localTime: event.target.value }))
+                }
+              />
+            </label>
+          </div>
+          <label className="mt-3 block text-xs font-medium text-[var(--coach-text-secondary)]">
+            Repeat
+            <select
+              className="mt-1 min-h-11 w-full rounded-lg border border-[var(--coach-border)] bg-[var(--coach-surface-glass)] px-3 text-sm text-[var(--coach-ink)]"
+              value={schedule.rule.frequency}
+              disabled={pending}
+              onChange={(event) =>
+                setSchedule((current) => ({
+                  ...current,
+                  rule: ruleForFrequency(
+                    event.target.value as RepeatRule['frequency'],
+                    current.startLocalDate,
+                    current.rule,
+                  ),
+                }))
+              }
+            >
+              <option value="none">No repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </label>
+          {schedule.rule.frequency === 'weekly' ? (
+            <div className="mt-3">
+              <p className="text-xs font-medium text-[var(--coach-text-secondary)]">Weekdays</p>
+              <div className="mt-1 grid grid-cols-7 gap-1" role="group" aria-label="Weekdays">
+                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((label, index) => {
+                  const day = index + 1
+                  const selected =
+                    schedule.rule.frequency === 'weekly' && schedule.rule.weekdays.includes(day)
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      aria-pressed={selected}
+                      disabled={pending}
+                      className={cn(
+                        'aspect-square rounded-md text-xs font-semibold',
+                        selected
+                          ? 'bg-[var(--coach-accent)] text-white'
+                          : 'bg-[var(--coach-surface-glass)] text-[var(--coach-text-secondary)]',
+                      )}
+                      onClick={() =>
+                        setSchedule((current) => {
+                          if (current.rule.frequency !== 'weekly') return current
+                          const weekdays = current.rule.weekdays.includes(day)
+                            ? current.rule.weekdays.filter((value) => value !== day)
+                            : [...current.rule.weekdays, day].sort()
+                          return weekdays.length
+                            ? { ...current, rule: { frequency: 'weekly', weekdays } }
+                            : current
+                        })
+                      }
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
+          {schedule.rule.frequency === 'monthly' ? (
+            <label className="mt-3 block text-xs font-medium text-[var(--coach-text-secondary)]">
+              Day of month
+              <Input
+                type="number"
+                min={1}
+                max={31}
+                className="mt-1 bg-[var(--coach-surface-glass)]"
+                value={schedule.rule.day}
+                disabled={pending}
+                onChange={(event) => {
+                  const day = Math.min(31, Math.max(1, Number(event.target.value)))
+                  setSchedule((current) => ({
+                    ...current,
+                    rule: { frequency: 'monthly', day },
+                  }))
+                }}
+              />
+            </label>
+          ) : null}
+          <label className="mt-3 flex min-h-11 items-center gap-3 text-sm font-medium">
+            <input
+              type="checkbox"
+              className="size-5 accent-[var(--coach-accent)]"
+              checked={schedule.alarmEnabled}
+              disabled={pending}
+              onChange={(event) =>
+                setSchedule((current) => ({ ...current, alarmEnabled: event.target.checked }))
+              }
+            />
+            Alarm
+          </label>
+          <button
+            type="button"
+            disabled={pending || !schedule.startLocalDate || !schedule.localTime}
+            onClick={() => void onScheduleChange(schedule)}
+            className="mt-2 min-h-11 w-full rounded-full bg-[var(--coach-surface-glass-strong)] px-5 text-sm font-medium shadow-[var(--coach-shadow)] disabled:opacity-45"
+          >
+            Save schedule
+          </button>
+        </fieldset>
+
         <button
           type="button"
           disabled={pending}
@@ -355,6 +505,22 @@ function MoveStatusDialog({
     </dialog>,
     document.body,
   )
+}
+
+function ruleForFrequency(
+  frequency: RepeatRule['frequency'],
+  localDate: string,
+  current: RepeatRule,
+): RepeatRule {
+  if (frequency === 'none' || frequency === 'daily') return { frequency }
+  if (frequency === 'weekly') {
+    return current.frequency === 'weekly'
+      ? current
+      : { frequency, weekdays: [new Date(`${localDate}T00:00:00Z`).getUTCDay() || 7] }
+  }
+  return current.frequency === 'monthly'
+    ? current
+    : { frequency, day: new Date(`${localDate}T00:00:00Z`).getUTCDate() }
 }
 
 function DeleteMoveDialog({

@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 import dailyIcon from '@/assets/coach/coach-nav-schedule.svg'
 import coachNavSurface from '@/assets/coach/coach-nav-surface.svg'
 import dailyActiveIcon from '@/assets/navigation/daily-active.svg'
+import reviewActiveIcon from '@/assets/navigation/review-active.svg'
 import reviewIcon from '@/assets/navigation/review.svg'
 import { CoachNavMark } from '@/features/coach/coach-orb'
 
@@ -52,15 +53,17 @@ export function AppBottomNavigation({ onCoach }: AppBottomNavigationProps) {
       </NavLink>
 
       <NavLink to="/review" aria-label="Open Review" className={navigationControl}>
-        <img
-          src={reviewIcon}
-          alt=""
-          width="32"
-          height="32"
-          className="size-8"
-          style={{ filter: 'var(--app-nav-icon-filter)' }}
-          aria-hidden="true"
-        />
+        {({ isActive }) => (
+          <img
+            src={isActive ? reviewActiveIcon : reviewIcon}
+            alt=""
+            width="32"
+            height="32"
+            className="size-8"
+            style={{ filter: 'var(--app-nav-icon-filter)' }}
+            aria-hidden="true"
+          />
+        )}
       </NavLink>
     </nav>
   )

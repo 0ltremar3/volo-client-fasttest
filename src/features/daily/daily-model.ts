@@ -11,7 +11,7 @@ export type DailyEcho = {
   traceCount: number
 }
 
-export type PeriodMoveStatus = 'progressing' | 'stuck' | 'needs_adjustment' | null
+export type PeriodMoveStatus = 'progressing' | 'stuck' | null
 
 export type DailyMove = {
   id: string
@@ -37,7 +37,7 @@ export type DailyRecord = {
   traces: DailyTrace[]
 }
 
-export type EchoRepeat = 'daily' | 'weekly' | 'monthly' | 'custom' | 'none'
+export type EchoRepeat = 'daily' | 'weekly' | 'monthly' | 'none'
 
 export type EchoSchedule = {
   time: string
@@ -50,7 +50,6 @@ export const echoRepeatOptions: ReadonlyArray<{ value: EchoRepeat; label: string
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
-  { value: 'custom', label: 'Custom' },
   { value: 'none', label: 'No repeat' },
 ]
 
@@ -131,7 +130,6 @@ export function formatIsoWeekday(day: number) {
 export function getPeriodMoveStatusLabel(status: PeriodMoveStatus) {
   if (status === 'progressing') return 'On Track'
   if (status === 'stuck') return 'Drifting'
-  if (status === 'needs_adjustment') return 'Needs a Rethink'
   return 'Check in'
 }
 

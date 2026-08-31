@@ -7,29 +7,13 @@
  */
 import type { GetV2Moves200ItemsItemScheduleRule } from './getV2Moves200ItemsItemScheduleRule';
 import type { GetV2Moves200ItemsItemScheduleStatus } from './getV2Moves200ItemsItemScheduleStatus';
-import type { GetV2Moves200ItemsItemScheduleTimesItem } from './getV2Moves200ItemsItemScheduleTimesItem';
 
-/**
- * @nullable
- */
 export type GetV2Moves200ItemsItemSchedule = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
-  id: string;
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
-  move_id: string;
-  rule: GetV2Moves200ItemsItemScheduleRule;
   /** @pattern ^\d{4}-\d{2}-\d{2}$ */
   start_local_date: string;
-  /**
-   * @minLength 1
-   * @maxLength 120
-   */
-  time_zone_identifier: string;
+  /** @pattern ^([01]\d|2[0-3]):[0-5]\d$ */
+  local_time: string;
+  rule: GetV2Moves200ItemsItemScheduleRule;
+  alarm_enabled: boolean;
   status: GetV2Moves200ItemsItemScheduleStatus;
-  times: GetV2Moves200ItemsItemScheduleTimesItem[];
-  /**
-   * @nullable
-   * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
-   */
-  ended_at: string | null;
-} | null;
+};
