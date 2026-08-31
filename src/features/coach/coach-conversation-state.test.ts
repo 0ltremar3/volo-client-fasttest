@@ -8,6 +8,7 @@ import {
 import {
   canRequestCoachEnd,
   findPendingSessionEnd,
+  isEmptyCoachConversation,
   resolveCoachEndMode,
   resolveCoachLanding,
 } from './coach-conversation-state'
@@ -16,6 +17,11 @@ const pendingSummary = { type: 'session_end', status: 'pending' }
 const pendingOffer = { type: 'session_end_offer', status: 'pending' }
 
 describe('Coach conversation end state', () => {
+  it('treats an assistant-only thread as empty until the user speaks', () => {
+    expect(isEmptyCoachConversation([{ role: 'assistant' }])).toBe(true)
+    expect(isEmptyCoachConversation([{ role: 'assistant' }, { role: 'user' }])).toBe(false)
+  })
+
   it('restores a pending summary and keeps an AI offer distinct', () => {
     expect(resolveCoachEndMode('ongoing', [pendingSummary])).toBe('summary')
     expect(findPendingSessionEnd([pendingOffer, pendingSummary])).toBe(pendingSummary)

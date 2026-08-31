@@ -295,12 +295,14 @@
   }
 
   .move-status-dialog::backdrop,
-  .move-delete-dialog::backdrop {
+  .move-delete-dialog::backdrop,
+  .review-delete-dialog::backdrop {
     background: rgb(29 27 24 / 28%);
     backdrop-filter: blur(2px);
   }
 
-  .move-delete-dialog {
+  .move-delete-dialog,
+  .review-delete-dialog {
     width: min(290px, calc(100vw - 40px));
     overflow: hidden;
     border: 1px solid var(--coach-border-warm-subtle);

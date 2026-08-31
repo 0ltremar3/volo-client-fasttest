@@ -14,7 +14,10 @@ import {
   CoachPauseDialog,
   MoveScheduleFields,
 } from '@/features/coach/coach-conversation-ui'
-import { resolveCoachLanding } from '@/features/coach/coach-conversation-state'
+import {
+  isEmptyCoachConversation,
+  resolveCoachLanding,
+} from '@/features/coach/coach-conversation-state'
 import {
   defaultSchedule,
   formatScheduleDate,
@@ -540,6 +543,13 @@ function CoachExperienceState({
 
   function preparePause() {
     if (preparingPause || pauseOpen || replying) return
+    if (isEmptyCoachConversation(messages)) {
+      const nextHome = { ...homeState, hasCurrentSession: false }
+      setHomeState(nextHome)
+      writeMockCoachHomeState(nextHome)
+      void navigate('/daily', { replace: true })
+      return
+    }
     setPreparingPause(true)
     endTimerRef.current = window.setTimeout(() => {
       setPreparingPause(false)

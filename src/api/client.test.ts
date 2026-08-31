@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { clearAccessToken } from '@/api/auth-session'
 import { streamVoloCoachPost } from '@/api/sse'
-import { authApi } from '@/api/volo'
+import { authApi, reviewApi } from '@/api/volo'
 
 afterEach(() => {
   clearAccessToken()
@@ -78,5 +78,19 @@ describe('email OTP session contract', () => {
     await authApi.me()
 
     expect(requestHeaders(fetchMock.mock.calls[2]).get('Authorization')).toBeNull()
+  })
+})
+
+describe('Review API contract', () => {
+  it('deletes the encoded Review id with DELETE', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ id: 'review/id', status: 'deleted' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await reviewApi.delete('review/id')
+
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('/v2/review/review%2Fid')
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: 'DELETE' })
   })
 })

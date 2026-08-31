@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarClock, Check, ChevronDown, Pencil, RefreshCw } from 'lucide-react'
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   getGetV2DailyQueryKey,
@@ -28,6 +28,7 @@ import {
 import {
   canRequestCoachEnd,
   findPendingSessionEnd,
+  isEmptyCoachConversation,
 } from '@/features/coach/coach-conversation-state'
 import {
   buildCoachTimeline,
@@ -98,11 +99,7 @@ export function VoloCoachExperience() {
     <div className="app-canvas relative isolate flex h-dvh min-h-0 w-full flex-col overflow-hidden text-[var(--coach-ink)]">
       <AppAtmosphere />
       {sessionId ? (
-        <SessionView
-          key={sessionId}
-          sessionId={sessionId}
-          scheduled={scheduled}
-        />
+        <SessionView key={sessionId} sessionId={sessionId} />
       ) : (
         <CoachStart
           scheduled={scheduled}
@@ -145,18 +142,27 @@ function CoachStart({
             <h1 className="text-lg font-semibold">Coach Schedule</h1>
           </header>
           <ScheduledSessionStack sessions={scheduled} />
-          <section className="mt-10 text-center" aria-labelledby="next-session-heading">
-            <h2 id="next-session-heading" className="text-lg font-semibold">
-              Next Session
-            </h2>
-            <CoachOrb className="mx-auto mt-6" />
-            <h3 className="mt-7 text-wrap-balance text-4xl font-semibold leading-none">
-              {next?.topic || next?.title}
-            </h3>
-            <p className="mt-3 text-sm font-medium text-[var(--coach-text-secondary)]">
-              {formatAppointment(next?.scheduled_at)}
-            </p>
-          </section>
+          {next ? (
+            <Link
+              to={`/chat/scheduled/${next.id}`}
+              className="mt-10 block w-full min-h-11 rounded-[22px] text-center focus-visible:outline-offset-4"
+              aria-labelledby="next-session-heading next-session-topic"
+            >
+              <h2 id="next-session-heading" className="text-lg font-semibold">
+                Next Session
+              </h2>
+              <CoachOrb className="mx-auto mt-6" />
+              <h3
+                id="next-session-topic"
+                className="mt-7 text-wrap-balance text-4xl font-semibold leading-none"
+              >
+                {next.topic || next.title}
+              </h3>
+              <p className="mt-3 text-sm font-medium text-[var(--coach-text-secondary)]">
+                {formatAppointment(next.scheduled_at)}
+              </p>
+            </Link>
+          ) : null}
         </>
       ) : (
         <section className="pt-[200px] text-center">
@@ -247,17 +253,11 @@ function CoachStart({
 
 type ScheduledSessionValue = Awaited<ReturnType<typeof coachApi.home>>['scheduled_sessions'][number]
 
-function ScheduledSessionStack({
-  sessions,
-  className = '',
-}: {
-  sessions: ScheduledSessionValue[]
-  className?: string
-}) {
+function ScheduledSessionStack({ sessions }: { sessions: ScheduledSessionValue[] }) {
   const [expanded, setExpanded] = useState(false)
   if (!sessions.length) return null
   return (
-    <section className={className} aria-label="Scheduled Coach sessions">
+    <section aria-label="Scheduled Coach sessions">
       <div className={expanded ? 'space-y-3' : 'relative pb-4'}>
         {expanded ? (
           sessions.map((session) => <ScheduledSession key={session.id} session={session} />)
@@ -325,13 +325,7 @@ function ScheduledSession({ session }: { session: ScheduledSessionValue }) {
   )
 }
 
-function SessionView({
-  sessionId,
-  scheduled,
-}: {
-  sessionId: string
-  scheduled: Awaited<ReturnType<typeof coachApi.home>>['scheduled_sessions']
-}) {
+function SessionView({ sessionId }: { sessionId: string }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const thread = useQuery({
@@ -372,6 +366,14 @@ function SessionView({
     onSuccess: async (result) => {
       dispatch({ type: 'card_changed', card: result.card })
       await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
+    },
+  })
+
+  const discardEmptySession = useMutation({
+    mutationFn: () => coachApi.cancel(sessionId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] })
+      void navigate('/daily', { replace: true })
     },
   })
 
@@ -452,11 +454,12 @@ function SessionView({
 
   if (thread.isPending) return <CoachLoading />
   if (thread.isError || !thread.data) return <CoachError onRetry={() => void thread.refetch()} />
+  const ending = prepareEnd.isPending || discardEmptySession.isPending
   const canPrepareEnd = canRequestCoachEnd({
     sessionStatus: thread.data.session.status,
     cards: turnState.cards,
     sending,
-    preparing: prepareEnd.isPending,
+    preparing: ending,
   })
   const pauseError = confirmEnd.isError
     ? 'This pause could not be saved. Your words are still here.'
@@ -467,9 +470,13 @@ function SessionView({
     <>
       <main className="flex min-h-0 flex-1 flex-col">
         <CoachConversationHeader
-          onDone={() => prepareEnd.mutate()}
+          onDone={() =>
+            isEmptyCoachConversation(turnState.messages)
+              ? discardEmptySession.mutate()
+              : prepareEnd.mutate()
+          }
           disabled={!canPrepareEnd}
-          busy={prepareEnd.isPending}
+          busy={ending}
           showDone={!adjustmentMode}
         />
         <div
@@ -479,63 +486,57 @@ function SessionView({
           <CoachFocusCard
             title={thread.data.session.topic || thread.data.session.title || 'What feels present'}
           />
-          <div className="mt-6">
-            <ScheduledSessionStack
-              sessions={scheduled.filter((session) => session.id !== sessionId)}
-              className="mb-6"
-            />
-            <div className="space-y-6 px-[5px]">
-              {timeline.map((item) => {
-                if (item.kind === 'message') {
-                  return <MessageBubble key={item.id} message={item.message} />
-                }
-                if (item.kind === 'draft') {
-                  return (
-                    <StreamingText
-                      key={item.id}
-                      text={item.draft.text}
-                      tail={item.draft.tail}
-                      status={item.draft.status}
-                      onCopy={() => copyText(item.draft.text)}
-                      onRetry={turnState.failed ? retryFailedTurn : undefined}
-                    />
-                  )
-                }
-                const card = item.card
-                const presentation = getCoachCardPresentation(card, adjustmentMode)
-                return presentation ? (
-                  <CoachCard
+          <div className="mt-6 space-y-6 px-[5px]">
+            {timeline.map((item) => {
+              if (item.kind === 'message') {
+                return <MessageBubble key={item.id} message={item.message} />
+              }
+              if (item.kind === 'draft') {
+                return (
+                  <StreamingText
                     key={item.id}
-                    card={card}
-                    presentation={presentation}
-                    sessionId={sessionId}
-                    adjustmentMode={adjustmentMode}
-                    relatedLocalDate={thread.data.session.related_local_date}
-                    onCardChanged={updateCard}
+                    text={item.draft.text}
+                    tail={item.draft.tail}
+                    status={item.draft.status}
+                    onCopy={() => copyText(item.draft.text)}
+                    onRetry={turnState.failed ? retryFailedTurn : undefined}
                   />
-                ) : null
-              })}
-              {turnState.failed && !turnState.draft ? (
-                <StreamingText
-                  text=""
-                  status="failed"
-                  onCopy={() => undefined}
-                  onRetry={retryFailedTurn}
+                )
+              }
+              const card = item.card
+              const presentation = getCoachCardPresentation(card, adjustmentMode)
+              return presentation ? (
+                <CoachCard
+                  key={item.id}
+                  card={card}
+                  presentation={presentation}
+                  sessionId={sessionId}
+                  adjustmentMode={adjustmentMode}
+                  relatedLocalDate={thread.data.session.related_local_date}
+                  onCardChanged={updateCard}
                 />
-              ) : null}
-              {prepareEnd.isError ? (
-                <p className="text-center text-sm text-[var(--danger)]" role="alert">
-                  Couldn’t prepare your pause. Try Done again.
-                </p>
-              ) : null}
-            </div>
+              ) : null
+            })}
+            {turnState.failed && !turnState.draft ? (
+              <StreamingText
+                text=""
+                status="failed"
+                onCopy={() => undefined}
+                onRetry={retryFailedTurn}
+              />
+            ) : null}
+            {prepareEnd.isError || discardEmptySession.isError ? (
+              <p className="text-center text-sm text-[var(--danger)]" role="alert">
+                Couldn’t end this conversation. Try Done again.
+              </p>
+            ) : null}
           </div>
         </div>
         {thread.data.session.status === 'ongoing' ? (
           <BeautifulPromptComposer
             placeholder="Say what feels present…"
             showInspirations
-            disabled={sending || prepareEnd.isPending || Boolean(pauseCard)}
+            disabled={sending || ending || Boolean(pauseCard)}
             inputRef={composerRef}
             onSend={(body) => void send(body)}
           />

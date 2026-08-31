@@ -308,6 +308,10 @@ export const reviewApi = {
       groups: Array<{ type: 'coach' | 'echo' | 'move'; items: ReviewItem[] }>
     }>(`/v2/review?date=${encodeURIComponent(date)}`),
   detail: (id: string) => apiFetch<ReviewDetail>(`/v2/review/${encodeURIComponent(id)}`),
+  delete: (id: string) =>
+    apiFetch<{ id: string; status: 'deleted' }>(`/v2/review/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
   continue: (id: string) =>
     apiFetch<{ session: VoloSession }>(`/v2/review/${encodeURIComponent(id)}/continue`, {
       method: 'POST',

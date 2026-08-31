@@ -64,11 +64,13 @@ the reminder sheet and saves one enabled switch and local time through
 `PUT /v2/daily/echo/schedule`. Completing an Echo persists the generated summary and exposes it in
 Daily and Review from the same backend record.
 
-The Coach route opens on the Figma-aligned conversation state and includes appointment stacking,
-absolute-time start routing, scheduling, conversation, Move proposal, and editable Pause states. The
+The Coach route opens on the Figma-aligned conversation state and includes appointment stacking on
+home, Next Session preview routing, absolute-time start routing, scheduling, conversation, Move
+proposal, and editable Pause states. An open conversation does not repeat the appointment stack. The
 conversation header's `Done` action prepares the full-height Pause sheet; `Into Your Day` confirms its
 editable topic and takeaway, completes the session, and returns to Daily, while `Keep talking` rejects
-only the pending Pause. In real mode it uses
+only the pending Pause. If the user has not sent a message, `Done` cancels the empty session and returns
+directly to Daily without creating a Pause or Review history item. In real mode it uses
 `POST /v2/coach/sessions/:id/messages/stream`; assistant text streams from Mastra after the
 transformational-coach Skill is activated. Sessions, messages, retry ids, and pending cards persist
 in PostgreSQL. A Move proposal includes its check frequency and local time in the conversation card.
@@ -89,7 +91,8 @@ Review replaces the former History dialogs. `/review?date=YYYY-MM-DD` owns calen
 activity dates, and groups completed Coach and Echo sessions. Move adjustments reuse their source
 Coach session rather than creating a separate Review entry. Detail pages show the
 confirmed Pause or Echo summary, confirmed Moves, and full read-only messages. Continue creates a
-new Free Coach session without reopening the completed source.
+new Free Coach session without reopening the completed source. Each real Review item exposes a
+separate delete action with confirmation; success removes it from the selected day and month activity.
 
 In mock mode, application routes redirect to `/login` until the local test session is created and
 Coach replies remain fixtures. In real mode, login uses the backend email OTP endpoints, stores the

@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
-import { ChevronRight } from 'lucide-react'
-import { useMemo } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ChevronRight, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { reviewApi, type ReviewItem } from '@/api/volo'
@@ -13,10 +14,13 @@ import { mockReviewItems } from '@/features/review/review-mock'
 const today = () => new Date().toLocaleDateString('en-CA')
 
 export function ReviewPage() {
+  const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedDate = validDate(searchParams.get('date')) ?? today()
   const month = selectedDate.slice(0, 7)
   const mockItems = useMemo(() => mockReviewItems(), [])
+  const [deletedMockIds, setDeletedMockIds] = useState<string[]>([])
+  const [deleteItem, setDeleteItem] = useState<ReviewItem | null>(null)
   const activity = useQuery({
     queryKey: ['volo-review-activity', month],
     queryFn: () => reviewApi.activity(month),
@@ -27,12 +31,36 @@ export function ReviewPage() {
     queryFn: () => reviewApi.day(selectedDate),
     enabled: !mockAuthEnabled,
   })
+  const deleteReview = useMutation({
+    mutationFn: (item: ReviewItem) =>
+      mockAuthEnabled
+        ? Promise.resolve({ id: item.id, status: 'deleted' as const })
+        : reviewApi.delete(item.id),
+    onSuccess: async (_, item) => {
+      if (mockAuthEnabled) setDeletedMockIds((current) => [...current, item.id])
+      else {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['volo-review', selectedDate] }),
+          queryClient.invalidateQueries({ queryKey: ['volo-review-activity', month] }),
+          queryClient.invalidateQueries({ queryKey: ['volo-review-detail', item.id] }),
+        ])
+      }
+      setDeleteItem(null)
+    },
+  })
   const activityDates = mockAuthEnabled
-    ? [...new Set(mockItems.map((item) => item.date))]
+    ? [
+        ...new Set(
+          mockItems.filter((item) => !deletedMockIds.includes(item.id)).map((item) => item.date),
+        ),
+      ]
     : (activity.data?.dates ?? [])
   const groups = mockAuthEnabled
     ? (['coach', 'echo', 'move'] as const).flatMap((type) => {
-        const items = mockItems.filter((item) => item.date === selectedDate && item.type === type)
+        const items = mockItems.filter(
+          (item) =>
+            item.date === selectedDate && item.type === type && !deletedMockIds.includes(item.id),
+        )
         return items.length ? [{ type, items }] : []
       })
     : (day.data?.groups ?? [])
@@ -71,7 +99,14 @@ export function ReviewPage() {
                 </h3>
                 <div className="space-y-3">
                   {group.items.map((item) => (
-                    <ReviewCard key={item.id} item={item} />
+                    <ReviewCard
+                      key={item.id}
+                      item={item}
+                      onDelete={() => {
+                        deleteReview.reset()
+                        setDeleteItem(item)
+                      }}
+                    />
                   ))}
                 </div>
               </section>
@@ -93,6 +128,17 @@ export function ReviewPage() {
         )}
       </main>
       <AppBottomNavigation />
+      {deleteItem ? (
+        <DeleteReviewDialog
+          item={deleteItem}
+          pending={deleteReview.isPending}
+          error={deleteReview.isError ? 'This history could not be deleted. Try again.' : null}
+          onCancel={() => {
+            if (!deleteReview.isPending) setDeleteItem(null)
+          }}
+          onConfirm={() => deleteReview.mutate(deleteItem)}
+        />
+      ) : null}
     </div>
   )
 }
@@ -149,30 +195,119 @@ function MonthCalendar({
   )
 }
 
-function ReviewCard({ item }: { item: ReviewItem }) {
+function ReviewCard({ item, onDelete }: { item: ReviewItem; onDelete?: () => void }) {
   return (
-    <Link
-      to={`/review/${item.id}`}
-      className="block min-h-[90px] rounded-[18px] bg-[var(--coach-surface-glass)] px-[13px] py-3 shadow-[0_6px_18px_rgb(61_59_54/8%)] focus-visible:outline-offset-2"
+    <article className="grid min-h-[90px] grid-cols-[minmax(0,1fr)_52px] overflow-hidden rounded-[18px] bg-[var(--coach-surface-glass)] shadow-[0_6px_18px_rgb(61_59_54/8%)]">
+      <Link
+        to={`/review/${item.id}`}
+        className="block min-h-[90px] min-w-0 px-[13px] py-3 focus-visible:outline-offset-[-3px]"
+      >
+        <span className="line-clamp-2 block text-sm font-semibold">{item.title}</span>
+        <span className="mt-1 line-clamp-2 block text-xs leading-4 text-[var(--coach-text-tertiary)]">
+          {item.summary}
+        </span>
+        <span className="mt-2 flex items-center justify-between text-[11px] text-[var(--coach-text-tertiary)]">
+          <time>
+            {new Date(item.completed_at).toLocaleTimeString([], {
+              hour: 'numeric',
+              minute: '2-digit',
+            })}
+          </time>
+          {item.move_count ? (
+            <span className="rounded-full bg-[var(--coach-surface-muted)] px-2 py-0.5">
+              {item.move_count} Move{item.move_count === 1 ? '' : 's'}
+            </span>
+          ) : null}
+        </span>
+      </Link>
+      {onDelete ? (
+        <button
+          type="button"
+          className="mt-2 grid size-11 place-items-center justify-self-center rounded-full text-[var(--coach-text-tertiary)] transition-colors hover:bg-[var(--coach-surface-muted)] hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`Delete ${item.type} history`}
+          title="Delete history"
+          onClick={onDelete}
+        >
+          <Trash2 className="size-4" />
+        </button>
+      ) : null}
+    </article>
+  )
+}
+
+function DeleteReviewDialog({
+  item,
+  pending,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  item: ReviewItem
+  pending: boolean
+  error: string | null
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const label =
+    item.type === 'echo' ? 'Echo' : item.type === 'move' ? 'Move history' : 'conversation'
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog || dialog.open) return
+    dialog.showModal()
+  }, [])
+
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
+    <dialog
+      ref={dialogRef}
+      className="review-delete-dialog m-auto p-0 text-[var(--coach-ink)]"
+      aria-labelledby="review-delete-title"
+      aria-describedby="review-delete-description"
+      onClose={onCancel}
+      onCancel={(event) => {
+        event.preventDefault()
+        if (!pending) dialogRef.current?.close()
+      }}
     >
-      <span className="line-clamp-2 block text-sm font-semibold">{item.title}</span>
-      <span className="mt-1 line-clamp-2 block text-xs leading-4 text-[var(--coach-text-tertiary)]">
-        {item.summary}
-      </span>
-      <span className="mt-2 flex items-center justify-between text-[11px] text-[var(--coach-text-tertiary)]">
-        <time>
-          {new Date(item.completed_at).toLocaleTimeString([], {
-            hour: 'numeric',
-            minute: '2-digit',
-          })}
-        </time>
-        {item.move_count ? (
-          <span className="rounded-full bg-[var(--coach-surface-muted)] px-2 py-0.5">
-            {item.move_count} Move{item.move_count === 1 ? '' : 's'}
-          </span>
+      <div className="px-6 pb-5 pt-6 text-center">
+        <h2 id="review-delete-title" className="text-lg font-medium">
+          Delete this {label}?
+        </h2>
+        <p
+          id="review-delete-description"
+          className="mt-1 text-sm text-[var(--coach-text-secondary)]"
+        >
+          It will be removed from Review. This can’t be undone.
+        </p>
+        {error ? (
+          <p className="mt-3 text-sm text-[var(--danger)]" role="alert">
+            {error}
+          </p>
         ) : null}
-      </span>
-    </Link>
+      </div>
+      <div className="grid grid-cols-2 border-t border-[var(--coach-border)]">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => dialogRef.current?.close()}
+          className="min-h-12 border-r border-[var(--coach-border)] text-sm font-medium disabled:opacity-45"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={onConfirm}
+          className="min-h-12 text-sm font-medium text-[var(--danger)] disabled:opacity-45"
+        >
+          {pending ? 'Deleting…' : 'Delete'}
+        </button>
+      </div>
+    </dialog>,
+    document.body,
   )
 }
 

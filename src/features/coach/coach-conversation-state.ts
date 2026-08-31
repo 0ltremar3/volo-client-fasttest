@@ -5,6 +5,10 @@ export type CoachEndCardLike = {
 
 export type CoachEndMode = 'conversation' | 'offer' | 'summary' | 'completed'
 
+export function isEmptyCoachConversation(messages: Array<{ role: string }>) {
+  return !messages.some((message) => message.role === 'user')
+}
+
 export function findPendingSessionEnd<T extends CoachEndCardLike>(cards: T[]) {
   return cards.find((card) => card.type === 'session_end' && card.status === 'pending') ?? null
 }
