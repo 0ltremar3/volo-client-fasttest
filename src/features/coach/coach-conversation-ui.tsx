@@ -1,11 +1,75 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import { Input } from '@/components/ui/input'
+import type { MoveScheduleFrequency } from '@/features/coach/coach-model'
 import { CoachOrb } from '@/features/coach/coach-orb'
+import { cn } from '@/lib/utils'
 
 export type CoachPausePayload = {
   topic_to_explore: string
   takeaway: string
+}
+
+const moveScheduleOptions: Array<{ value: MoveScheduleFrequency; label: string }> = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+]
+
+export function MoveScheduleFields({
+  frequency,
+  time,
+  disabled = false,
+  onFrequencyChange,
+  onTimeChange,
+}: {
+  frequency: MoveScheduleFrequency
+  time: string
+  disabled?: boolean
+  onFrequencyChange: (frequency: MoveScheduleFrequency) => void
+  onTimeChange: (time: string) => void
+}) {
+  return (
+    <fieldset className="mt-5 border-t border-[var(--coach-border-warm-subtle)] pt-4">
+      <legend className="sr-only">Move check plan</legend>
+      <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">REPEAT</p>
+      <div
+        className="mt-2 grid grid-cols-3 rounded-xl bg-[var(--coach-surface-muted)] p-1"
+        role="group"
+        aria-label="Move check frequency"
+      >
+        {moveScheduleOptions.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            className={cn(
+              'min-h-11 rounded-lg px-2 text-sm font-medium transition-[background-color,box-shadow,opacity]',
+              frequency === option.value
+                ? 'bg-[var(--coach-surface-glass-strong)] text-[var(--coach-ink)] shadow-sm'
+                : 'text-[var(--coach-text-secondary)]',
+            )}
+            aria-pressed={frequency === option.value}
+            disabled={disabled}
+            onClick={() => onFrequencyChange(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <label className="mt-3 block">
+        <span className="text-xs font-semibold text-[var(--coach-text-tertiary)]">TIME</span>
+        <Input
+          type="time"
+          className="mt-2 bg-[var(--coach-surface-glass-strong)]"
+          value={time}
+          disabled={disabled}
+          required
+          onChange={(event) => onTimeChange(event.target.value)}
+        />
+      </label>
+    </fieldset>
+  )
 }
 
 export function CoachConversationHeader({

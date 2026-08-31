@@ -12,22 +12,18 @@ import {
   getGetV2MovesQueryKey,
   useDeleteV2MovesId,
   useGetV2Daily,
-  useGetV2Moves,
   usePatchV2MovesIdChecksTimeId,
   usePostV2MovesIdAdjustmentSession,
-  usePutV2MovesIdSchedule,
 } from '@/api/generated/endpoints'
 import type {
   GetV2Daily200Echo,
   GetV2Daily200PeriodMovesItem,
   GetV2Daily200PeriodMovesItemChecksItem,
-  GetV2Moves200ItemsItem,
 } from '@/api/generated/models'
 import { dailyApi } from '@/api/volo'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { EchoSettingsSheet } from '@/features/daily/echo-settings-sheet'
 import { PeriodMoves, type PeriodMoveItem } from '@/features/daily/period-moves'
 import {
@@ -46,7 +42,6 @@ export function VoloDailyExperience() {
   const selectedValue = searchParams.get('date') ?? today()
   const selectedDate = parseDailyDate(selectedValue) ?? new Date(`${today()}T00:00:00Z`)
   const daily = useGetV2Daily({ date: selectedValue })
-  const moves = useGetV2Moves()
   const queryClient = useQueryClient()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const scheduleValue: EchoSchedule = {
@@ -132,19 +127,6 @@ export function VoloDailyExperience() {
               />
 
               <VoloPeriodMoves moves={daily.data.period_moves} date={selectedValue} />
-
-              {moves.data?.items?.some((move) => !move.schedule) ? (
-                <section>
-                  <h2 className="text-base font-medium">Moves without a check plan</h2>
-                  <div className="mt-4 space-y-3">
-                    {moves.data.items
-                      .filter((move) => !move.schedule)
-                      .map((move) => (
-                        <UnscheduledMove key={move.id} move={move} />
-                      ))}
-                  </div>
-                </section>
-              ) : null}
 
               <section aria-labelledby="daily-traces-title">
                 <h2 id="daily-traces-title" className="daily-section-title">
@@ -371,45 +353,6 @@ function formatMoveSchedule(move: GetV2Daily200PeriodMovesItem) {
     return `Every ${rule.weekdays.map(formatIsoWeekday).join(', ')}  ·  ${times}`
   }
   return `${'monthEnd' in rule ? 'Last day monthly' : `Monthly on day ${rule.day}`}  ·  ${times}`
-}
-
-function UnscheduledMove({ move }: { move: GetV2Moves200ItemsItem }) {
-  const queryClient = useQueryClient()
-  const [time, setTime] = useState('21:00')
-  const schedule = usePutV2MovesIdSchedule({
-    mutation: {
-      onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: getGetV2MovesQueryKey() }),
-          queryClient.invalidateQueries({ queryKey: getGetV2DailyQueryKey() }),
-        ])
-      },
-    },
-  })
-  return (
-    <div className="daily-card p-4">
-      <p className="font-medium">{move.description}</p>
-      <div className="mt-3 flex gap-2">
-        <Input type="time" value={time} onChange={(event) => setTime(event.target.value)} />
-        <Button
-          onClick={() =>
-            schedule.mutate({
-              id: move.id,
-              data: {
-                rule: { frequency: 'daily' },
-                start_local_date: today(),
-                time_zone_identifier: timezone(),
-                times: [time],
-              },
-            })
-          }
-          disabled={schedule.isPending}
-        >
-          Daily
-        </Button>
-      </div>
-    </div>
-  )
 }
 
 function timezone() {

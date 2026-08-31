@@ -1,6 +1,5 @@
 dist
 node_modules
 src/api/generated
-graphify-out
 package-lock.json
 docs/volo-prd.md

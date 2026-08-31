@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseMockCoachHomeState } from './coach-model'
+import {
+  buildMoveScheduleRule,
+  parseMockCoachHomeState,
+  resolveMoveScheduleDraft,
+} from './coach-model'
 import {
   canRequestCoachEnd,
   findPendingSessionEnd,
@@ -78,5 +82,26 @@ describe('Coach landing selection', () => {
       hasCurrentSession: true,
       hasScheduledSession: true,
     })
+  })
+})
+
+describe('Move check plan', () => {
+  const date = new Date(2026, 7, 31)
+
+  it('builds the backend rule for each visible frequency', () => {
+    expect(buildMoveScheduleRule('daily', date)).toEqual({ frequency: 'daily' })
+    expect(buildMoveScheduleRule('weekly', date)).toEqual({
+      frequency: 'weekly',
+      weekdays: [1],
+    })
+    expect(buildMoveScheduleRule('monthly', date)).toEqual({ frequency: 'monthly', day: 28 })
+  })
+
+  it('prefills an explicit daily suggestion and otherwise keeps the 21:00 default', () => {
+    expect(resolveMoveScheduleDraft({ frequency: 'daily', local_time: '12:00' })).toEqual({
+      frequency: 'daily',
+      time: '12:00',
+    })
+    expect(resolveMoveScheduleDraft()).toEqual({ frequency: 'daily', time: '21:00' })
   })
 })

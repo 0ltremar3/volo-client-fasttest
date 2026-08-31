@@ -54,7 +54,7 @@ Set `VITE_MOCK_MODE=false` in production builds.
 | `/debug`                     | Request and runtime inspection            | Configuration skeleton         |
 
 After sign-in, `/` redirects to `/daily`. Daily includes the Figma-aligned week strip, an actionable
-Daily Echo card, collapsible Period Moves, and empty hardware traces. Move cards open an
+Daily Echo card, collapsible scheduled Period Moves, and empty hardware traces. Move cards open an
 accessible check-in sheet for On Track, Drifting, or a Coach rethink. The four persisted values remain
 distinct: an unchecked Move shows `Check in`, while `needs_adjustment` shows `Needs a Rethink` and
 reopens the Move's original Coach session through the idempotent adjustment endpoint. Destructive deletion
@@ -71,8 +71,12 @@ editable topic and takeaway, completes the session, and returns to Daily, while 
 only the pending Pause. In real mode it uses
 `POST /v2/coach/sessions/:id/messages/stream`; assistant text streams from Mastra after the
 transformational-coach Skill is activated. Sessions, messages, retry ids, and pending cards persist
-in PostgreSQL. A Move is not written until its card is explicitly confirmed. Confirming a Pause
-uses the user's final topic and takeaway; Continue leaves the session ongoing.
+in PostgreSQL. A Move proposal includes its check frequency and local time in the conversation card.
+When the backend supplies an explicit daily local-time suggestion, the pending card immediately
+prefills it (for example, `Daily · 12:00`); the suggestion is not persisted before `Add Move`.
+Confirming the card writes the Move and its check plan in the same UI flow; Daily does not edit or
+display unscheduled Moves. Confirming a Pause uses the user's final topic and takeaway; Continue
+leaves the session ongoing.
 Confirmed Move cards remain in the conversation at their original assistant-message position with
 a read-only Added or Adjusted state; rejected and expired cards stay hidden.
 
@@ -88,9 +92,10 @@ confirmed Pause or Echo summary, confirmed Moves, and full read-only messages. C
 new Free Coach session without reopening the completed source.
 
 In mock mode, application routes redirect to `/login` until the local test session is created and
-Coach replies remain fixtures. In real mode, login uses the backend email OTP endpoints, Better Auth
-cookie credentials, and `/v1/me`; Coach and Daily then use Volo V2. Calendar sync, device
-notifications, hardware traces, and frontend Daily summary generation remain out of scope.
+Coach replies remain fixtures. In real mode, login uses the backend email OTP endpoints, stores the
+returned session token, and sends `Authorization: Bearer <token>` on `/v1/me` and Volo V2 requests.
+Calendar sync, device notifications, hardware traces, and frontend Daily summary generation remain
+out of scope.
 
 ## Commands
 
@@ -131,8 +136,8 @@ be edited manually. Generation is limited to backend operations tagged `Volo *`,
 catch-all auth routes. The command intentionally fails with a clear message when `OPENAPI_SCHEMA` is missing.
 
 Use generated TanStack Query hooks in feature modules. Shared request behavior belongs in
-`src/api/client.ts`; page modules should not call `fetch` directly. Authentication headers,
-credentials, and refresh behavior remain unset until the backend contract defines them.
+`src/api/client.ts`; page modules should not call `fetch` directly. Real-mode requests send
+`Authorization: Bearer <token>` from `POST /v1/auth/sign-in/email-otp`.
 
 ## AI streaming
 

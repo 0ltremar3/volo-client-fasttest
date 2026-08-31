@@ -12,21 +12,25 @@ import {
   CoachConversationHeader,
   CoachFocusCard,
   CoachPauseDialog,
+  MoveScheduleFields,
 } from '@/features/coach/coach-conversation-ui'
 import { resolveCoachLanding } from '@/features/coach/coach-conversation-state'
 import {
   defaultSchedule,
   formatScheduleDate,
   formatScheduleTime,
+  mockMoveProposal,
   mockSessions,
   moveCopy,
   openingMessages,
   readMockCoachHomeState,
+  resolveMoveScheduleDraft,
   previewMessages,
   writeMockCoachHomeState,
   type CoachMessage,
   type CoachSchedule,
   type CoachScreen,
+  type MoveScheduleFrequency,
 } from '@/features/coach/coach-model'
 import { cn } from '@/lib/utils'
 import { mockAuthEnabled } from '@/features/auth/mock-auth'
@@ -295,6 +299,10 @@ function MoveCard({
   onSkip: () => void
   onSave: () => void
 }) {
+  const initialSchedule = resolveMoveScheduleDraft(mockMoveProposal.suggested_schedule)
+  const [frequency, setFrequency] = useState<MoveScheduleFrequency>(initialSchedule.frequency)
+  const [time, setTime] = useState(initialSchedule.time)
+
   if (state === 'hidden' || state === 'skipped') return null
 
   return (
@@ -303,9 +311,9 @@ function MoveCard({
         Based on our conversation, here’s a move that reflects what matters most to you:
       </p>
       <MoveCardSurface
-        schedule="Every Sun · 09:00 / 21:00"
+        schedule={`${frequency[0]!.toUpperCase()}${frequency.slice(1)} · ${time}`}
         source="From “The Cost of Choice”"
-        dueLabel="Today 21:00"
+        dueLabel={state === 'added' ? `Today ${time}` : ''}
         status={
           state === 'added' ? (
             <span className="inline-flex items-center gap-1 font-medium text-[var(--coach-success)]">
@@ -325,6 +333,14 @@ function MoveCard({
         ) : (
           <p>{text}</p>
         )}
+        {state === 'suggested' || state === 'editing' ? (
+          <MoveScheduleFields
+            frequency={frequency}
+            time={time}
+            onFrequencyChange={setFrequency}
+            onTimeChange={setTime}
+          />
+        ) : null}
       </MoveCardSurface>
 
       {state === 'suggested' || state === 'editing' ? (

@@ -4,5 +4,5 @@ dist
 .env
 .env.*
 !.env.example
-graphify-out
+.serena
 *.tsbuildinfo

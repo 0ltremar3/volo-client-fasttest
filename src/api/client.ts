@@ -1,3 +1,5 @@
+import { clearAccessToken, getAccessToken } from '@/api/auth-session'
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
 
 export class ApiError extends Error {
@@ -10,6 +12,15 @@ export class ApiError extends Error {
     this.status = status
     this.payload = payload
   }
+}
+
+export function createApiHeaders(init?: HeadersInit) {
+  const headers = new Headers(init)
+  const token = getAccessToken()
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+  return headers
 }
 
 function getRequestUrl(path: string) {
@@ -26,7 +37,7 @@ async function parseResponse(response: Response): Promise<unknown> {
 }
 
 export async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers)
+  const headers = createApiHeaders(options.headers)
   if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
@@ -38,6 +49,9 @@ export async function apiFetch<T>(url: string, options: RequestInit = {}): Promi
   })
   const payload = await parseResponse(response)
 
-  if (!response.ok) throw new ApiError(response.status, payload)
+  if (!response.ok) {
+    if (response.status === 401) clearAccessToken()
+    throw new ApiError(response.status, payload)
+  }
   return payload as T
 }

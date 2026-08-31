@@ -1,12 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
 import { Navigate } from 'react-router-dom'
 
+import { hasAccessToken } from '@/api/auth-session'
 import { authApi } from '@/api/volo'
 import { AppShell } from '@/components/layout/app-shell'
 import { hasMockSession, mockAuthEnabled } from '@/features/auth/mock-auth'
 
 export function HomeRedirect() {
-  return <Navigate to={mockAuthEnabled && !hasMockSession() ? '/login' : '/daily'} replace />
+  if (mockAuthEnabled) {
+    return <Navigate to={hasMockSession() ? '/daily' : '/login'} replace />
+  }
+  return <Navigate to={hasAccessToken() ? '/daily' : '/login'} replace />
 }
 
 export function ProtectedAppShell() {
@@ -14,7 +18,10 @@ export function ProtectedAppShell() {
     return <Navigate to="/login" replace />
   }
 
-  if (!mockAuthEnabled) return <RealSessionBoundary />
+  if (!mockAuthEnabled) {
+    if (!hasAccessToken()) return <Navigate to="/login" replace />
+    return <RealSessionBoundary />
+  }
 
   return <AppShell />
 }

@@ -1,4 +1,4 @@
-import { ApiError } from '@/api/client'
+import { ApiError, createApiHeaders } from '@/api/client'
 
 export type SseEvent<T = unknown> = { event: string; data: T }
 
@@ -20,6 +20,10 @@ export type VoloCoachCard = {
   status: 'pending' | 'confirmed' | 'rejected' | 'expired'
   payload: {
     description?: string
+    suggested_schedule?: {
+      frequency: 'daily'
+      local_time: string
+    }
     topic_to_explore?: string
     takeaway?: string
   }
@@ -92,11 +96,11 @@ async function postEventStream(path: string, body: unknown, signal?: AbortSignal
   const response = await fetch(`${baseUrl}${path}`, {
     method: 'POST',
     credentials: 'include',
-    headers: {
+    headers: createApiHeaders({
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
       'X-Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone,
-    },
+    }),
     body: JSON.stringify(body),
     signal,
   })
@@ -217,6 +221,7 @@ function isVoloCoachMessage(value: Record<string, unknown>): value is VoloCoachM
 }
 
 function isVoloCoachCard(value: Record<string, unknown>): value is VoloCoachCard {
+  const payload = isCardPayload(value.payload) ? value.payload : null
   return (
     isString(value.id) &&
     isNullableString(value.message_id) &&
@@ -224,7 +229,8 @@ function isVoloCoachCard(value: Record<string, unknown>): value is VoloCoachCard
       String(value.type),
     ) &&
     ['pending', 'confirmed', 'rejected', 'expired'].includes(String(value.status)) &&
-    isCardPayload(value.payload) &&
+    payload !== null &&
+    (value.type === 'move_create' || payload.suggested_schedule === undefined) &&
     isNullableString(value.related_move_id) &&
     isString(value.created_at) &&
     isNullableString(value.decided_at)
@@ -234,8 +240,26 @@ function isVoloCoachCard(value: Record<string, unknown>): value is VoloCoachCard
 function isCardPayload(value: unknown): value is VoloCoachCard['payload'] {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
   const payload = value as Record<string, unknown>
-  return ['description', 'topic_to_explore', 'takeaway'].every(
-    (key) => payload[key] === undefined || isString(payload[key]),
+  const allowedKeys = ['description', 'suggested_schedule', 'topic_to_explore', 'takeaway']
+  return (
+    Object.keys(payload).every((key) => allowedKeys.includes(key)) &&
+    ['description', 'topic_to_explore', 'takeaway'].every(
+      (key) => payload[key] === undefined || isString(payload[key]),
+    ) &&
+    (payload.suggested_schedule === undefined || isSuggestedSchedule(payload.suggested_schedule))
+  )
+}
+
+function isSuggestedSchedule(
+  value: unknown,
+): value is NonNullable<VoloCoachCard['payload']['suggested_schedule']> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const schedule = value as Record<string, unknown>
+  return (
+    Object.keys(schedule).length === 2 &&
+    schedule.frequency === 'daily' &&
+    isString(schedule.local_time) &&
+    /^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.local_time)
   )
 }
 

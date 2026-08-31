@@ -8,9 +8,10 @@ import {
   getGetV2MovesQueryKey,
   usePostV2CoachCardsIdConfirm,
   usePostV2CoachCardsIdReject,
+  usePutV2MovesIdSchedule,
 } from '@/api/generated/endpoints'
 import { VoloCoachStreamError } from '@/api/sse'
-import { authApi, coachApi, dailyApi, type VoloCard, type VoloMessage } from '@/api/volo'
+import { authApi, coachApi, type VoloCard, type VoloMessage } from '@/api/volo'
 import { BeautifulPromptComposer } from '@/components/ai/beautiful-prompt-composer'
 import { StreamingText } from '@/components/ai/beautiful-ui/streaming-text'
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
@@ -23,12 +24,18 @@ import {
   CoachConversationHeader,
   CoachFocusCard,
   CoachPauseDialog,
+  MoveScheduleFields,
   type CoachPausePayload,
 } from '@/features/coach/coach-conversation-ui'
 import {
   canRequestCoachEnd,
   findPendingSessionEnd,
 } from '@/features/coach/coach-conversation-state'
+import {
+  buildMoveScheduleRule,
+  resolveMoveScheduleDraft,
+  type MoveScheduleFrequency,
+} from '@/features/coach/coach-model'
 import {
   buildCoachTimeline,
   coachTurnReducer,
@@ -38,6 +45,39 @@ import {
 import { resolveScheduledSessionDestination, singleFlight } from '@/features/coach/schedule-routing'
 
 const today = () => new Date().toLocaleDateString('en-CA')
+
+async function copyText(text: string) {
+  const activeElement =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.append(textarea)
+  textarea.select()
+  let selectionCopied: boolean
+  try {
+    selectionCopied = document.execCommand('copy')
+  } catch {
+    selectionCopied = false
+  } finally {
+    textarea.remove()
+    activeElement?.focus({ preventScroll: true })
+  }
+
+  let clipboardCopied = false
+  try {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(text)
+      clipboardCopied = true
+    }
+  } catch {
+    // The selection path above covers browsers where Clipboard API access is unavailable.
+  }
+
+  if (!selectionCopied && !clipboardCopied) throw new Error('Copy failed')
+}
 
 export function VoloCoachExperience() {
   const navigate = useNavigate()
@@ -470,7 +510,7 @@ function SessionView({
                       text={item.draft.text}
                       tail={item.draft.tail}
                       status={item.draft.status}
-                      onCopy={() => void navigator.clipboard.writeText(item.draft.text)}
+                      onCopy={() => copyText(item.draft.text)}
                       onRetry={turnState.failed ? retryFailedTurn : undefined}
                     />
                   )
@@ -545,11 +585,7 @@ function MessageBubble({ message }: { message: VoloMessage }) {
       </p>
     </div>
   ) : (
-    <StreamingText
-      text={message.body}
-      status="complete"
-      onCopy={() => void navigator.clipboard.writeText(message.body)}
-    />
+    <StreamingText text={message.body} status="complete" onCopy={() => copyText(message.body)} />
   )
 }
 
@@ -572,8 +608,47 @@ function CoachCard({
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(card.payload.description ?? '')
-  const [move, setMove] = useState<{ id: string } | null>(null)
+  const initialSchedule = resolveMoveScheduleDraft(card.payload.suggested_schedule)
+  const [frequency, setFrequency] = useState<MoveScheduleFrequency>(initialSchedule.frequency)
+  const [time, setTime] = useState(initialSchedule.time)
+  const [confirmedMove, setConfirmedMove] = useState<{ id: string; card: VoloCard } | null>(null)
+  const [planSavedHere, setPlanSavedHere] = useState(false)
+  const [planError, setPlanError] = useState<string | null>(null)
   const readOnly = presentation === 'confirmed'
+  const checkPlanPending = confirmedMove !== null
+  const settledReadOnly = readOnly && !checkPlanPending
+  const schedule = usePutV2MovesIdSchedule()
+
+  function saveCheckPlan(moveId: string, confirmedCard: VoloCard) {
+    setPlanError(null)
+    schedule.mutate(
+      {
+        id: moveId,
+        data: {
+          rule: buildMoveScheduleRule(frequency),
+          start_local_date: today(),
+          time_zone_identifier: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          times: [time],
+        },
+      },
+      {
+        onSuccess: () => {
+          setPlanSavedHere(true)
+          setConfirmedMove(null)
+          onCardChanged(confirmedCard)
+          void Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
+            queryClient.invalidateQueries({ queryKey: getGetV2MovesQueryKey() }),
+            queryClient.invalidateQueries({ queryKey: getGetV2DailyQueryKey() }),
+          ])
+        },
+        onError: () => {
+          setPlanError('The Move was added, but its check plan could not be saved. Try again.')
+        },
+      },
+    )
+  }
+
   const confirm = usePostV2CoachCardsIdConfirm({
     mutation: {
       onSuccess: async (result) => {
@@ -591,11 +666,14 @@ function CoachCard({
           void navigate(`/daily?date=${encodeURIComponent(returnDate)}`, { replace: true })
           return
         }
-        setMove(result.move)
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
-          queryClient.invalidateQueries({ queryKey: getGetV2MovesQueryKey() }),
-        ])
+        if (!result.move) {
+          onCardChanged(result.card)
+          setPlanError('The Move was added, but a check plan could not be created.')
+          return
+        }
+        const nextMove = { id: result.move.id, card: result.card }
+        setConfirmedMove(nextMove)
+        saveCheckPlan(nextMove.id, nextMove.card)
       },
     },
   })
@@ -616,7 +694,6 @@ function CoachCard({
     },
   })
 
-  if (move && !adjustmentMode && !readOnly) return <ScheduleEditor move={move} />
   if (card.type === 'session_end_offer') {
     return (
       <article className="rounded-[22px] bg-[var(--coach-surface-glass-strong)] p-4 shadow-[var(--coach-shadow)]">
@@ -651,14 +728,23 @@ function CoachCard({
   }
   if (card.type === 'session_end') return null
   return (
-    <div className={readOnly ? 'opacity-70' : undefined} aria-disabled={readOnly || undefined}>
+    <div
+      className={settledReadOnly ? 'opacity-70' : undefined}
+      aria-disabled={settledReadOnly || undefined}
+    >
       <p className="mb-3 text-base font-medium">Here’s a Move that reflects what matters:</p>
       <MoveCardSurface
-        schedule={adjustmentMode ? 'Schedule unchanged' : 'Optional check plan'}
+        schedule={
+          adjustmentMode
+            ? 'Schedule unchanged'
+            : settledReadOnly && !planSavedHere
+              ? 'Move added'
+              : `${frequency[0]!.toUpperCase()}${frequency.slice(1)} · ${time}`
+        }
         source="From this Coach conversation"
         dueLabel=""
         status={
-          readOnly ? (
+          settledReadOnly ? (
             <span className="inline-flex items-center gap-1 font-medium text-[var(--coach-text-secondary)]">
               <Check className="size-3.5" />
               {card.type === 'move_revision' ? 'Adjusted' : 'Added'}
@@ -676,81 +762,59 @@ function CoachCard({
         ) : (
           value
         )}
+        {!adjustmentMode && (!readOnly || checkPlanPending) ? (
+          <MoveScheduleFields
+            frequency={frequency}
+            time={time}
+            disabled={confirm.isPending || schedule.isPending}
+            onFrequencyChange={setFrequency}
+            onTimeChange={setTime}
+          />
+        ) : null}
       </MoveCardSurface>
-      {!readOnly ? (
+      {!readOnly || checkPlanPending ? (
         <div className="mt-3 flex flex-wrap gap-2">
           <Button
-            onClick={() =>
+            onClick={() => {
+              if (confirmedMove) {
+                saveCheckPlan(confirmedMove.id, confirmedMove.card)
+                return
+              }
               confirm.mutate({
                 id: card.id,
                 data: { final_payload: { description: value.trim() } },
               })
-            }
-            disabled={!value.trim() || confirm.isPending}
+            }}
+            disabled={!value.trim() || !time || confirm.isPending || schedule.isPending}
           >
-            {card.type === 'move_revision' ? 'Confirm Adjustment' : 'Add Move'}
+            {card.type === 'move_revision'
+              ? 'Confirm Adjustment'
+              : confirmedMove
+                ? 'Retry check plan'
+                : confirm.isPending || schedule.isPending
+                  ? 'Saving Move…'
+                  : 'Add Move'}
           </Button>
-          <Button variant="ghost" onClick={() => setEditing((current) => !current)}>
-            <Pencil /> Edit
-          </Button>
-          <Button variant="ghost" onClick={() => reject.mutate({ id: card.id })}>
-            {card.type === 'move_revision' ? 'Keep talking' : 'Skip'}
-          </Button>
+          {!confirmedMove ? (
+            <>
+              <Button variant="ghost" onClick={() => setEditing((current) => !current)}>
+                <Pencil /> Edit
+              </Button>
+              <Button variant="ghost" onClick={() => reject.mutate({ id: card.id })}>
+                {card.type === 'move_revision' ? 'Keep talking' : 'Skip'}
+              </Button>
+            </>
+          ) : null}
         </div>
       ) : null}
-      {!readOnly && (confirm.isError || reject.isError) ? (
+      {planError || (!readOnly && (confirm.isError || reject.isError)) ? (
         <p className="mt-3 text-sm text-[var(--danger)]" role="alert">
-          {card.type === 'move_revision'
-            ? 'This adjustment could not be saved. Try again.'
-            : 'This Move could not be saved. Try again.'}
+          {planError ??
+            (card.type === 'move_revision'
+              ? 'This adjustment could not be saved. Try again.'
+              : 'This Move could not be saved. Try again.')}
         </p>
       ) : null}
-    </div>
-  )
-}
-
-function ScheduleEditor({ move }: { move: { id: string } }) {
-  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily')
-  const [time, setTime] = useState('21:00')
-  const [saved, setSaved] = useState(false)
-  const schedule = useMutation({
-    mutationFn: () =>
-      dailyApi.scheduleMove(move.id, {
-        rule:
-          frequency === 'weekly'
-            ? { frequency: 'weekly', weekdays: [new Date().getDay() || 7] }
-            : frequency === 'monthly'
-              ? { frequency: 'monthly', day: Math.min(new Date().getDate(), 28) }
-              : { frequency: 'daily' },
-        startLocalDate: today(),
-        times: [time],
-      }),
-    onSuccess: () => setSaved(true),
-  })
-  if (saved)
-    return (
-      <p className="flex items-center gap-2 text-sm text-[var(--coach-success)]">
-        <Check className="size-4" /> Move and check plan saved.
-      </p>
-    )
-  return (
-    <div className="rounded-xl bg-[var(--coach-surface)] p-4">
-      <p className="font-medium">Move saved. Add an optional check plan?</p>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <select
-          className="h-11 rounded-lg bg-[var(--coach-surface-muted)] px-3"
-          value={frequency}
-          onChange={(event) => setFrequency(event.target.value as typeof frequency)}
-        >
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
-          <option value="monthly">Monthly</option>
-        </select>
-        <Input type="time" value={time} onChange={(event) => setTime(event.target.value)} />
-      </div>
-      <Button className="mt-3" onClick={() => schedule.mutate()} disabled={schedule.isPending}>
-        Save check plan
-      </Button>
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { clearAccessToken, setAccessToken } from '@/api/auth-session'
 import { apiFetch } from '@/api/client'
 import {
   streamPost,
@@ -148,12 +149,22 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ email, type: 'sign-in' }),
     }),
-  signIn: (email: string, otp: string) =>
-    apiFetch('/v1/auth/sign-in/email-otp', {
+  signIn: async (email: string, otp: string) => {
+    const result = await apiFetch<{ token: string }>('/v1/auth/sign-in/email-otp', {
       method: 'POST',
       body: JSON.stringify({ email, otp }),
-    }),
-  signOut: () => apiFetch('/v1/auth/sign-out', { method: 'POST' }),
+    })
+    if (!result?.token) throw new Error('Sign-in response did not include a session token')
+    setAccessToken(result.token)
+    return result
+  },
+  signOut: async () => {
+    try {
+      await apiFetch('/v1/auth/sign-out', { method: 'POST' })
+    } finally {
+      clearAccessToken()
+    }
+  },
 }
 
 export const coachApi = {

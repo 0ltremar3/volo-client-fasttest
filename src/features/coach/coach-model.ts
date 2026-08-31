@@ -61,6 +61,36 @@ export type CoachSchedule = {
   alarm: boolean
 }
 
+export type MoveScheduleFrequency = 'daily' | 'weekly' | 'monthly'
+
+type MoveScheduleRule =
+  | { frequency: 'daily' }
+  | { frequency: 'weekly'; weekdays: number[] }
+  | { frequency: 'monthly'; day: number }
+
+export function buildMoveScheduleRule(
+  frequency: MoveScheduleFrequency,
+  date = new Date(),
+): MoveScheduleRule {
+  if (frequency === 'weekly') {
+    return { frequency, weekdays: [date.getDay() || 7] }
+  }
+  if (frequency === 'monthly') {
+    return { frequency, day: Math.min(date.getDate(), 28) }
+  }
+  return { frequency }
+}
+
+export function resolveMoveScheduleDraft(suggestedSchedule?: {
+  frequency: 'daily'
+  local_time: string
+}): { frequency: MoveScheduleFrequency; time: string } {
+  return {
+    frequency: suggestedSchedule?.frequency ?? 'daily',
+    time: suggestedSchedule?.local_time ?? '21:00',
+  }
+}
+
 export const defaultSchedule: CoachSchedule = {
   topic: 'Career Direction',
   date: '2026-08-27',
@@ -156,7 +186,12 @@ export const previewMessages: CoachMessage[] = [
   },
 ]
 
-export const moveCopy = 'Write down three costs I’m willing to bear for the new direction.'
+export const mockMoveProposal = {
+  description: 'Drink a glass of water every day at 12:00.',
+  suggested_schedule: { frequency: 'daily', local_time: '12:00' },
+} as const
+
+export const moveCopy: string = mockMoveProposal.description
 
 export function formatScheduleDate(value: string) {
   const [year, month, day] = value.split('-').map(Number)

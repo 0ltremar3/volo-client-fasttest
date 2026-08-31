@@ -5,9 +5,11 @@
  * Generated OpenAPI document from Fastify route schemas. Keep route-level schema in sync with handler behavior when changing APIs.
  * OpenAPI spec version: 0.1.0
  */
+import type { PostV2CoachSessionsIdStart200CardsItemPayloadSuggestedSchedule } from './postV2CoachSessionsIdStart200CardsItemPayloadSuggestedSchedule';
 
 export type PostV2CoachSessionsIdStart200CardsItemPayload = {
   description?: string;
+  suggested_schedule?: PostV2CoachSessionsIdStart200CardsItemPayloadSuggestedSchedule;
   topic_to_explore?: string;
   takeaway?: string;
 };

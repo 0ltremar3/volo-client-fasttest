@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
 import { AppMark } from '@/components/app-mark'
@@ -15,6 +16,7 @@ import {
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [email, setEmail] = useState(mockAuthEnabled ? mockCredentials.email : '')
   const [password, setPassword] = useState(mockAuthEnabled ? mockCredentials.password : '')
   const [otp, setOtp] = useState('')
@@ -43,6 +45,7 @@ export function LoginPage() {
       } else {
         await authApi.signIn(email.trim(), otp.trim())
       }
+      queryClient.removeQueries({ queryKey: ['me'] })
       await navigate('/daily', { replace: true })
     } catch {
       setNotice(otpSent ? 'That code is invalid or expired.' : 'We could not send a code yet.')
@@ -71,7 +74,7 @@ export function LoginPage() {
             <p className="mt-3 text-sm text-text-secondary">Sign in with your email to continue.</p>
           </div>
 
-          <form onSubmit={(event) => void handleSubmit(event)} className="space-y-5">
+          <form method="post" onSubmit={(event) => void handleSubmit(event)} className="space-y-5">
             {mockAuthEnabled ? (
               <div className="rounded-lg bg-surface-subtle px-4 py-3 text-xs leading-5 text-text-secondary">
                 <p className="font-semibold text-foreground">Mock mode</p>

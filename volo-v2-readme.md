@@ -233,9 +233,10 @@ VITE_MOCK_MODE=false
 
 ### 登录后立即回到 `/login`
 
+- 后端合同是 `Authorization: Bearer <token>`，token 来自 `POST /v1/auth/sign-in/email-otp`。只带 cookie 不够：从 `localhost:5173` 调 `127.0.0.1:8000` 时，后续 `/v1/me` 会 401 并被踢回登录页。
+- 确认前端把 sign-in 返回的 `token` 存下来，并在 REST / SSE 请求里带上 Bearer。
 - 确认 `BETTER_AUTH_URL` 与浏览器访问的 API 基址完全一致。
-- 确认前端请求携带 cookie，响应没有被 CORS 拦截。
-- 清除 `127.0.0.1` 的站点 cookie 后重新请求验证码。
+- 确认响应没有被 CORS 拦截。
 
 ### 数据刷新后消失
 
