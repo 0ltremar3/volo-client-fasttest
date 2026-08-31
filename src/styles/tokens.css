@@ -2,6 +2,9 @@
   --font-family-sans:
     'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-family-display: 'Playfair Display', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-family-numeric:
+    'New York Small', 'New York', 'NewYork', -apple-system-ui-serif, ui-serif, 'Playfair Display',
+    'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
   --font-family-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
 
   --font-size-caption: 0.75rem;

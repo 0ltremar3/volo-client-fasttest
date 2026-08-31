@@ -175,12 +175,12 @@ function MonthCalendar({
             <button
               key={value}
               type="button"
-              className="relative mx-auto grid size-11 place-items-center rounded-full font-display text-lg"
+              className="relative mx-auto grid size-11 place-items-center rounded-full font-numeric text-lg tabular-nums lining-nums"
               aria-pressed={selected}
               onClick={() => onSelect(value)}
             >
               {active && !selected ? (
-                <span className="absolute left-1/2 top-1 size-1.5 -translate-x-1/2 rounded-full bg-[var(--coach-accent)]" />
+                <span className="absolute bottom-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-[var(--coach-accent)]" />
               ) : null}
               <span
                 className={`grid size-9 place-items-center rounded-full ${selected ? 'bg-[var(--coach-accent)] text-white' : ''}`}

@@ -95,7 +95,7 @@ export function VoloDailyExperience() {
                   aria-pressed={selected}
                   className="grid min-h-touch grid-rows-[1.15rem_1rem_0.95rem] place-items-center rounded-md text-[var(--coach-text-secondary)]"
                 >
-                  <span className="font-display text-xl group-aria-pressed:font-semibold">
+                  <span className="font-numeric tabular-nums lining-nums text-xl group-aria-pressed:font-semibold">
                     {formatDailyDate(date, { day: 'numeric' })}
                   </span>
                   <span className="text-xs">{formatDailyDate(date, { weekday: 'narrow' })}</span>

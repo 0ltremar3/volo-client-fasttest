@@ -98,7 +98,7 @@ function WeekStrip({ selectedDate }: { selectedDate: Date }) {
               })}
               className="group grid min-h-touch min-w-0 grid-rows-[1.15rem_1rem_0.95rem] place-items-center rounded-md text-[var(--coach-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <span className="font-display text-xl leading-none group-aria-pressed:font-semibold group-aria-pressed:text-[var(--coach-ink)]">
+              <span className="font-numeric tabular-nums lining-nums text-xl leading-none group-aria-pressed:font-semibold group-aria-pressed:text-[var(--coach-ink)]">
                 {formatDailyDate(date, { day: 'numeric' })}
               </span>
               <span className="text-xs text-[var(--coach-text-tertiary)]">

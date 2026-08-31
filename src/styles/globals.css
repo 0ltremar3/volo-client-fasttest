@@ -51,6 +51,7 @@
 
   --font-sans: var(--font-family-sans);
   --font-display: var(--font-family-display);
+  --font-numeric: var(--font-family-numeric);
   --font-mono: var(--font-family-mono);
 
   --radius-sm: calc(var(--radius) - 0.25rem);
