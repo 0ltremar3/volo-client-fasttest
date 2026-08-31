@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Settings2 } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import echoArc from '@/assets/daily/echo-arc.svg'
@@ -19,30 +19,31 @@ import {
 } from '@/api/generated/endpoints'
 import type { GetV2Daily200Echo, GetV2Moves200ItemsItem } from '@/api/generated/models'
 import { dailyApi } from '@/api/volo'
+import { DateNavigator } from '@/components/date-navigation/date-navigator'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
 import { EchoSettingsSheet } from '@/features/daily/echo-settings-sheet'
 import { PeriodMoves, type PeriodMoveItem } from '@/features/daily/period-moves'
-import {
-  formatDailyDate,
-  formatIsoWeekday,
-  getWeekDates,
-  parseDailyDate,
-  toDailyDateValue,
-  type EchoSchedule,
-} from '@/features/daily/daily-model'
+import { formatIsoWeekday, parseDailyDate, type EchoSchedule } from '@/features/daily/daily-model'
 
 const today = () => new Date().toLocaleDateString('en-CA')
 
 export function VoloDailyExperience() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const selectedValue = searchParams.get('date') ?? today()
-  const selectedDate = parseDailyDate(selectedValue) ?? new Date(`${today()}T00:00:00Z`)
+  const requestedDate = searchParams.get('date')
+  const selectedValue = requestedDate && parseDailyDate(requestedDate) ? requestedDate : today()
   const daily = useGetV2Daily({ date: selectedValue })
   const moves = useGetV2Moves()
   const queryClient = useQueryClient()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [dateExpanded, setDateExpanded] = useState(false)
+  const selectDate = useCallback(
+    (date: string) => {
+      setSearchParams({ date })
+    },
+    [setSearchParams],
+  )
   const scheduleValue: EchoSchedule = {
     time: daily.data?.echo?.schedule?.local_time ?? '21:00',
     date: selectedValue,
@@ -75,44 +76,18 @@ export function VoloDailyExperience() {
           </span>
         </header>
 
-        <section className="mx-5">
-          <div className="flex h-[38px] items-center justify-between">
-            <h1 className="font-display text-[28px] font-semibold leading-[38px]">
-              {formatDailyDate(selectedDate, { weekday: 'long' })}
-            </h1>
-            <p className="text-sm text-[var(--coach-text-secondary)]">
-              {formatDailyDate(selectedDate, { month: 'short', year: 'numeric' })}
-            </p>
-          </div>
-          <div className="mt-1 grid grid-cols-7">
-            {getWeekDates(selectedDate).map((date) => {
-              const value = toDailyDateValue(date)
-              const selected = value === selectedValue
-              return (
-                <button
-                  key={value}
-                  onClick={() => setSearchParams({ date: value })}
-                  aria-pressed={selected}
-                  className="grid min-h-touch grid-rows-[1.15rem_1rem_0.95rem] place-items-center rounded-md text-[var(--coach-text-secondary)]"
-                >
-                  <span className="font-numeric tabular-nums lining-nums text-xl group-aria-pressed:font-semibold">
-                    {formatDailyDate(date, { day: 'numeric' })}
-                  </span>
-                  <span className="text-xs">{formatDailyDate(date, { weekday: 'narrow' })}</span>
-                  <span
-                    className={
-                      selected
-                        ? 'h-[15px] w-0.5 bg-[var(--coach-ink)]'
-                        : 'h-2 w-px bg-[var(--coach-text-secondary)]'
-                    }
-                  />
-                </button>
-              )
-            })}
-          </div>
-        </section>
+        <DateNavigator
+          className="mx-5"
+          value={selectedValue}
+          today={today()}
+          onChange={selectDate}
+          onExpansionChange={setDateExpanded}
+        />
 
-        <main className="mx-auto mt-10 flex w-[calc(100%-30px)] max-w-[360px] flex-col gap-9 pb-12">
+        <main
+          className={`mx-auto mt-10 flex w-[calc(100%-30px)] max-w-[360px] flex-col gap-9 pb-12 ${dateExpanded ? 'hidden' : ''}`}
+          aria-hidden={dateExpanded}
+        >
           {daily.isPending || moves.isPending ? (
             <DailySkeleton />
           ) : daily.isError || moves.isError || !daily.data || !moves.data ? (

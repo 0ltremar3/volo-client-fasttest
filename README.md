@@ -53,8 +53,9 @@ Set `VITE_MOCK_MODE=false` in production builds.
 | `/review/:sessionId`         | Read-only Coach/Echo/Move detail          | Mock fixtures or Volo V2 data  |
 | `/debug`                     | Request and runtime inspection            | Configuration skeleton         |
 
-After sign-in, `/` redirects to `/daily`. Daily includes the Figma-aligned week strip, an actionable
-Daily Echo card, collapsible active Period Moves, and empty hardware traces. Move cards come from
+After sign-in, `/` redirects to `/daily`. Daily includes a continuous date navigator (center-snapping
+day strip plus month grid), an actionable Daily Echo card, collapsible active Period Moves, and empty
+hardware traces. Move cards come from
 `GET /v2/moves` and open an accessible check-in sheet for On Track, Drifting, or a Coach rethink. The
 sheet’s edit control opens a nested Schedule sheet for Date, Time, Repeat, and Alarm. Check state is the two-state Move evaluation for the operation day; Coach adjustment is
 separate and reopens the Move's original session through the idempotent adjustment endpoint. Destructive deletion

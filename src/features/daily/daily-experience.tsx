@@ -1,8 +1,7 @@
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Settings2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
-import calendarChevron from '@/assets/daily/calendar-chevron.svg'
 import echoArc from '@/assets/daily/echo-arc.svg'
 import echoMarker from '@/assets/daily/echo-marker.svg'
 import profileGlyph from '@/assets/daily/profile-glyph.svg'
@@ -10,14 +9,13 @@ import summaryDivider from '@/assets/daily/summary-divider.svg'
 import traceDotGlyph from '@/assets/daily/trace-dot-glyph.svg'
 import traceRail from '@/assets/daily/trace-rail.svg'
 import voloWordmark from '@/assets/daily/volo-wordmark.svg'
+import { DateNavigator } from '@/components/date-navigation/date-navigator'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import {
   defaultEchoSchedule,
   defaultDailyDate,
-  formatDailyDate,
   getDailyRecord,
-  getWeekDates,
   parseDailyDate,
   toDailyDateValue,
   type DailyEcho,
@@ -50,69 +48,6 @@ function DailyHeader() {
         <img src={profileGlyph} alt="" width="11" height="20" className="h-5 w-[11px]" />
       </span>
     </header>
-  )
-}
-
-function WeekStrip({ selectedDate }: { selectedDate: Date }) {
-  const [, setSearchParams] = useSearchParams()
-  const selectedValue = toDailyDateValue(selectedDate)
-  const dates = getWeekDates(selectedDate)
-
-  return (
-    <section className="mx-5" aria-labelledby="daily-date-heading">
-      <div className="flex h-[38px] items-center justify-between">
-        <h1
-          id="daily-date-heading"
-          className="font-display text-[28px] font-semibold leading-[38px] text-[var(--coach-ink)]"
-        >
-          {formatDailyDate(selectedDate, { weekday: 'long' })}
-        </h1>
-        <p className="flex items-center gap-1 text-sm text-[var(--coach-text-secondary)]">
-          {formatDailyDate(selectedDate, { month: 'short', year: 'numeric' })}
-          <img
-            src={calendarChevron}
-            alt=""
-            width="4"
-            height="7"
-            className="h-[7px] w-1"
-            style={{ filter: 'var(--app-brand-asset-filter)' }}
-            aria-hidden="true"
-          />
-        </p>
-      </div>
-      <div className="mt-1 grid grid-cols-7" aria-label="Select a day">
-        {dates.map((date) => {
-          const value = toDailyDateValue(date)
-          const selected = value === selectedValue
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setSearchParams({ date: value })}
-              aria-pressed={selected}
-              aria-label={formatDailyDate(date, {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-              className="group grid min-h-touch min-w-0 grid-rows-[1.15rem_1rem_0.95rem] place-items-center rounded-md text-[var(--coach-text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className="font-numeric tabular-nums lining-nums text-xl leading-none group-aria-pressed:font-semibold group-aria-pressed:text-[var(--coach-ink)]">
-                {formatDailyDate(date, { day: 'numeric' })}
-              </span>
-              <span className="text-xs text-[var(--coach-text-tertiary)]">
-                {formatDailyDate(date, { weekday: 'narrow' })}
-              </span>
-              <span
-                className="h-2 w-px rounded-full bg-[var(--coach-text-secondary)] group-aria-pressed:h-[15px] group-aria-pressed:w-0.5 group-aria-pressed:bg-[var(--coach-ink)]"
-                aria-hidden="true"
-              />
-            </button>
-          )
-        })}
-      </div>
-    </section>
   )
 }
 
@@ -275,15 +210,22 @@ function DailyTracesCard({ traces }: { traces: DailyTrace[] }) {
 
 function MockDailyExperience() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [echoSettingsOpen, setEchoSettingsOpen] = useState(false)
   const [echoSchedule, setEchoSchedule] = useState<EchoSchedule>(defaultEchoSchedule)
   const [moveStatuses, setMoveStatuses] = useState<Record<string, PeriodMoveStatus>>({})
   const [deletedMoveIds, setDeletedMoveIds] = useState<string[]>([])
+  const [dateExpanded, setDateExpanded] = useState(false)
   const echoButtonRef = useRef<HTMLDivElement>(null)
   const selectedDate = parseDailyDate(searchParams.get('date')) ?? parseDailyDate(defaultDailyDate)!
   const selectedValue = toDailyDateValue(selectedDate)
   const record = getDailyRecord(selectedValue)
+  const selectDate = useCallback(
+    (date: string) => {
+      setSearchParams({ date })
+    },
+    [setSearchParams],
+  )
 
   function closeEchoSettings() {
     setEchoSettingsOpen(false)
@@ -295,9 +237,18 @@ function MockDailyExperience() {
       <AppAtmosphere />
       <div className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto">
         <DailyHeader />
-        <WeekStrip selectedDate={selectedDate} />
+        <DateNavigator
+          className="mx-5"
+          value={selectedValue}
+          today={new Date().toLocaleDateString('en-CA')}
+          onChange={selectDate}
+          onExpansionChange={setDateExpanded}
+        />
 
-        <main className="mx-auto mt-10 flex w-[calc(100%-30px)] max-w-[360px] flex-col items-center gap-9 pb-12">
+        <main
+          className={`mx-auto mt-10 flex w-[calc(100%-30px)] max-w-[360px] flex-col items-center gap-9 pb-12 ${dateExpanded ? 'hidden' : ''}`}
+          aria-hidden={dateExpanded}
+        >
           <div ref={echoButtonRef} className="w-full max-w-[350px]">
             <DailyEchoCard echo={record.echo} onSettings={() => setEchoSettingsOpen(true)} />
           </div>

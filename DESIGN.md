@@ -64,9 +64,15 @@ Three real links only: Daily (`/daily`), Coach (`/chat`), and Review (`/review`)
 
 An ongoing Coach conversation uses the centered `Coach` title and the compact dark `Done` action on the right. After the user has sent a message, `Done` prepares the editable pause summary but does not complete the session. With no user message, `Done` cancels the empty session and returns directly to Daily. Move adjustment mode hides `Done`, because confirming the revision is the only completion action. Coach landing states keep their existing page-specific heading. Daily uses the exported VOLO wordmark and a non-interactive profile brand glyph. Do not add new-conversation, account, or history controls to either top bar. Browser/PWA safe areas replace Figma's illustrative status bar and Dynamic Island.
 
-### Daily date and week strip
+### Daily date navigator
 
-The selected weekday is a `28px / 38px` display heading; month/year remains static text until a designed calendar state exists. Seven date buttons keep 44px touch targets. The active date uses weight, ink, and a 15px tick so selection is not color-only. Date state belongs in `/daily?date=YYYY-MM-DD` and is restored by browser history.
+The selected weekday remains a `28px / 38px` display heading. The day band is a continuous,
+center-snapping strip: weekday letters sit above New York numerals, and seven stationary ticks stay
+in the viewport with only the center tick emphasized. Scrolling updates the heading immediately and
+commits `/daily?date=YYYY-MM-DD` after the strip settles, so Daily Echo and Moves do not refetch for
+every passing day. `Today` appears when the focused day is not today. The month label opens an
+in-place month grid for longer jumps; closing it restores the strip. Date state is restored by
+browser history.
 
 ### Daily Echo
 

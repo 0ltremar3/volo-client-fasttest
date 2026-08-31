@@ -149,16 +149,6 @@ export function formatEchoScheduleTime(value: string) {
   }).format(date)
 }
 
-export function getWeekDates(selectedDate: Date) {
-  const sunday = new Date(selectedDate)
-  sunday.setUTCDate(selectedDate.getUTCDate() - selectedDate.getUTCDay())
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(sunday)
-    date.setUTCDate(sunday.getUTCDate() + index)
-    return date
-  })
-}
-
 export function toDailyDateValue(date: Date) {
   return date.toISOString().slice(0, 10)
 }
