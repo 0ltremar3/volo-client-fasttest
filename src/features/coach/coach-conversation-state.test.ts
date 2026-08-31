@@ -92,22 +92,40 @@ describe('Coach landing selection', () => {
 })
 
 describe('Move check plan', () => {
-  const date = new Date(2026, 7, 31)
+  const date = new Date(2026, 7, 31, 9, 5)
 
   it('builds the backend rule for each visible frequency', () => {
+    expect(buildMoveScheduleRule('none', date)).toEqual({ frequency: 'none' })
     expect(buildMoveScheduleRule('daily', date)).toEqual({ frequency: 'daily' })
     expect(buildMoveScheduleRule('weekly', date)).toEqual({
       frequency: 'weekly',
       weekdays: [1],
     })
-    expect(buildMoveScheduleRule('monthly', date)).toEqual({ frequency: 'monthly', day: 28 })
+    expect(buildMoveScheduleRule('monthly', date)).toEqual({ frequency: 'monthly', day: 31 })
   })
 
-  it('prefills an explicit daily suggestion and otherwise keeps the 21:00 default', () => {
+  it('keeps an existing weekly or monthly anchor when the frequency is unchanged', () => {
+    expect(
+      buildMoveScheduleRule('weekly', date, { frequency: 'weekly', weekdays: [2, 5] }),
+    ).toEqual({ frequency: 'weekly', weekdays: [2, 5] })
+    expect(buildMoveScheduleRule('monthly', date, { frequency: 'monthly', day: 3 })).toEqual({
+      frequency: 'monthly',
+      day: 3,
+    })
+    expect(buildMoveScheduleRule('weekly', date, { frequency: 'daily' })).toEqual({
+      frequency: 'weekly',
+      weekdays: [1],
+    })
+  })
+
+  it('prefills an explicit daily suggestion and otherwise matches the backend default', () => {
     expect(resolveMoveScheduleDraft({ frequency: 'daily', local_time: '12:00' })).toEqual({
       frequency: 'daily',
       time: '12:00',
     })
-    expect(resolveMoveScheduleDraft()).toEqual({ frequency: 'daily', time: '21:00' })
+    expect(resolveMoveScheduleDraft(undefined, date)).toEqual({
+      frequency: 'none',
+      time: '09:05',
+    })
   })
 })

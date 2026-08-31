@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type PostV2CoachCardsIdConfirmBodyFinalPayloadAnyOfTwo = {
+export type PostV2CoachCardsIdConfirmBodyFinalPayloadAnyOfOnetwo = {
   /**
    * @minLength 1
    * @maxLength 120

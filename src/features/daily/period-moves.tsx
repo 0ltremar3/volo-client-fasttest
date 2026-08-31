@@ -1,10 +1,11 @@
-import { Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown, Pencil } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
 import { Input } from '@/components/ui/input'
 import type { RepeatRule } from '@/api/volo'
+import { buildMoveScheduleRule } from '@/features/coach/coach-model'
 import { getPeriodMoveStatusLabel, type PeriodMoveStatus } from '@/features/daily/daily-model'
 import { cn } from '@/lib/utils'
 
@@ -198,12 +199,12 @@ export function PeriodMoves({
           onRethink={async () => {
             await run(() => onRethink(activeItem), 'Coach could not open this Move. Try again.')
           }}
-          onScheduleChange={async (schedule) => {
-            await run(
+          onScheduleChange={async (schedule) =>
+            run(
               () => onScheduleChange(activeItem, schedule),
               'This schedule could not be saved. Try again.',
             )
-          }}
+          }
           onDelete={() => {
             setError(null)
             setDeleteId(activeItem.id)
@@ -254,11 +255,12 @@ function MoveStatusDialog({
   onClose: () => void
   onStatusChange: (status: Exclude<PeriodMoveStatus, null>) => Promise<void>
   onRethink: () => Promise<void>
-  onScheduleChange: (schedule: PeriodMoveItem['scheduleValue']) => Promise<void>
+  onScheduleChange: (schedule: PeriodMoveItem['scheduleValue']) => Promise<boolean>
   onDelete: () => void
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
-  const [schedule, setSchedule] = useState(item.scheduleValue)
+  const editButtonRef = useRef<HTMLButtonElement>(null)
+  const [scheduleOpen, setScheduleOpen] = useState(false)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -268,11 +270,183 @@ function MoveStatusDialog({
 
   if (typeof document === 'undefined') return null
 
+  return (
+    <>
+      {createPortal(
+        <dialog
+          ref={dialogRef}
+          className="move-status-dialog m-0 max-h-none max-w-none p-0 text-[var(--coach-ink)]"
+          aria-labelledby="move-status-title"
+          onClose={onClose}
+          onCancel={(event) => {
+            event.preventDefault()
+            if (scheduleOpen || pending) return
+            dialogRef.current?.close()
+          }}
+        >
+          <div className="safe-bottom flex h-full flex-col overflow-y-auto px-5 pb-5">
+            <span
+              className="mx-auto mt-3 h-1 w-[60px] rounded-full bg-[var(--coach-sheet-handle)]"
+              aria-hidden="true"
+            />
+            <div className="mt-5 flex min-h-11 items-center justify-between gap-2">
+              <p className="text-base font-semibold">Move Check-in</p>
+              <div className="flex items-center">
+                <button
+                  ref={editButtonRef}
+                  type="button"
+                  aria-label="Edit schedule"
+                  aria-haspopup="dialog"
+                  aria-expanded={scheduleOpen}
+                  disabled={pending}
+                  onClick={() => setScheduleOpen(true)}
+                  className="grid size-11 place-items-center rounded-full text-[var(--coach-text-secondary)] transition-colors hover:text-[var(--coach-ink)] disabled:opacity-45"
+                >
+                  <Pencil className="size-4" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => dialogRef.current?.close()}
+                  disabled={pending || scheduleOpen}
+                  className="min-h-11 rounded-full bg-[var(--coach-surface-glass-strong)] px-4 text-sm font-medium shadow-[var(--coach-shadow)] disabled:opacity-45"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+            <h2
+              id="move-status-title"
+              className="mt-2 font-display text-[28px] font-medium leading-9"
+            >
+              How’s this Move going?
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-[var(--coach-text-secondary)]">
+              Choose what best describes where you are right now.
+            </p>
+
+            <div className="mt-4 space-y-2">
+              {selectableStatuses.map((status) => {
+                const selected = item.status === status
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    aria-pressed={selected}
+                    disabled={pending}
+                    onClick={() => void onStatusChange(status)}
+                    className={cn(
+                      'flex min-h-[64px] w-full items-center gap-4 rounded-2xl border border-[var(--coach-border-warm-subtle)] px-4 text-left transition-colors disabled:opacity-45',
+                      selected &&
+                        status === 'progressing' &&
+                        'border-transparent bg-[var(--daily-move-on-track)] text-[var(--daily-move-status-foreground)]',
+                      selected &&
+                        status === 'stuck' &&
+                        'border-transparent bg-[var(--daily-move-drifting)] text-[var(--daily-move-status-foreground)]',
+                      !selected && 'bg-[var(--coach-surface-glass)]',
+                    )}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-base font-semibold">
+                        {statusCopy[status].label}
+                      </span>
+                      <span
+                        className={cn(
+                          'mt-0.5 block text-xs',
+                          selected
+                            ? 'text-current opacity-85'
+                            : 'text-[var(--coach-text-tertiary)]',
+                        )}
+                      >
+                        {statusCopy[status].description}
+                      </span>
+                    </span>
+                    {selected ? <Check className="size-5 shrink-0" aria-hidden="true" /> : null}
+                  </button>
+                )
+              })}
+            </div>
+
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => void onRethink()}
+              className="mt-auto min-h-11 w-full rounded-full bg-[var(--coach-surface-glass-strong)] px-5 text-base font-medium shadow-[var(--coach-shadow)] transition-transform enabled:active:scale-[0.97] disabled:opacity-45"
+            >
+              {pending ? 'Updating…' : 'Needs a Rethink'}
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={onDelete}
+              className="mt-2 min-h-11 w-full rounded-full px-5 text-sm text-[var(--coach-text-tertiary)] disabled:opacity-45"
+            >
+              Delete Move
+            </button>
+            {error && !scheduleOpen ? (
+              <p className="mt-1 text-center text-sm text-[var(--danger)]" role="alert">
+                {error}
+              </p>
+            ) : null}
+          </div>
+        </dialog>,
+        document.body,
+      )}
+      {scheduleOpen ? (
+        <MoveScheduleDialog
+          item={item}
+          pending={pending}
+          error={error}
+          onClose={() => {
+            setScheduleOpen(false)
+            window.setTimeout(() => editButtonRef.current?.focus(), 50)
+          }}
+          onSave={onScheduleChange}
+        />
+      ) : null}
+    </>
+  )
+}
+
+function MoveScheduleDialog({
+  item,
+  pending,
+  error,
+  onClose,
+  onSave,
+}: {
+  item: PeriodMoveItem
+  pending: boolean
+  error: string | null
+  onClose: () => void
+  onSave: (schedule: PeriodMoveItem['scheduleValue']) => Promise<boolean>
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [schedule, setSchedule] = useState(item.scheduleValue)
+  const canConfirm = Boolean(schedule.startLocalDate && schedule.localTime)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog || dialog.open) return
+    dialog.showModal()
+  }, [])
+
+  async function confirmAndClose() {
+    if (pending || !canConfirm) return
+    if (JSON.stringify(schedule) === JSON.stringify(item.scheduleValue)) {
+      dialogRef.current?.close()
+      return
+    }
+    const saved = await onSave(schedule)
+    if (saved) dialogRef.current?.close()
+  }
+
+  if (typeof document === 'undefined') return null
+
   return createPortal(
     <dialog
       ref={dialogRef}
-      className="move-status-dialog m-0 max-h-none max-w-none p-0 text-[var(--coach-ink)]"
-      aria-labelledby="move-status-title"
+      className="move-schedule-dialog m-0 max-h-none max-w-none p-0 text-[var(--coach-ink)]"
+      aria-labelledby="move-schedule-title"
       onClose={onClose}
       onCancel={(event) => {
         event.preventDefault()
@@ -285,219 +459,149 @@ function MoveStatusDialog({
           aria-hidden="true"
         />
         <div className="mt-5 flex min-h-11 items-center justify-between">
-          <p className="text-base font-semibold">Move Check-in</p>
+          <h2 id="move-schedule-title" className="text-base font-semibold">
+            Schedule
+          </h2>
           <button
             type="button"
-            onClick={() => dialogRef.current?.close()}
-            disabled={pending}
+            onClick={() => void confirmAndClose()}
+            disabled={pending || !canConfirm}
             className="min-h-11 rounded-full bg-[var(--coach-surface-glass-strong)] px-4 text-sm font-medium shadow-[var(--coach-shadow)] disabled:opacity-45"
           >
-            Done
+            {pending ? 'Saving…' : 'Done'}
           </button>
         </div>
-        <h2 id="move-status-title" className="mt-2 font-display text-[28px] font-medium leading-9">
-          How’s this Move going?
-        </h2>
-        <p className="mt-1 text-sm leading-5 text-[var(--coach-text-secondary)]">
-          Choose what best describes where you are right now.
-        </p>
 
-        <div className="mt-4 space-y-2">
-          {selectableStatuses.map((status) => {
-            const selected = item.status === status
-            return (
-              <button
-                key={status}
-                type="button"
-                aria-pressed={selected}
-                disabled={pending}
-                onClick={() => void onStatusChange(status)}
-                className={cn(
-                  'flex min-h-[64px] w-full items-center gap-4 rounded-2xl border border-[var(--coach-border-warm-subtle)] px-4 text-left transition-colors disabled:opacity-45',
-                  selected &&
-                    status === 'progressing' &&
-                    'border-transparent bg-[var(--daily-move-on-track)] text-[var(--daily-move-status-foreground)]',
-                  selected &&
-                    status === 'stuck' &&
-                    'border-transparent bg-[var(--daily-move-drifting)] text-[var(--daily-move-status-foreground)]',
-                  !selected && 'bg-[var(--coach-surface-glass)]',
-                )}
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block text-base font-semibold">{statusCopy[status].label}</span>
-                  <span
-                    className={cn(
-                      'mt-0.5 block text-xs',
-                      selected ? 'text-current opacity-85' : 'text-[var(--coach-text-tertiary)]',
-                    )}
-                  >
-                    {statusCopy[status].description}
-                  </span>
-                </span>
-                {selected ? <Check className="size-5 shrink-0" aria-hidden="true" /> : null}
-              </button>
-            )
-          })}
-        </div>
-
-        <fieldset className="mt-5 border-t border-[var(--coach-border)] pt-4">
-          <legend className="text-sm font-semibold">Schedule</legend>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <label className="text-xs font-medium text-[var(--coach-text-secondary)]">
-              Date
-              <Input
-                type="date"
-                className="mt-1 bg-[var(--coach-surface-glass)]"
-                value={schedule.startLocalDate}
-                disabled={pending}
-                onChange={(event) =>
-                  setSchedule((current) => ({
-                    ...current,
-                    startLocalDate: event.target.value,
-                    rule: ruleForFrequency(
-                      current.rule.frequency,
-                      event.target.value,
-                      current.rule,
-                    ),
-                  }))
-                }
-              />
-            </label>
-            <label className="text-xs font-medium text-[var(--coach-text-secondary)]">
-              Time
-              <Input
-                type="time"
-                className="mt-1 bg-[var(--coach-surface-glass)]"
-                value={schedule.localTime}
-                disabled={pending}
-                onChange={(event) =>
-                  setSchedule((current) => ({ ...current, localTime: event.target.value }))
-                }
-              />
-            </label>
-          </div>
-          <label className="mt-3 block text-xs font-medium text-[var(--coach-text-secondary)]">
-            Repeat
-            <select
-              className="mt-1 min-h-11 w-full rounded-lg border border-[var(--coach-border)] bg-[var(--coach-surface-glass)] px-3 text-sm text-[var(--coach-ink)]"
-              value={schedule.rule.frequency}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <label className="text-xs font-medium text-[var(--coach-text-secondary)]">
+            Date
+            <Input
+              type="date"
+              className="mt-1 bg-[var(--coach-surface-glass)]"
+              value={schedule.startLocalDate}
               disabled={pending}
               onChange={(event) =>
                 setSchedule((current) => ({
                   ...current,
-                  rule: ruleForFrequency(
-                    event.target.value as RepeatRule['frequency'],
-                    current.startLocalDate,
+                  startLocalDate: event.target.value,
+                  rule: buildMoveScheduleRule(
+                    current.rule.frequency,
+                    new Date(`${event.target.value}T00:00:00`),
                     current.rule,
                   ),
                 }))
               }
-            >
-              <option value="none">No repeat</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
+            />
           </label>
-          {schedule.rule.frequency === 'weekly' ? (
-            <div className="mt-3">
-              <p className="text-xs font-medium text-[var(--coach-text-secondary)]">Weekdays</p>
-              <div className="mt-1 grid grid-cols-7 gap-1" role="group" aria-label="Weekdays">
-                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((label, index) => {
-                  const day = index + 1
-                  const selected =
-                    schedule.rule.frequency === 'weekly' && schedule.rule.weekdays.includes(day)
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      aria-pressed={selected}
-                      disabled={pending}
-                      className={cn(
-                        'aspect-square rounded-md text-xs font-semibold',
-                        selected
-                          ? 'bg-[var(--coach-accent)] text-white'
-                          : 'bg-[var(--coach-surface-glass)] text-[var(--coach-text-secondary)]',
-                      )}
-                      onClick={() =>
-                        setSchedule((current) => {
-                          if (current.rule.frequency !== 'weekly') return current
-                          const weekdays = current.rule.weekdays.includes(day)
-                            ? current.rule.weekdays.filter((value) => value !== day)
-                            : [...current.rule.weekdays, day].sort()
-                          return weekdays.length
-                            ? { ...current, rule: { frequency: 'weekly', weekdays } }
-                            : current
-                        })
-                      }
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
-          {schedule.rule.frequency === 'monthly' ? (
-            <label className="mt-3 block text-xs font-medium text-[var(--coach-text-secondary)]">
-              Day of month
-              <Input
-                type="number"
-                min={1}
-                max={31}
-                className="mt-1 bg-[var(--coach-surface-glass)]"
-                value={schedule.rule.day}
-                disabled={pending}
-                onChange={(event) => {
-                  const day = Math.min(31, Math.max(1, Number(event.target.value)))
-                  setSchedule((current) => ({
-                    ...current,
-                    rule: { frequency: 'monthly', day },
-                  }))
-                }}
-              />
-            </label>
-          ) : null}
-          <label className="mt-3 flex min-h-11 items-center gap-3 text-sm font-medium">
-            <input
-              type="checkbox"
-              className="size-5 accent-[var(--coach-accent)]"
-              checked={schedule.alarmEnabled}
+          <label className="text-xs font-medium text-[var(--coach-text-secondary)]">
+            Time
+            <Input
+              type="time"
+              className="mt-1 bg-[var(--coach-surface-glass)]"
+              value={schedule.localTime}
               disabled={pending}
               onChange={(event) =>
-                setSchedule((current) => ({ ...current, alarmEnabled: event.target.checked }))
+                setSchedule((current) => ({ ...current, localTime: event.target.value }))
               }
             />
-            Alarm
           </label>
-          <button
-            type="button"
-            disabled={pending || !schedule.startLocalDate || !schedule.localTime}
-            onClick={() => void onScheduleChange(schedule)}
-            className="mt-2 min-h-11 w-full rounded-full bg-[var(--coach-surface-glass-strong)] px-5 text-sm font-medium shadow-[var(--coach-shadow)] disabled:opacity-45"
+        </div>
+        <label className="mt-3 block text-xs font-medium text-[var(--coach-text-secondary)]">
+          Repeat
+          <select
+            className="mt-1 min-h-11 w-full rounded-lg border border-[var(--coach-border)] bg-[var(--coach-surface-glass)] px-3 text-sm text-[var(--coach-ink)]"
+            value={schedule.rule.frequency}
+            disabled={pending}
+            onChange={(event) =>
+              setSchedule((current) => ({
+                ...current,
+                rule: buildMoveScheduleRule(
+                  event.target.value as RepeatRule['frequency'],
+                  new Date(`${current.startLocalDate}T00:00:00`),
+                  current.rule,
+                ),
+              }))
+            }
           >
-            Save schedule
-          </button>
-        </fieldset>
-
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => void onRethink()}
-          className="mt-auto min-h-11 w-full rounded-full bg-[var(--coach-surface-glass-strong)] px-5 text-base font-medium shadow-[var(--coach-shadow)] transition-transform enabled:active:scale-[0.97] disabled:opacity-45"
-        >
-          {pending ? 'Updating…' : 'Needs a Rethink'}
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={onDelete}
-          className="mt-2 min-h-11 w-full rounded-full px-5 text-sm text-[var(--coach-text-tertiary)] disabled:opacity-45"
-        >
-          Delete Move
-        </button>
+            <option value="none">No repeat</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </label>
+        {schedule.rule.frequency === 'weekly' ? (
+          <div className="mt-3">
+            <p className="text-xs font-medium text-[var(--coach-text-secondary)]">Weekdays</p>
+            <div className="mt-1 grid grid-cols-7 gap-1" role="group" aria-label="Weekdays">
+              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((label, index) => {
+                const day = index + 1
+                const selected =
+                  schedule.rule.frequency === 'weekly' && schedule.rule.weekdays.includes(day)
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    aria-pressed={selected}
+                    disabled={pending}
+                    className={cn(
+                      'aspect-square rounded-md text-xs font-semibold',
+                      selected
+                        ? 'bg-[var(--coach-accent)] text-white'
+                        : 'bg-[var(--coach-surface-glass)] text-[var(--coach-text-secondary)]',
+                    )}
+                    onClick={() =>
+                      setSchedule((current) => {
+                        if (current.rule.frequency !== 'weekly') return current
+                        const weekdays = current.rule.weekdays.includes(day)
+                          ? current.rule.weekdays.filter((value) => value !== day)
+                          : [...current.rule.weekdays, day].sort()
+                        return weekdays.length
+                          ? { ...current, rule: { frequency: 'weekly', weekdays } }
+                          : current
+                      })
+                    }
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+        {schedule.rule.frequency === 'monthly' ? (
+          <label className="mt-3 block text-xs font-medium text-[var(--coach-text-secondary)]">
+            Day of month
+            <Input
+              type="number"
+              min={1}
+              max={31}
+              className="mt-1 bg-[var(--coach-surface-glass)]"
+              value={schedule.rule.day}
+              disabled={pending}
+              onChange={(event) => {
+                const day = Math.min(31, Math.max(1, Number(event.target.value)))
+                setSchedule((current) => ({
+                  ...current,
+                  rule: { frequency: 'monthly', day },
+                }))
+              }}
+            />
+          </label>
+        ) : null}
+        <label className="mt-3 flex min-h-11 items-center gap-3 text-sm font-medium">
+          <input
+            type="checkbox"
+            className="size-5 accent-[var(--coach-accent)]"
+            checked={schedule.alarmEnabled}
+            disabled={pending}
+            onChange={(event) =>
+              setSchedule((current) => ({ ...current, alarmEnabled: event.target.checked }))
+            }
+          />
+          Alarm
+        </label>
         {error ? (
-          <p className="mt-1 text-center text-sm text-[var(--danger)]" role="alert">
+          <p className="mt-auto pt-4 text-center text-sm text-[var(--danger)]" role="alert">
             {error}
           </p>
         ) : null}
@@ -505,22 +609,6 @@ function MoveStatusDialog({
     </dialog>,
     document.body,
   )
-}
-
-function ruleForFrequency(
-  frequency: RepeatRule['frequency'],
-  localDate: string,
-  current: RepeatRule,
-): RepeatRule {
-  if (frequency === 'none' || frequency === 'daily') return { frequency }
-  if (frequency === 'weekly') {
-    return current.frequency === 'weekly'
-      ? current
-      : { frequency, weekdays: [new Date(`${localDate}T00:00:00Z`).getUTCDay() || 7] }
-  }
-  return current.frequency === 'monthly'
-    ? current
-    : { frequency, day: new Date(`${localDate}T00:00:00Z`).getUTCDate() }
 }
 
 function DeleteMoveDialog({

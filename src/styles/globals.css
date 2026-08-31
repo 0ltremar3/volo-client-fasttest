@@ -277,7 +277,8 @@
     backdrop-filter: blur(2px);
   }
 
-  .move-status-dialog {
+  .move-status-dialog,
+  .move-schedule-dialog {
     position: fixed;
     inset-inline-start: 50%;
     inset-block-start: auto;
@@ -295,6 +296,7 @@
   }
 
   .move-status-dialog::backdrop,
+  .move-schedule-dialog::backdrop,
   .move-delete-dialog::backdrop,
   .review-delete-dialog::backdrop {
     background: rgb(29 27 24 / 28%);

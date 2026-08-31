@@ -55,8 +55,8 @@ Set `VITE_MOCK_MODE=false` in production builds.
 
 After sign-in, `/` redirects to `/daily`. Daily includes the Figma-aligned week strip, an actionable
 Daily Echo card, collapsible active Period Moves, and empty hardware traces. Move cards come from
-`GET /v2/moves` and open an accessible sheet for On Track, Drifting, Date, Time, Repeat, Alarm, or a
-Coach rethink. Check state is the two-state Move evaluation for the operation day; Coach adjustment is
+`GET /v2/moves` and open an accessible check-in sheet for On Track, Drifting, or a Coach rethink. The
+sheet’s edit control opens a nested Schedule sheet for Date, Time, Repeat, and Alarm. Check state is the two-state Move evaluation for the operation day; Coach adjustment is
 separate and reopens the Move's original session through the idempotent adjustment endpoint. Destructive deletion
 uses a separate confirmation dialog and the empty state links back to Coach. The Echo card starts or resumes the selected
 day's Evening Reflection through the V2 Echo lifecycle. Its independent settings icon still opens
@@ -73,19 +73,24 @@ only the pending Pause. If the user has not sent a message, `Done` cancels the e
 directly to Daily without creating a Pause or Review history item. In real mode it uses
 `POST /v2/coach/sessions/:id/messages/stream`; assistant text streams from Mastra after the
 transformational-coach Skill is activated. Sessions, messages, retry ids, and pending cards persist
-in PostgreSQL. A Move proposal includes its check frequency and local time in the conversation card.
-When the backend supplies an explicit daily local-time suggestion, the pending card immediately
-prefills it (for example, `Daily · 12:00`); the suggestion is not persisted before `Add Move`.
-Confirming the card writes the Move and its check plan in the same UI flow; Daily does not edit or
-display unscheduled Moves. Confirming a Pause uses the user's final topic and takeaway; Continue
-leaves the session ongoing.
+in PostgreSQL. A Move proposal includes an editable check plan in the conversation card: Repeat
+(`No repeat`, `Daily`, `Weekly`, `Monthly`) and local time. When the backend supplies an explicit
+daily local-time suggestion, the pending card prefills it (for example, `Daily · 12:00`); otherwise it
+starts at `No repeat` and the current minute, matching the backend default. Nothing is persisted
+before `Add Move`. The card owns only Repeat and Time — start date, weekday/day-of-month derivation,
+and Alarm stay with the Daily Schedule sheet. Confirming sends the chosen plan as
+`final_payload.schedule`, so the Move and its single active Schedule are written in one backend
+transaction. Confirming a Pause uses the user's final topic and takeaway; Continue leaves the session
+ongoing.
 Confirmed Move cards remain in the conversation at their original assistant-message position with
 a read-only Added or Adjusted state; rejected and expired cards stay hidden.
 
 When Coach opens an adjusted Move, the original conversation history remains in place and the
-header hides the ordinary Done/Pause path. A `move_revision` card confirms only revised wording,
-keeps the existing Schedule, and returns to the originating Daily date. Rejecting it keeps the same
-conversation ongoing so the Daily card can resume it later.
+header hides the ordinary Done/Pause path. A `move_revision` card confirms revised wording and keeps
+the existing Schedule unless the user opens `Change schedule`; that editor is seeded from the target
+Move's current plan and only sends `final_payload.schedule` after an actual change, so an untouched
+card never overwrites a Schedule the user already set. Confirming returns to the originating Daily
+date. Rejecting it keeps the same conversation ongoing so the Daily card can resume it later.
 
 Review replaces the former History dialogs. `/review?date=YYYY-MM-DD` owns calendar state, marks
 activity dates, and groups completed Coach and Echo sessions. Move adjustments reuse their source

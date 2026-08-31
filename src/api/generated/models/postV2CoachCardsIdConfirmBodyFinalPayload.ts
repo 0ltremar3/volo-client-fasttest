@@ -6,6 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PostV2CoachCardsIdConfirmBodyFinalPayloadAnyOf } from './postV2CoachCardsIdConfirmBodyFinalPayloadAnyOf';
-import type { PostV2CoachCardsIdConfirmBodyFinalPayloadAnyOfTwo } from './postV2CoachCardsIdConfirmBodyFinalPayloadAnyOfTwo';
+import type { PostV2CoachCardsIdConfirmBodyFinalPayloadAnyOfOnetwo } from './postV2CoachCardsIdConfirmBodyFinalPayloadAnyOfOnetwo';
 
-export type PostV2CoachCardsIdConfirmBodyFinalPayload = PostV2CoachCardsIdConfirmBodyFinalPayloadAnyOf | PostV2CoachCardsIdConfirmBodyFinalPayloadAnyOfTwo;
+export type PostV2CoachCardsIdConfirmBodyFinalPayload = PostV2CoachCardsIdConfirmBodyFinalPayloadAnyOf | PostV2CoachCardsIdConfirmBodyFinalPayloadAnyOfOnetwo;

@@ -6,11 +6,12 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   getGetV2DailyQueryKey,
   getGetV2MovesQueryKey,
+  useGetV2Moves,
   usePostV2CoachCardsIdConfirm,
   usePostV2CoachCardsIdReject,
 } from '@/api/generated/endpoints'
 import { VoloCoachStreamError } from '@/api/sse'
-import { authApi, coachApi, type VoloCard, type VoloMessage } from '@/api/volo'
+import { authApi, coachApi, type MoveSchedule, type VoloCard, type VoloMessage } from '@/api/volo'
 import { BeautifulPromptComposer } from '@/components/ai/beautiful-prompt-composer'
 import { StreamingText } from '@/components/ai/beautiful-ui/streaming-text'
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
@@ -23,8 +24,14 @@ import {
   CoachConversationHeader,
   CoachFocusCard,
   CoachPauseDialog,
+  MoveScheduleFields,
   type CoachPausePayload,
 } from '@/features/coach/coach-conversation-ui'
+import {
+  buildMoveScheduleRule,
+  resolveMoveScheduleDraft,
+  type MoveScheduleFrequency,
+} from '@/features/coach/coach-model'
 import {
   canRequestCoachEnd,
   findPendingSessionEnd,
@@ -43,6 +50,17 @@ import {
 } from '@/features/coach/schedule-routing'
 
 const today = () => new Date().toLocaleDateString('en-CA')
+
+const moveScheduleSummaryLabels: Record<MoveScheduleFrequency, string> = {
+  none: 'No repeat',
+  daily: 'Daily',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+}
+
+function formatMoveScheduleSummary(draft: { frequency: MoveScheduleFrequency; time: string }) {
+  return `${moveScheduleSummaryLabels[draft.frequency]} · ${draft.time}`
+}
 
 async function copyText(text: string) {
   const activeElement =
@@ -342,6 +360,12 @@ function SessionView({ sessionId }: { sessionId: string }) {
   const conversationRef = useRef<HTMLDivElement>(null)
   const adjustmentMode = Boolean(thread.data?.session.related_move_id)
   const pauseCard = adjustmentMode ? null : findPendingSessionEnd(turnState.cards)
+  // A revision card carries no schedule, so seed its editor from the Move the
+  // adjustment targets instead of guessing.
+  const relatedMoveId = thread.data?.session.related_move_id ?? null
+  const moves = useGetV2Moves({ query: { enabled: adjustmentMode } })
+  const relatedSchedule =
+    (relatedMoveId && moves.data?.items.find((item) => item.id === relatedMoveId)?.schedule) || null
 
   useEffect(() => {
     const conversation = conversationRef.current
@@ -512,6 +536,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
                   presentation={presentation}
                   sessionId={sessionId}
                   adjustmentMode={adjustmentMode}
+                  currentSchedule={relatedSchedule}
                   relatedLocalDate={thread.data.session.related_local_date}
                   onCardChanged={updateCard}
                 />
@@ -581,6 +606,7 @@ function CoachCard({
   presentation,
   sessionId,
   adjustmentMode,
+  currentSchedule,
   relatedLocalDate,
   onCardChanged,
 }: {
@@ -588,6 +614,7 @@ function CoachCard({
   presentation: 'interactive' | 'confirmed'
   sessionId: string
   adjustmentMode: boolean
+  currentSchedule: MoveSchedule | null
   relatedLocalDate: string | null
   onCardChanged: (card: VoloCard) => void
 }) {
@@ -597,6 +624,29 @@ function CoachCard({
   const [value, setValue] = useState(card.payload.description ?? '')
   const readOnly = presentation === 'confirmed'
   const settledReadOnly = readOnly
+  const initialSchedule = useMemo(
+    () =>
+      card.payload.suggested_schedule
+        ? resolveMoveScheduleDraft(card.payload.suggested_schedule)
+        : currentSchedule
+          ? { frequency: currentSchedule.rule.frequency, time: currentSchedule.local_time }
+          : resolveMoveScheduleDraft(),
+    [card.payload.suggested_schedule, currentSchedule],
+  )
+  // Only the user's override lives in state, so an untouched editor keeps
+  // following the seed even though the related Move arrives after mount. An
+  // untouched revision card must not overwrite a schedule the user already owns.
+  const [scheduleOverride, setScheduleOverride] = useState<{
+    frequency: MoveScheduleFrequency
+    time: string
+  } | null>(null)
+  const [schedulePanelOpen, setSchedulePanelOpen] = useState(false)
+  const scheduleDraft = scheduleOverride ?? initialSchedule
+  const sendsSchedule = adjustmentMode ? scheduleOverride !== null : true
+  const finalSchedule = {
+    rule: buildMoveScheduleRule(scheduleDraft.frequency, new Date(), currentSchedule?.rule),
+    local_time: scheduleDraft.time,
+  }
 
   const confirm = usePostV2CoachCardsIdConfirm({
     mutation: {
@@ -680,13 +730,13 @@ function CoachCard({
       <p className="mb-3 text-base font-medium">Here’s a Move that reflects what matters:</p>
       <MoveCardSurface
         schedule={
-          adjustmentMode
-            ? 'Schedule unchanged'
-            : settledReadOnly
-              ? 'Move added'
-              : card.payload.suggested_schedule
-                ? `Daily · ${card.payload.suggested_schedule.local_time}`
-                : 'No repeat · Set on confirmation'
+          settledReadOnly
+            ? card.type === 'move_revision'
+              ? 'Move updated'
+              : 'Move added'
+            : sendsSchedule
+              ? formatMoveScheduleSummary(scheduleDraft)
+              : 'Schedule unchanged'
         }
         source="From this Coach conversation"
         dueLabel=""
@@ -709,6 +759,15 @@ function CoachCard({
         ) : (
           value
         )}
+        {!readOnly && (sendsSchedule || schedulePanelOpen) ? (
+          <MoveScheduleFields
+            frequency={scheduleDraft.frequency}
+            time={scheduleDraft.time}
+            disabled={confirm.isPending}
+            onFrequencyChange={(frequency) => setScheduleOverride({ ...scheduleDraft, frequency })}
+            onTimeChange={(time) => setScheduleOverride({ ...scheduleDraft, time })}
+          />
+        ) : null}
       </MoveCardSurface>
       {!readOnly ? (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -716,7 +775,12 @@ function CoachCard({
             onClick={() =>
               confirm.mutate({
                 id: card.id,
-                data: { final_payload: { description: value.trim() } },
+                data: {
+                  final_payload: {
+                    description: value.trim(),
+                    ...(sendsSchedule ? { schedule: finalSchedule } : {}),
+                  },
+                },
               })
             }
             disabled={!value.trim() || confirm.isPending}
@@ -730,6 +794,11 @@ function CoachCard({
           <Button variant="ghost" onClick={() => setEditing((current) => !current)}>
             <Pencil /> Edit
           </Button>
+          {adjustmentMode && !sendsSchedule && !schedulePanelOpen ? (
+            <Button variant="ghost" onClick={() => setSchedulePanelOpen(true)}>
+              <CalendarClock /> Change schedule
+            </Button>
+          ) : null}
           <Button variant="ghost" onClick={() => reject.mutate({ id: card.id })}>
             {card.type === 'move_revision' ? 'Keep talking' : 'Skip'}
           </Button>

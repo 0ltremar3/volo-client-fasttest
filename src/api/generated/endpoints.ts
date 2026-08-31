@@ -26,6 +26,7 @@ import type {
 
 import type {
   DeleteV2MovesId200,
+  DeleteV2ReviewId200,
   GetV2CoachHome200,
   GetV2CoachSessions200,
   GetV2CoachSessionsId200,
@@ -433,8 +434,8 @@ export const postV2CoachSessionsIdStart = async (id: string, options?: RequestIn
   {      
     ...options,
     method: 'POST'
-
-
+    
+    
   }
 );}
 
@@ -1568,6 +1569,71 @@ export function useGetV2ReviewId<TData = Awaited<ReturnType<typeof getV2ReviewId
 
 
 
+export const getDeleteV2ReviewIdUrl = (id: string,) => {
+
+
+  
+
+  return `/v2/review/${id}`
+}
+
+export const deleteV2ReviewId = async (id: string, options?: RequestInit): Promise<DeleteV2ReviewId200> => {
+  
+  return apiFetch<DeleteV2ReviewId200>(getDeleteV2ReviewIdUrl(id),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+);}
+
+
+
+
+export const getDeleteV2ReviewIdMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV2ReviewId>>, TError,{id: string}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof deleteV2ReviewId>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteV2ReviewId'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteV2ReviewId>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteV2ReviewId(id,)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteV2ReviewIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteV2ReviewId>>>
+    
+    export type DeleteV2ReviewIdMutationError = unknown
+
+    export const useDeleteV2ReviewId = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteV2ReviewId>>, TError,{id: string}, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteV2ReviewId>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+
+      const mutationOptions = getDeleteV2ReviewIdMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
 export const getGetV2MovesUrl = () => {
 
 
@@ -1804,18 +1870,16 @@ export const getPostV2MovesIdAdjustmentSessionUrl = (id: string,) => {
   return `/v2/moves/${id}/adjustment-session`
 }
 
-export const postV2MovesIdAdjustmentSession = async (
-  id: string,
-  options?: RequestInit,
-): Promise<PostV2MovesIdAdjustmentSession201> => {
-  return apiFetch<PostV2MovesIdAdjustmentSession201>(
-    getPostV2MovesIdAdjustmentSessionUrl(id),
-    {
-      ...options,
-      method: 'POST',
-    },
-  )
-}
+export const postV2MovesIdAdjustmentSession = async (id: string, options?: RequestInit): Promise<PostV2MovesIdAdjustmentSession201> => {
+  
+  return apiFetch<PostV2MovesIdAdjustmentSession201>(getPostV2MovesIdAdjustmentSessionUrl(id),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
 
 
 
@@ -1846,7 +1910,7 @@ const {mutation: mutationOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type PostV2MovesIdAdjustmentSessionMutationResult = NonNullable<Awaited<ReturnType<typeof postV2MovesIdAdjustmentSession>>>
-
+    
     export type PostV2MovesIdAdjustmentSessionMutationError = unknown
 
     export const usePostV2MovesIdAdjustmentSession = <TError = unknown,

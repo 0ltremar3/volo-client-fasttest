@@ -11,10 +11,15 @@ export type CoachPausePayload = {
   takeaway: string
 }
 
-const moveScheduleOptions: Array<{ value: MoveScheduleFrequency; label: string }> = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
+const moveScheduleOptions: Array<{
+  value: MoveScheduleFrequency
+  label: string
+  name: string
+}> = [
+  { value: 'none', label: 'None', name: 'No repeat' },
+  { value: 'daily', label: 'Daily', name: 'Daily' },
+  { value: 'weekly', label: 'Weekly', name: 'Weekly' },
+  { value: 'monthly', label: 'Monthly', name: 'Monthly' },
 ]
 
 export function MoveScheduleFields({
@@ -35,7 +40,7 @@ export function MoveScheduleFields({
       <legend className="sr-only">Move check plan</legend>
       <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">REPEAT</p>
       <div
-        className="mt-2 grid grid-cols-3 rounded-xl bg-[var(--coach-surface-muted)] p-1"
+        className="mt-2 grid grid-cols-4 rounded-xl bg-[var(--coach-surface-muted)] p-1"
         role="group"
         aria-label="Move check frequency"
       >
@@ -44,11 +49,12 @@ export function MoveScheduleFields({
             key={option.value}
             type="button"
             className={cn(
-              'min-h-11 rounded-lg px-2 text-sm font-medium transition-[background-color,box-shadow,opacity]',
+              'min-h-11 rounded-lg px-1 text-sm font-medium transition-[background-color,box-shadow,opacity]',
               frequency === option.value
                 ? 'bg-[var(--coach-surface-glass-strong)] text-[var(--coach-ink)] shadow-sm'
                 : 'text-[var(--coach-text-secondary)]',
             )}
+            aria-label={option.name}
             aria-pressed={frequency === option.value}
             disabled={disabled}
             onClick={() => onFrequencyChange(option.value)}

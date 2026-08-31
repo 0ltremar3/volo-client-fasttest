@@ -1,3 +1,5 @@
+import type { RepeatRule } from '@/api/volo'
+
 export type CoachScreen = 'welcome' | 'schedule' | 'home' | 'conversation'
 
 export type MockCoachHomeState = {
@@ -61,34 +63,37 @@ export type CoachSchedule = {
   alarm: boolean
 }
 
-export type MoveScheduleFrequency = 'daily' | 'weekly' | 'monthly'
+export type MoveScheduleFrequency = RepeatRule['frequency']
 
-type MoveScheduleRule =
-  | { frequency: 'daily' }
-  | { frequency: 'weekly'; weekdays: number[] }
-  | { frequency: 'monthly'; day: number }
+export function toMoveScheduleTime(date: Date) {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
 
+// Weekly and monthly need a concrete anchor the card UI never asks for, so it
+// comes from the reference date. The backend clamps month-end itself.
 export function buildMoveScheduleRule(
   frequency: MoveScheduleFrequency,
   date = new Date(),
-): MoveScheduleRule {
+  current?: RepeatRule,
+): RepeatRule {
   if (frequency === 'weekly') {
-    return { frequency, weekdays: [date.getDay() || 7] }
+    return current?.frequency === 'weekly' ? current : { frequency, weekdays: [date.getDay() || 7] }
   }
   if (frequency === 'monthly') {
-    return { frequency, day: Math.min(date.getDate(), 28) }
+    return current?.frequency === 'monthly' ? current : { frequency, day: date.getDate() }
   }
   return { frequency }
 }
 
-export function resolveMoveScheduleDraft(suggestedSchedule?: {
-  frequency: 'daily'
-  local_time: string
-}): { frequency: MoveScheduleFrequency; time: string } {
-  return {
-    frequency: suggestedSchedule?.frequency ?? 'daily',
-    time: suggestedSchedule?.local_time ?? '21:00',
-  }
+// Without an explicit AI suggestion the card starts where the backend default
+// would land: no repeat, at the current minute.
+export function resolveMoveScheduleDraft(
+  suggestedSchedule?: { frequency: 'daily'; local_time: string } | null,
+  now = new Date(),
+): { frequency: MoveScheduleFrequency; time: string } {
+  return suggestedSchedule
+    ? { frequency: suggestedSchedule.frequency, time: suggestedSchedule.local_time }
+    : { frequency: 'none', time: toMoveScheduleTime(now) }
 }
 
 export const defaultSchedule: CoachSchedule = {
