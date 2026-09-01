@@ -64,7 +64,7 @@ export function LoginPage() {
         <div className="my-auto py-12">
           <div className="mb-10 flex items-center gap-3">
             <AppMark />
-            <span className="font-display text-sm font-semibold tracking-tight">Quiet</span>
+            <span className="font-display text-sm font-semibold tracking-tight">VOLO</span>
           </div>
 
           <div className="mb-8">

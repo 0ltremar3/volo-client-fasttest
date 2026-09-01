@@ -56,7 +56,7 @@ import {
   sortScheduledSessionsByTime,
 } from '@/features/coach/schedule-routing'
 import { VoiceOverlay } from '@/features/coach/voice-overlay'
-import { canStartVoice } from '@/features/coach/voice-state'
+import { canStartVoice, retryVoiceSession } from '@/features/coach/voice-state'
 
 const today = () => new Date().toLocaleDateString('en-CA')
 
@@ -626,8 +626,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
           loading={voiceSession.isPending}
           requestError={voiceSession.isError}
           onRetry={() => {
-            voiceSession.reset()
-            voiceSession.mutate()
+            retryVoiceSession(voiceSession)
           }}
           onCanonicalChange={refreshCanonicalThread}
           onClose={() => {

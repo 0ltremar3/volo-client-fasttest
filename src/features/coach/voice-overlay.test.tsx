@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 
 import { VoiceOverlay } from './voice-overlay'
-import { deferVoiceRoomDisconnect, finishVoiceCall } from './voice-state'
+import { deferVoiceRoomDisconnect, finishVoiceCall, voiceFailureCopy } from './voice-state'
 
 const noOp = () => undefined
 
@@ -42,8 +42,15 @@ describe('VoiceOverlay', () => {
     expect(html).toContain('Continue with text')
   })
 
+  it('describes worker disconnect as a retryable transcription failure', () => {
+    expect(voiceFailureCopy('worker')).toContain('transcription')
+    expect(voiceFailureCopy('worker')).toContain('reconnect')
+    expect(voiceFailureCopy('worker')).not.toContain('start this voice session')
+  })
+
   it('disconnects microphone tracks before refreshing and closing on hangup', async () => {
     const order: string[] = []
+    let composerFocused = false
     const room = {
       disconnect: vi.fn((stopTracks?: boolean) => {
         expect(stopTracks).toBe(true)
@@ -54,9 +61,13 @@ describe('VoiceOverlay', () => {
     await finishVoiceCall(
       room,
       () => order.push('refresh'),
-      () => order.push('close'),
+      () => {
+        order.push('close')
+        composerFocused = true
+      },
     )
     expect(order).toEqual(['disconnect', 'refresh', 'close'])
+    expect(composerFocused).toBe(true)
   })
 
   it('does not close the room during a Strict Mode effect restart', async () => {

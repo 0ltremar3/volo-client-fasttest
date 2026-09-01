@@ -13,9 +13,13 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import type { VoiceConnectionDetails } from '@/api/volo'
 import {
   deferVoiceRoomDisconnect,
+  createVoiceTranscriptState,
   finishVoiceCall,
   reduceVoiceTranscript,
+  visibleVoiceUserText,
+  voiceFailureCopy,
   voicePhaseLabel,
+  type VoiceFailure,
   type VoicePhase,
 } from '@/features/coach/voice-state'
 
@@ -28,7 +32,7 @@ type VoiceOverlayProps = {
   onCanonicalChange: () => void
 }
 
-const emptyTranscript = { interimUser: '', finalUser: '', assistant: '' }
+const emptyTranscript = createVoiceTranscriptState()
 
 export function VoiceOverlay({
   details,
@@ -184,7 +188,7 @@ function VoiceRoomContent({
   onCanonicalChange: () => void
 }) {
   const [transcript, updateTranscript] = useReducer(reduceVoiceTranscript, emptyTranscript)
-  const [failure, setFailure] = useState<'permission' | 'worker' | 'connection' | null>(null)
+  const [failure, setFailure] = useState<VoiceFailure | null>(null)
   const [reconnecting, setReconnecting] = useState(false)
   const [micEnabled, setMicEnabled] = useState(false)
   const [audioBlocked, setAudioBlocked] = useState(false)
@@ -302,7 +306,7 @@ function VoiceRoomContent({
       seenTranscriptionsRef.current.set(segmentId, signature)
       const participant = room.getParticipantByIdentity(stream.participantInfo.identity)
       const speaker = participant?.kind === ParticipantKind.AGENT ? 'assistant' : 'user'
-      updateTranscript({ speaker, text: stream.text, final })
+      updateTranscript({ speaker, segmentId, text: stream.text, final })
       if (final) onCanonicalChange()
     }
   }, [onCanonicalChange, room, transcriptionStreams])
@@ -321,13 +325,8 @@ function VoiceRoomContent({
     return () => window.removeEventListener('keydown', onEscape)
   }, [hangUp])
 
-  const visibleUserText = transcript.interimUser || transcript.finalUser
-  const failureCopy =
-    failure === 'permission'
-      ? 'Microphone access was denied. Allow microphone access in your browser, then try again.'
-      : failure === 'worker'
-        ? 'The Voice Coach did not become available. Your saved conversation is unchanged.'
-        : 'The voice connection ended. You can reconnect or continue with text.'
+  const visibleUserText = visibleVoiceUserText(transcript)
+  const failureCopy = failure ? voiceFailureCopy(failure) : ''
 
   return (
     <div className="flex min-h-0 flex-1 flex-col px-5 pb-[max(16px,env(safe-area-inset-bottom))]">

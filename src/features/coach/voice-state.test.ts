@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { canStartVoice, reduceVoiceTranscript, voicePhaseLabel } from './voice-state'
+import {
+  canStartVoice,
+  createVoiceTranscriptState,
+  reduceVoiceTranscript,
+  retryVoiceSession,
+  voicePhaseLabel,
+  visibleVoiceUserText,
+} from './voice-state'
 
 describe('voice state', () => {
   it('enables voice only for an idle ongoing Coach session', () => {
@@ -35,31 +42,111 @@ describe('voice state', () => {
   })
 
   it('keeps interim local and replaces it with the final user transcript', () => {
-    const empty = { interimUser: '', finalUser: '', assistant: '' }
+    const empty = createVoiceTranscriptState()
     const interim = reduceVoiceTranscript(empty, {
       speaker: 'user',
+      segmentId: 'segment-1',
       text: '我想聊',
       final: false,
     })
-    expect(interim).toEqual({ interimUser: '我想聊', finalUser: '', assistant: '' })
-    expect(
-      reduceVoiceTranscript(interim, {
-        speaker: 'user',
-        text: '我想聊职业选择',
-        final: true,
-      }),
-    ).toEqual({ interimUser: '', finalUser: '我想聊职业选择', assistant: '' })
+    expect(interim.interimUser).toBe('我想聊')
+    const final = reduceVoiceTranscript(interim, {
+      speaker: 'user',
+      segmentId: 'segment-1',
+      text: '我想聊职业选择',
+      final: true,
+    })
+    expect(final.interimUser).toBe('')
+    expect(final.finalUser).toBe('我想聊职业选择')
   })
 
   it('keeps assistant transcription separate from user state', () => {
-    const state = { interimUser: '', finalUser: 'user', assistant: '' }
-    expect(
-      reduceVoiceTranscript(state, {
-        speaker: 'assistant',
-        text: 'What feels most important?',
-        final: true,
-      }),
-    ).toEqual({ ...state, assistant: 'What feels most important?' })
+    const state = reduceVoiceTranscript(createVoiceTranscriptState(), {
+      speaker: 'user',
+      segmentId: 'user-1',
+      text: 'user',
+      final: true,
+    })
+    const assistant = reduceVoiceTranscript(state, {
+      speaker: 'assistant',
+      segmentId: 'assistant-1',
+      text: 'What feels most important?',
+      final: true,
+    })
+    expect(assistant.assistant).toBe('What feels most important?')
     expect(voicePhaseLabel('reconnecting')).toBe('Reconnecting')
+  })
+
+  it('keeps final text from distinct transcription segments in order', () => {
+    const empty = createVoiceTranscriptState()
+    const first = reduceVoiceTranscript(empty, {
+      speaker: 'user',
+      segmentId: 'segment-1',
+      text: '第一段',
+      final: true,
+    })
+    const second = reduceVoiceTranscript(first, {
+      speaker: 'user',
+      segmentId: 'segment-2',
+      text: '第二段',
+      final: true,
+    })
+
+    expect(second.finalUser).toBe('第一段 第二段')
+    expect(visibleVoiceUserText(second)).toBe('第一段 第二段')
+  })
+
+  it('does not append a duplicate final segment twice', () => {
+    const first = reduceVoiceTranscript(createVoiceTranscriptState(), {
+      speaker: 'user',
+      segmentId: 'same-segment',
+      text: 'only once',
+      final: true,
+    })
+    const duplicate = reduceVoiceTranscript(first, {
+      speaker: 'user',
+      segmentId: 'same-segment',
+      text: 'only once',
+      final: true,
+    })
+
+    expect(duplicate.finalUser).toBe('only once')
+  })
+
+  it('clears the previous user buffer when speech starts after an assistant reply', () => {
+    const first = reduceVoiceTranscript(createVoiceTranscriptState(), {
+      speaker: 'user',
+      segmentId: 'user-1',
+      text: 'previous turn',
+      final: true,
+    })
+    const assistant = reduceVoiceTranscript(first, {
+      speaker: 'assistant',
+      segmentId: 'assistant-1',
+      text: 'reply',
+      final: true,
+    })
+    const next = reduceVoiceTranscript(assistant, {
+      speaker: 'user',
+      segmentId: 'user-2',
+      text: 'next turn',
+      final: false,
+    })
+
+    expect(next.finalUser).toBe('')
+    expect(next.interimUser).toBe('next turn')
+  })
+
+  it('resets and starts a fresh voice-session request on every retry', () => {
+    const calls: string[] = []
+    const mutation = {
+      reset: () => calls.push('reset'),
+      mutate: () => calls.push('mutate'),
+    }
+
+    retryVoiceSession(mutation)
+    retryVoiceSession(mutation)
+
+    expect(calls).toEqual(['reset', 'mutate', 'reset', 'mutate'])
   })
 })
