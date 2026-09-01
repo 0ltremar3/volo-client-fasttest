@@ -195,6 +195,7 @@ function VoiceRoomContent({
   const closingRef = useRef(false)
   const connectionRef = useRef<Promise<void> | null>(null)
   const effectGenerationRef = useRef(0)
+  const workerDisconnectTimerRef = useRef<number | null>(null)
   const seenTranscriptionsRef = useRef(new Map<string, string>())
   const { state: agentState, audioTrack } = useVoiceAssistant()
   const transcriptionStreams = useTranscriptions({ room })
@@ -239,9 +240,28 @@ function VoiceRoomContent({
       setFailure(error.name === 'NotAllowedError' ? 'permission' : 'connection')
     }
     const onAudioPlayback = (playing: boolean) => setAudioBlocked(!playing)
+    const onParticipantConnected = (participant: Participant) => {
+      if (participant.kind !== ParticipantKind.AGENT) return
+      if (workerDisconnectTimerRef.current !== null) {
+        window.clearTimeout(workerDisconnectTimerRef.current)
+        workerDisconnectTimerRef.current = null
+      }
+      setFailure((current) =>
+        current === 'worker_start' || current === 'worker_disconnect' ? null : current,
+      )
+    }
     const onParticipantDisconnected = (participant: Participant) => {
       if (participant.kind === ParticipantKind.AGENT && !closingRef.current) {
-        setFailure('worker_disconnect')
+        if (workerDisconnectTimerRef.current !== null) {
+          window.clearTimeout(workerDisconnectTimerRef.current)
+        }
+        workerDisconnectTimerRef.current = window.setTimeout(() => {
+          workerDisconnectTimerRef.current = null
+          const hasAgent = [...room.remoteParticipants.values()].some(
+            (remote) => remote.kind === ParticipantKind.AGENT,
+          )
+          if (!hasAgent && !closingRef.current) setFailure('worker_disconnect')
+        }, 1_000)
       }
     }
     room.on(RoomEvent.Reconnecting, onReconnecting)
@@ -249,6 +269,7 @@ function VoiceRoomContent({
     room.on(RoomEvent.Disconnected, onDisconnected)
     room.on(RoomEvent.MediaDevicesError, onMediaError)
     room.on(RoomEvent.AudioPlaybackStatusChanged, onAudioPlayback)
+    room.on(RoomEvent.ParticipantConnected, onParticipantConnected)
     room.on(RoomEvent.ParticipantDisconnected, onParticipantDisconnected)
 
     let cancelled = false
@@ -291,7 +312,12 @@ function VoiceRoomContent({
       room.off(RoomEvent.Disconnected, onDisconnected)
       room.off(RoomEvent.MediaDevicesError, onMediaError)
       room.off(RoomEvent.AudioPlaybackStatusChanged, onAudioPlayback)
+      room.off(RoomEvent.ParticipantConnected, onParticipantConnected)
       room.off(RoomEvent.ParticipantDisconnected, onParticipantDisconnected)
+      if (workerDisconnectTimerRef.current !== null) {
+        window.clearTimeout(workerDisconnectTimerRef.current)
+        workerDisconnectTimerRef.current = null
+      }
       deferVoiceRoomDisconnect(room, effectGenerationRef, effectGeneration)
     }
   }, [details.participant_token, details.server_url, onCanonicalChange, room])
