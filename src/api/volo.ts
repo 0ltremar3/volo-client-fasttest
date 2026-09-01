@@ -35,6 +35,16 @@ export type SessionThread = {
   cards: VoloCard[]
 }
 
+export type VoiceConnectionDetails = {
+  voice_session_id: string
+  coach_session_id: string
+  server_url: string
+  participant_token: string
+  room_name: string
+  participant_name: string
+  expires_at: string
+}
+
 export type VoloCheck = {
   id: string
   move_id: string
@@ -227,6 +237,14 @@ export const coachApi = {
       onEvent,
       signal,
     ),
+}
+
+export const voiceApi = {
+  create: (coachSessionId: string) =>
+    apiFetch<VoiceConnectionDetails>('/v2/voice/sessions', {
+      method: 'POST',
+      body: JSON.stringify({ coach_session_id: coachSessionId }),
+    }),
 }
 
 export const dailyApi = {

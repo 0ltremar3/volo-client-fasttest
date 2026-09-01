@@ -558,12 +558,14 @@ export function CoachPromptBar({
   disabled = false,
   inputRef: providedInputRef,
   onSend,
+  onVoice,
 }: {
   placeholder?: string
   showInspirations?: boolean
   disabled?: boolean
   inputRef?: React.RefObject<HTMLTextAreaElement | null>
   onSend: (text: string) => void
+  onVoice?: () => void
 }) {
   const [draft, setDraft] = useState('')
   const [startersOpen, setStartersOpen] = useState(false)
@@ -755,10 +757,11 @@ export function CoachPromptBar({
         ) : (
           <button
             type="button"
-            aria-label="Voice chat unavailable"
-            title="Voice chat unavailable"
-            disabled
-            className="flex size-11 cursor-not-allowed items-center justify-center rounded-full"
+            aria-label={onVoice ? 'Start voice conversation' : 'Voice chat unavailable'}
+            title={onVoice ? 'Start voice conversation' : 'Voice chat unavailable'}
+            disabled={disabled || !onVoice}
+            onClick={onVoice}
+            className="flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"
           >
             <span className="grid size-[26px] place-items-center rounded-full bg-[var(--coach-accent)] text-[var(--coach-on-dark)]">
               <AudioWaveform className="size-4" strokeWidth={2.2} aria-hidden="true" />

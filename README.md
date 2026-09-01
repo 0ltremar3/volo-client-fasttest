@@ -86,6 +86,15 @@ ongoing.
 Confirmed Move cards remain in the conversation at their original assistant-message position with
 a read-only Added or Adjusted state; rejected and expired cards stay hidden.
 
+For an idle ongoing Coach session in real mode, the empty composer waveform opens a full-screen
+voice layer on the same `/chat?session=...` route. The layer requests a short-lived LiveKit token
+through the authenticated API client, publishes microphone audio only, shows interim/final user
+transcription and Coach state/text, plays the existing persisted Volo reply, supports input-device
+selection, mute, interruption, reconnect, and hangup, and then refreshes the canonical database
+thread. Interim transcription stays local; no raw audio, camera, screen share, LiveKit recording,
+or separate voice history is used. A pending Pause card, ending flow, text turn, completed session,
+or active voice room disables the waveform. Text sending remains blocked until the voice layer exits.
+
 When Coach opens an adjusted Move, the original conversation history remains in place and the
 header hides the ordinary Done/Pause path. A `move_revision` card confirms revised wording and keeps
 the existing Schedule unless the user opens `Change schedule`; that editor is seeded from the target
@@ -198,7 +207,9 @@ The Coach composer reuses the adapted Prompt Bar through the application adapter
 attribution and the MIT notice are preserved in `THIRD_PARTY_NOTICES.md`. Keep copied components
 behind the local token system and remove demo-only capabilities that the backend cannot support.
 Its empty state shows the designed orange waveform affordance and its non-empty state switches to
-the orange send action. Voice and dictation remain disabled visual states until an audio contract exists.
+the orange send action. In connected Volo V2 Coach sessions, the waveform starts the LiveKit voice
+overlay; dictation remains unavailable because interim transcript is display-only and final speech
+is submitted by the Voice Worker through the backend adapter.
 Coach replies use the controlled `StreamingText` primitive with real SSE text, reduced-motion-safe
 cursor feedback, stable completion accessibility, and copy/retry actions only after streaming stops.
 Before the first delta it shows a compact Reflecting pixel wave; each real delta renders immediately

@@ -24,6 +24,7 @@
   --content-width: 48rem;
   --touch-target: 2.75rem;
   --bui-control-size: 2.75rem;
+  --z-modal: 40;
 }
 
 @media (min-width: 48rem) {

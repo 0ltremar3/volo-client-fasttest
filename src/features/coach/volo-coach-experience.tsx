@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarClock, Check, ChevronDown, Pencil, RefreshCw } from 'lucide-react'
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
@@ -11,7 +11,14 @@ import {
   usePostV2CoachCardsIdReject,
 } from '@/api/generated/endpoints'
 import { VoloCoachStreamError } from '@/api/sse'
-import { authApi, coachApi, type MoveSchedule, type VoloCard, type VoloMessage } from '@/api/volo'
+import {
+  authApi,
+  coachApi,
+  voiceApi,
+  type MoveSchedule,
+  type VoloCard,
+  type VoloMessage,
+} from '@/api/volo'
 import { BeautifulPromptComposer } from '@/components/ai/beautiful-prompt-composer'
 import { StreamingText } from '@/components/ai/beautiful-ui/streaming-text'
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
@@ -48,6 +55,8 @@ import {
   singleFlight,
   sortScheduledSessionsByTime,
 } from '@/features/coach/schedule-routing'
+import { VoiceOverlay } from '@/features/coach/voice-overlay'
+import { canStartVoice } from '@/features/coach/voice-state'
 
 const today = () => new Date().toLocaleDateString('en-CA')
 
@@ -353,6 +362,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
   const [turnState, dispatch] = useReducer(coachTurnReducer, undefined, () =>
     createCoachTurnState(),
   )
+  const [voiceOpen, setVoiceOpen] = useState(false)
   const streamControllerRef = useRef<AbortController | null>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const timeline = useMemo(() => buildCoachTimeline(turnState), [turnState])
@@ -430,11 +440,21 @@ function SessionView({ sessionId }: { sessionId: string }) {
     },
   })
 
+  const voiceSession = useMutation({ mutationFn: () => voiceApi.create(sessionId) })
+
+  const refreshCanonicalThread = useCallback(() => {
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
+      queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] }),
+    ])
+  }, [queryClient, sessionId])
+
   function updateCard(nextCard: VoloCard) {
     dispatch({ type: 'card_changed', card: nextCard })
   }
 
   async function send(body: string, retryId?: string) {
+    if (voiceOpen) return
     const clientTempId = retryId ?? crypto.randomUUID()
     const controller = new AbortController()
     streamControllerRef.current?.abort()
@@ -483,7 +503,14 @@ function SessionView({ sessionId }: { sessionId: string }) {
     sessionStatus: thread.data.session.status,
     cards: turnState.cards,
     sending,
-    preparing: ending,
+    preparing: ending || voiceOpen,
+  })
+  const voiceAvailable = canStartVoice({
+    sessionStatus: thread.data.session.status,
+    sending,
+    pauseBlocked: Boolean(pauseCard),
+    ending,
+    voiceOpen,
   })
   const pauseError = confirmEnd.isError
     ? 'This pause could not be saved. Your words are still here.'
@@ -561,9 +588,17 @@ function SessionView({ sessionId }: { sessionId: string }) {
           <BeautifulPromptComposer
             placeholder="Say what feels present…"
             showInspirations
-            disabled={sending || ending || Boolean(pauseCard)}
+            disabled={sending || ending || Boolean(pauseCard) || voiceOpen}
             inputRef={composerRef}
             onSend={(body) => void send(body)}
+            onVoice={
+              voiceAvailable
+                ? () => {
+                    setVoiceOpen(true)
+                    voiceSession.mutate()
+                  }
+                : undefined
+            }
           />
         ) : (
           <p className="safe-bottom px-5 py-5 text-center text-sm text-[var(--coach-text-secondary)]">
@@ -583,6 +618,24 @@ function SessionView({ sessionId }: { sessionId: string }) {
           error={pauseError}
           onConfirm={(payload) => confirmEnd.mutate(payload)}
           onKeepTalking={() => continueEnd.mutate()}
+        />
+      ) : null}
+      {voiceOpen ? (
+        <VoiceOverlay
+          details={voiceSession.data ?? null}
+          loading={voiceSession.isPending}
+          requestError={voiceSession.isError}
+          onRetry={() => {
+            voiceSession.reset()
+            voiceSession.mutate()
+          }}
+          onCanonicalChange={refreshCanonicalThread}
+          onClose={() => {
+            refreshCanonicalThread()
+            voiceSession.reset()
+            setVoiceOpen(false)
+            window.requestAnimationFrame(() => composerRef.current?.focus())
+          }}
         />
       ) : null}
     </>

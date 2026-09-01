@@ -399,6 +399,27 @@
   .coach-thinking-cell {
     animation: coach-pixel-on 650ms ease-in-out infinite;
   }
+
+  .voice-overlay {
+    z-index: var(--z-modal);
+    background: var(--app-background);
+  }
+
+  .voice-visualizer {
+    border: 1px solid var(--coach-border-warm-subtle);
+  }
+
+  .voice-visualizer__bar {
+    min-height: 0.5rem;
+    background: color-mix(in srgb, var(--coach-accent) 26%, var(--coach-surface));
+    transition:
+      height var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .voice-visualizer__bar[data-lk-highlighted='true'] {
+    background: var(--coach-accent);
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
