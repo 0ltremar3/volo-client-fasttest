@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type MouseEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 
@@ -13,6 +13,7 @@ import {
   mockAuthEnabled,
   mockCredentials,
 } from '@/features/auth/mock-auth'
+import { normalizeLoginEmail, useOtpSendCooldown } from '@/features/auth/otp-send-cooldown'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -20,9 +21,27 @@ export function LoginPage() {
   const [email, setEmail] = useState(mockAuthEnabled ? mockCredentials.email : '')
   const [password, setPassword] = useState(mockAuthEnabled ? mockCredentials.password : '')
   const [otp, setOtp] = useState('')
-  const [otpSent, setOtpSent] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { tryBeginSend, markSent, releaseSend, remainingSeconds, wasSent } = useOtpSendCooldown()
+
+  const otpSent = wasSent(email)
+  const cooldownRemaining = remainingSeconds(email)
+  const canSendCode = cooldownRemaining === 0
+
+  async function sendCode() {
+    const sentEmail = email.trim()
+    if (!tryBeginSend(sentEmail)) return
+    try {
+      await authApi.sendOtp(sentEmail)
+      markSent(sentEmail)
+      setOtp('')
+      setNotice('We sent a six-digit sign-in code to your email.')
+    } catch (error) {
+      releaseSend(sentEmail)
+      throw error
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -38,9 +57,7 @@ export function LoginPage() {
         }
         createMockSession()
       } else if (!otpSent) {
-        await authApi.sendOtp(email.trim())
-        setOtpSent(true)
-        setNotice('We sent a six-digit sign-in code to your email.')
+        await sendCode()
         return
       } else {
         await authApi.signIn(email.trim(), otp.trim())
@@ -53,6 +70,37 @@ export function LoginPage() {
       setIsSubmitting(false)
     }
   }
+
+  async function handleResend(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    if (isSubmitting || !canSendCode) return
+    setNotice(null)
+    setIsSubmitting(true)
+    try {
+      await sendCode()
+    } catch {
+      setNotice('We could not send a code yet.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  function handleEmailChange(nextEmail: string) {
+    if (normalizeLoginEmail(nextEmail) !== normalizeLoginEmail(email)) {
+      setOtp('')
+    }
+    setEmail(nextEmail)
+    setNotice(null)
+  }
+
+  const submitLabel = isSubmitting
+    ? 'Please wait…'
+    : !mockAuthEnabled && !otpSent
+      ? canSendCode
+        ? 'Send code'
+        : `Send code in ${cooldownRemaining}s`
+      : 'Sign in'
 
   return (
     <main className="safe-top safe-bottom flex min-h-dvh bg-background px-page py-4">
@@ -74,7 +122,7 @@ export function LoginPage() {
             <p className="mt-3 text-sm text-text-secondary">Sign in with your email to continue.</p>
           </div>
 
-          <form method="post" onSubmit={(event) => void handleSubmit(event)} className="space-y-5">
+          <form onSubmit={(event) => void handleSubmit(event)} className="space-y-5">
             {mockAuthEnabled ? (
               <div className="rounded-lg bg-surface-subtle px-4 py-3 text-xs leading-5 text-text-secondary">
                 <p className="font-semibold text-foreground">Mock mode</p>
@@ -94,23 +142,32 @@ export function LoginPage() {
                 autoComplete="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value)
-                  setNotice(null)
-                }}
+                onChange={(event) => handleEmailChange(event.target.value)}
                 disabled={isSubmitting}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex min-h-touch items-center justify-between gap-4">
                 <label
                   htmlFor={mockAuthEnabled ? 'password' : 'otp'}
                   className="text-sm font-medium"
                 >
                   {mockAuthEnabled ? 'Password' : 'Sign-in code'}
                 </label>
+                {!mockAuthEnabled && otpSent ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="px-2 tabular-nums"
+                    disabled={isSubmitting || !canSendCode}
+                    onClick={(event) => void handleResend(event)}
+                    aria-live="polite"
+                  >
+                    {canSendCode ? 'Resend code' : `Resend in ${cooldownRemaining}s`}
+                  </Button>
+                ) : null}
               </div>
               {mockAuthEnabled ? (
                 <Input
@@ -141,12 +198,12 @@ export function LoginPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting
-                ? 'Please wait…'
-                : !mockAuthEnabled && !otpSent
-                  ? 'Send code'
-                  : 'Sign in'}
+            <Button
+              type="submit"
+              className="w-full tabular-nums"
+              disabled={isSubmitting || (!mockAuthEnabled && !otpSent && !canSendCode)}
+            >
+              {submitLabel}
             </Button>
 
             {notice ? (
