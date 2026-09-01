@@ -241,7 +241,7 @@ function VoiceRoomContent({
     const onAudioPlayback = (playing: boolean) => setAudioBlocked(!playing)
     const onParticipantDisconnected = (participant: Participant) => {
       if (participant.kind === ParticipantKind.AGENT && !closingRef.current) {
-        setFailure('worker')
+        setFailure('worker_disconnect')
       }
     }
     room.on(RoomEvent.Reconnecting, onReconnecting)
@@ -313,7 +313,7 @@ function VoiceRoomContent({
 
   useEffect(() => {
     if (agentState !== 'connecting') return
-    const timeout = window.setTimeout(() => setFailure('worker'), 20_000)
+    const timeout = window.setTimeout(() => setFailure('worker_start'), 20_000)
     return () => window.clearTimeout(timeout)
   }, [agentState])
 

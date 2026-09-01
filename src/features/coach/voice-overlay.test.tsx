@@ -43,9 +43,10 @@ describe('VoiceOverlay', () => {
   })
 
   it('describes worker disconnect as a retryable transcription failure', () => {
-    expect(voiceFailureCopy('worker')).toContain('transcription')
-    expect(voiceFailureCopy('worker')).toContain('reconnect')
-    expect(voiceFailureCopy('worker')).not.toContain('start this voice session')
+    expect(voiceFailureCopy('worker_disconnect')).toContain('transcription')
+    expect(voiceFailureCopy('worker_disconnect')).toContain('reconnect')
+    expect(voiceFailureCopy('worker_disconnect')).not.toContain('start this voice session')
+    expect(voiceFailureCopy('worker_start')).toContain('did not become available')
   })
 
   it('disconnects microphone tracks before refreshing and closing on hangup', async () => {

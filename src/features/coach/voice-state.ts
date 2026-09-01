@@ -10,7 +10,7 @@ export type VoiceTranscriptState = {
   clearUserOnNextSegment: boolean
 }
 
-export type VoiceFailure = 'permission' | 'worker' | 'connection'
+export type VoiceFailure = 'permission' | 'worker_start' | 'worker_disconnect' | 'connection'
 
 export function createVoiceTranscriptState(): VoiceTranscriptState {
   return {
@@ -87,8 +87,11 @@ export function voiceFailureCopy(failure: VoiceFailure) {
   if (failure === 'permission') {
     return 'Microphone access was denied. Allow microphone access in your browser, then try again.'
   }
-  if (failure === 'worker') {
+  if (failure === 'worker_disconnect') {
     return 'Voice transcription stopped. You can reconnect to keep talking; your saved conversation is unchanged.'
+  }
+  if (failure === 'worker_start') {
+    return 'The Voice Coach did not become available. Reconnect to start a new voice session.'
   }
   return 'The voice connection ended. You can reconnect or continue with text.'
 }
