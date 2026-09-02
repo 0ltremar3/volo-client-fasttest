@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
-import dailyIcon from '@/assets/coach/coach-nav-schedule.svg'
+import dailyIcon from '@/assets/coach/coach-nav-schedule.svg?raw'
 import coachNavSurface from '@/assets/coach/coach-nav-surface.svg'
-import reviewIcon from '@/assets/navigation/review.svg'
+import reviewIcon from '@/assets/navigation/review.svg?raw'
 import { CoachNavMark } from '@/features/coach/coach-orb'
 import { cn } from '@/lib/utils'
 
@@ -12,40 +12,24 @@ type AppBottomNavigationProps = {
   onCoach?: () => void
 }
 
-type PressPhase = 'idle' | 'pressed' | 'release'
+type PressPhase = 'idle' | 'pressed'
 
-const tabLink =
+const sideTabLink =
   'relative z-10 mx-auto grid min-h-touch min-w-touch place-items-center rounded-full text-[var(--coach-text-tertiary)] transition-transform duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [-webkit-tap-highlight-color:transparent] touch-manipulation'
 
-function NavGlyph({ src, className }: { src: string; className: string }) {
+function NavGlyph({ svg }: { svg: string }) {
   return (
     <span
-      className={cn('bg-current', className)}
-      style={{
-        maskImage: `url(${src})`,
-        WebkitMaskImage: `url(${src})`,
-        maskRepeat: 'no-repeat',
-        maskPosition: 'center',
-        maskSize: 'contain',
-      }}
+      className="block h-6 w-[26px] shrink-0 text-current [&_svg]:block [&_svg]:size-full"
+      dangerouslySetInnerHTML={{ __html: svg }}
       aria-hidden="true"
     />
   )
 }
 
-function SideTabLink({
-  to,
-  label,
-  icon,
-  glyphClassName,
-}: {
-  to: string
-  label: string
-  icon: string
-  glyphClassName: string
-}) {
+function SideTabLink({ to, label, svg }: { to: string; label: string; svg: string }) {
   return (
-    <NavLink to={to} aria-label={label} className={tabLink}>
+    <NavLink to={to} aria-label={label} className={sideTabLink}>
       {({ isActive }) => (
         <span
           className={cn(
@@ -55,7 +39,7 @@ function SideTabLink({
               : 'text-[var(--coach-text-tertiary)]',
           )}
         >
-          <NavGlyph src={icon} className={glyphClassName} />
+          <NavGlyph svg={svg} />
         </span>
       )}
     </NavLink>
@@ -65,24 +49,10 @@ function SideTabLink({
 export function AppBottomNavigation({ onCoach }: AppBottomNavigationProps) {
   const { t } = useTranslation('common')
   const [press, setPress] = useState<PressPhase>('idle')
-  const releaseTimer = useRef(0)
-
-  useEffect(
-    () => () => {
-      window.clearTimeout(releaseTimer.current)
-    },
-    [],
-  )
-
-  const endPress = () => {
-    setPress((current) => (current === 'pressed' ? 'release' : current))
-    window.clearTimeout(releaseTimer.current)
-    releaseTimer.current = window.setTimeout(() => setPress('idle'), 360)
-  }
 
   return (
     <nav
-      className="safe-bottom relative z-30 grid min-h-[93px] shrink-0 grid-cols-3 items-start overflow-visible px-11 pt-3"
+      className="safe-bottom relative z-30 grid min-h-[calc(93px+env(safe-area-inset-bottom,0px))] shrink-0 grid-cols-3 items-center overflow-visible px-11"
       aria-label={t('nav.primary')}
     >
       <img
@@ -90,16 +60,11 @@ export function AppBottomNavigation({ onCoach }: AppBottomNavigationProps) {
         alt=""
         width="430"
         height="133"
-        className="pointer-events-none absolute -left-6 -top-[14px] h-[133px] w-[calc(100%+48px)] max-w-none min-[480px]:-left-5 min-[480px]:w-[430px]"
+        className="pointer-events-none absolute -left-6 -top-3.5 h-[133px] w-[calc(100%+48px)] max-w-none min-[480px]:-left-5 min-[480px]:w-[430px]"
         style={{ filter: 'var(--coach-nav-surface-filter)' }}
         aria-hidden="true"
       />
-      <SideTabLink
-        to="/daily"
-        label={t('nav.daily')}
-        icon={dailyIcon}
-        glyphClassName="h-[25px] w-[27px]"
-      />
+      <SideTabLink to="/daily" label={t('nav.daily')} svg={dailyIcon} />
 
       <NavLink
         to="/chat"
@@ -107,24 +72,18 @@ export function AppBottomNavigation({ onCoach }: AppBottomNavigationProps) {
         onPointerDown={(event) => {
           if (event.button !== 0) return
           event.currentTarget.setPointerCapture(event.pointerId)
-          window.clearTimeout(releaseTimer.current)
           setPress('pressed')
         }}
-        onPointerUp={endPress}
-        onPointerCancel={endPress}
+        onPointerUp={() => setPress('idle')}
+        onPointerCancel={() => setPress('idle')}
         aria-label={t('nav.coach')}
         data-press={press === 'idle' ? undefined : press}
-        className="coach-pressable coach-nav-link relative z-10 mx-auto -mt-3 grid size-16 place-items-center rounded-full touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [-webkit-tap-highlight-color:transparent]"
+        className="coach-pressable coach-nav-link relative z-10 mx-auto mt-2 grid size-16 place-items-center self-start rounded-full touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [-webkit-tap-highlight-color:transparent]"
       >
-        {({ isActive }) => <CoachNavMark active={isActive} />}
+        <CoachNavMark />
       </NavLink>
 
-      <SideTabLink
-        to="/review"
-        label={t('nav.review')}
-        icon={reviewIcon}
-        glyphClassName="h-6 w-[26px]"
-      />
+      <SideTabLink to="/review" label={t('nav.review')} svg={reviewIcon} />
     </nav>
   )
 }
