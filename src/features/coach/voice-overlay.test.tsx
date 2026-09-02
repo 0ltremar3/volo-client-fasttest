@@ -7,7 +7,7 @@ import { deferVoiceRoomDisconnect, finishVoiceCall, voiceFailureCopy } from './v
 const noOp = () => undefined
 
 describe('VoiceOverlay', () => {
-  it('renders a full-screen same-route dialog with the privacy notice while connecting', () => {
+  it('renders a full-screen same-route dialog while connecting', () => {
     const html = renderToStaticMarkup(
       <VoiceOverlay
         details={null}
@@ -20,8 +20,8 @@ describe('VoiceOverlay', () => {
     )
     expect(html).toContain('role="dialog"')
     expect(html).toContain('fixed inset-0')
-    expect(html).toContain('语音会被转写并保存到当前对话，原始音频不会保存。')
     expect(html).toContain('Continue with text')
+    expect(html).not.toContain('语音会被转写并保存到当前对话，原始音频不会保存。')
     expect(html).not.toContain('camera')
     expect(html).not.toContain('screen share')
   })

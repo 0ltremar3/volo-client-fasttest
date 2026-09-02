@@ -6,9 +6,18 @@ import {
   useTranscriptions,
   useVoiceAssistant,
 } from '@livekit/components-react'
-import { AudioLines, ChevronDown, Mic, MicOff, PhoneOff, RefreshCw, Volume2, X } from 'lucide-react'
+import { AudioLines, Mic, MicOff, PhoneOff, RefreshCw, Volume2, X } from 'lucide-react'
 import { ParticipantKind, Room, RoomEvent, Track, type Participant } from 'livekit-client'
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 
 import type { VoiceConnectionDetails } from '@/api/volo'
 import {
@@ -58,30 +67,25 @@ export function VoiceOverlay({
         if (event.key === 'Escape') onClose()
       }}
     >
-      <header className="safe-top flex min-h-[72px] items-end justify-between px-4 pb-2">
-        <span className="size-11" aria-hidden="true" />
-        <h2 className="pb-3 text-base font-semibold">Voice Coach</h2>
-        <button
-          ref={closeRef}
-          type="button"
-          className="grid size-11 place-items-center rounded-full text-[var(--coach-ink)] transition-colors hover:bg-[var(--coach-surface-glass)]"
-          aria-label="Return to text chat"
-          onClick={onClose}
-        >
-          <X className="size-5" aria-hidden="true" />
-        </button>
-      </header>
-
       {details ? (
         <VoiceRoom
           key={details.voice_session_id}
+          closeRef={closeRef}
           details={details}
           onClose={onClose}
           onCanonicalChange={onCanonicalChange}
           onRetry={onRetry}
         />
       ) : (
-        <VoicePending loading={loading} error={requestError} onRetry={onRetry} onClose={onClose} />
+        <>
+          <VoiceChrome closeRef={closeRef} onClose={onClose} />
+          <VoicePending
+            loading={loading}
+            error={requestError}
+            onRetry={onRetry}
+            onClose={onClose}
+          />
+        </>
       )}
     </section>
   )
@@ -135,17 +139,44 @@ function VoicePending({
       >
         Continue with text
       </button>
-      <PrivacyNotice />
     </div>
   )
 }
 
+function VoiceChrome({
+  closeRef,
+  onClose,
+  leading,
+}: {
+  closeRef?: RefObject<HTMLButtonElement | null>
+  onClose: () => void
+  leading?: ReactNode
+}) {
+  return (
+    <header className="safe-top flex min-h-[72px] shrink-0 items-end justify-between px-4 pb-2">
+      {leading ?? <span className="size-11" aria-hidden="true" />}
+      <h2 className="pb-3 text-base font-semibold">Voice Coach</h2>
+      <button
+        ref={closeRef}
+        type="button"
+        className="grid size-11 place-items-center rounded-full text-[var(--coach-ink)] transition-colors hover:bg-[var(--coach-surface-glass)]"
+        aria-label="Return to text chat"
+        onClick={onClose}
+      >
+        <X className="size-5" aria-hidden="true" />
+      </button>
+    </header>
+  )
+}
+
 function VoiceRoom({
+  closeRef,
   details,
   onClose,
   onRetry,
   onCanonicalChange,
 }: {
+  closeRef: RefObject<HTMLButtonElement | null>
   details: VoiceConnectionDetails
   onClose: () => void
   onRetry: () => void
@@ -163,6 +194,7 @@ function VoiceRoom({
   return (
     <RoomContext.Provider value={room}>
       <VoiceRoomContent
+        closeRef={closeRef}
         room={room}
         details={details}
         onClose={onClose}
@@ -175,12 +207,14 @@ function VoiceRoom({
 }
 
 function VoiceRoomContent({
+  closeRef,
   room,
   details,
   onClose,
   onRetry,
   onCanonicalChange,
 }: {
+  closeRef: RefObject<HTMLButtonElement | null>
   room: Room
   details: VoiceConnectionDetails
   onClose: () => void
@@ -193,6 +227,7 @@ function VoiceRoomContent({
   const [micEnabled, setMicEnabled] = useState(false)
   const [audioBlocked, setAudioBlocked] = useState(false)
   const closingRef = useRef(false)
+  const transcriptRef = useRef<HTMLDivElement>(null)
   const connectionRef = useRef<Promise<void> | null>(null)
   const effectGenerationRef = useRef(0)
   const workerDisconnectTimerRef = useRef<number | null>(null)
@@ -354,146 +389,173 @@ function VoiceRoomContent({
   const visibleUserText = visibleVoiceUserText(transcript)
   const failureCopy = failure ? voiceFailureCopy(failure) : ''
 
+  useEffect(() => {
+    const node = transcriptRef.current
+    if (!node) return
+    node.scrollTop = node.scrollHeight
+  }, [transcript.assistant, visibleUserText])
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col px-5 pb-[max(16px,env(safe-area-inset-bottom))]">
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center py-4 text-center">
-        <div
-          className="voice-visualizer grid size-40 place-items-center rounded-full bg-[var(--coach-surface-glass)] shadow-[var(--coach-shadow)]"
-          data-phase={phase}
-          aria-hidden="true"
-        >
-          <BarVisualizer
-            className="flex h-16 w-24 items-center justify-center gap-1"
-            state={phase === 'reconnecting' || phase === 'failed' ? 'connecting' : phase}
-            trackRef={audioTrack}
-            barCount={7}
-            options={{ minHeight: 14, maxHeight: 100 }}
+    <>
+      <VoiceChrome
+        closeRef={closeRef}
+        onClose={onClose}
+        leading={
+          <VoiceDevicePicker
+            devices={devices}
+            activeDeviceId={activeDeviceId}
+            disabled={devices.length === 0 || Boolean(failure)}
+            onSelect={(deviceId) => {
+              void setActiveMediaDevice(deviceId, { exact: true }).catch(() =>
+                setFailure('permission'),
+              )
+            }}
+          />
+        }
+      />
+      <div className="flex min-h-0 flex-1 flex-col px-5 pb-[max(16px,env(safe-area-inset-bottom))]">
+        <div className="flex min-h-0 flex-1 flex-col items-center pt-2 text-center">
+          <div
+            className="voice-visualizer grid size-40 shrink-0 place-items-center rounded-full bg-[var(--coach-surface-glass)] shadow-[var(--coach-shadow)]"
+            data-phase={phase}
+            aria-hidden="true"
           >
-            <span className="voice-visualizer__bar block w-1.5 rounded-full" />
-          </BarVisualizer>
-        </div>
-        <p className="mt-5 text-lg font-semibold" aria-live="polite">
-          {voicePhaseLabel(phase)}
-        </p>
-
-        {failure ? (
-          <div className="mt-4 max-w-[20rem]" role="alert">
-            <p className="text-sm leading-5 text-[var(--danger)]">{failureCopy}</p>
-            <button
-              type="button"
-              className="mt-3 min-h-11 rounded-full bg-[var(--coach-chrome-dark)] px-5 text-sm font-semibold text-[var(--coach-on-dark)]"
-              onClick={onRetry}
+            <BarVisualizer
+              className="flex h-16 w-24 items-center justify-center gap-1"
+              state={phase === 'reconnecting' || phase === 'failed' ? 'connecting' : phase}
+              trackRef={audioTrack}
+              barCount={7}
+              options={{ minHeight: 14, maxHeight: 100 }}
             >
-              Reconnect
-            </button>
+              <span className="voice-visualizer__bar block w-1.5 rounded-full" />
+            </BarVisualizer>
           </div>
-        ) : (
-          <div className="mt-6 min-h-[112px] w-full max-w-[21rem]" aria-live="polite">
-            {visibleUserText ? (
-              <div>
-                <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">
-                  {transcript.interimUser ? 'Hearing you' : 'You said'}
-                </p>
-                <p className="mt-1 text-pretty text-base leading-6 text-[var(--coach-text-warm)]">
-                  {visibleUserText}
-                </p>
-              </div>
-            ) : null}
-            {transcript.assistant ? (
-              <div className="mt-4">
-                <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">Coach</p>
-                <p className="mt-1 line-clamp-3 text-pretty text-base leading-6">
-                  {transcript.assistant}
-                </p>
-              </div>
-            ) : null}
-          </div>
-        )}
-      </div>
+          <p className="mt-5 shrink-0 text-lg font-semibold" aria-live="polite">
+            {voicePhaseLabel(phase)}
+          </p>
 
-      {audioBlocked ? (
-        <button
-          type="button"
-          className="mx-auto mb-3 flex min-h-11 items-center gap-2 rounded-full bg-[var(--coach-accent-muted)] px-4 text-sm font-medium"
-          onClick={() => void room.startAudio().then(() => setAudioBlocked(false))}
-        >
-          <Volume2 className="size-4" aria-hidden="true" />
-          Hear Coach
-        </button>
-      ) : null}
-
-      <div className="flex items-center justify-center gap-5">
-        <button
-          type="button"
-          className="grid size-12 place-items-center rounded-full bg-[var(--coach-surface-glass-strong)] shadow-[var(--coach-shadow)] disabled:opacity-45"
-          aria-label={micEnabled ? 'Mute microphone' : 'Unmute microphone'}
-          disabled={Boolean(failure)}
-          onClick={() => {
-            void room.localParticipant
-              .setMicrophoneEnabled(!micEnabled, undefined, { source: Track.Source.Microphone })
-              .then(() => setMicEnabled((enabled) => !enabled))
-              .catch(() => setFailure('permission'))
-          }}
-        >
-          {micEnabled ? (
-            <Mic className="size-5" aria-hidden="true" />
+          {failure ? (
+            <div className="mt-4 max-w-[20rem] shrink-0" role="alert">
+              <p className="text-sm leading-5 text-[var(--danger)]">{failureCopy}</p>
+              <button
+                type="button"
+                className="mt-3 min-h-11 rounded-full bg-[var(--coach-chrome-dark)] px-5 text-sm font-semibold text-[var(--coach-on-dark)]"
+                onClick={onRetry}
+              >
+                Reconnect
+              </button>
+            </div>
           ) : (
-            <MicOff className="size-5" aria-hidden="true" />
+            <div
+              ref={transcriptRef}
+              className="mt-6 min-h-0 w-full max-w-[21rem] flex-1 overflow-y-auto overscroll-contain"
+              aria-live="polite"
+            >
+              {visibleUserText ? (
+                <div>
+                  <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">
+                    {transcript.interimUser ? 'Hearing you' : 'You said'}
+                  </p>
+                  <p className="mt-1 text-pretty text-base leading-6 text-[var(--coach-text-warm)]">
+                    {visibleUserText}
+                  </p>
+                </div>
+              ) : null}
+              {transcript.assistant ? (
+                <div className={visibleUserText ? 'mt-4' : undefined}>
+                  <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">Coach</p>
+                  <p className="mt-1 text-pretty text-base leading-6">{transcript.assistant}</p>
+                </div>
+              ) : null}
+            </div>
           )}
-        </button>
+        </div>
+
+        {audioBlocked ? (
+          <button
+            type="button"
+            className="mx-auto mb-3 flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-[var(--coach-accent-muted)] px-4 text-sm font-medium"
+            onClick={() => void room.startAudio().then(() => setAudioBlocked(false))}
+          >
+            <Volume2 className="size-4" aria-hidden="true" />
+            Hear Coach
+          </button>
+        ) : null}
+
+        <div className="flex shrink-0 items-center justify-center gap-5">
+          <button
+            type="button"
+            className="grid size-12 place-items-center rounded-full bg-[var(--coach-surface-glass-strong)] shadow-[var(--coach-shadow)] disabled:opacity-45"
+            aria-label={micEnabled ? 'Mute microphone' : 'Unmute microphone'}
+            disabled={Boolean(failure)}
+            onClick={() => {
+              void room.localParticipant
+                .setMicrophoneEnabled(!micEnabled, undefined, { source: Track.Source.Microphone })
+                .then(() => setMicEnabled((enabled) => !enabled))
+                .catch(() => setFailure('permission'))
+            }}
+          >
+            {micEnabled ? (
+              <Mic className="size-5" aria-hidden="true" />
+            ) : (
+              <MicOff className="size-5" aria-hidden="true" />
+            )}
+          </button>
+          <button
+            type="button"
+            className="grid size-14 place-items-center rounded-full bg-[var(--danger)] text-white shadow-[0_4px_8px_rgb(61_31_31/20%)]"
+            aria-label="Hang up voice conversation"
+            onClick={() => void hangUp()}
+          >
+            <PhoneOff className="size-6" aria-hidden="true" />
+          </button>
+        </div>
+
         <button
           type="button"
-          className="grid size-14 place-items-center rounded-full bg-[var(--danger)] text-white shadow-[0_4px_8px_rgb(61_31_31/20%)]"
-          aria-label="Hang up voice conversation"
+          className="mx-auto mt-3 min-h-11 shrink-0 px-5 text-sm font-medium text-[var(--coach-text-secondary)]"
           onClick={() => void hangUp()}
         >
-          <PhoneOff className="size-6" aria-hidden="true" />
+          Continue with text
         </button>
       </div>
-
-      <label className="relative mx-auto mt-4 flex min-h-11 w-full max-w-[19rem] items-center rounded-full bg-[var(--coach-surface-glass)] px-4 text-sm">
-        <Mic
-          className="mr-2 size-4 shrink-0 text-[var(--coach-text-tertiary)]"
-          aria-hidden="true"
-        />
-        <span className="sr-only">Audio input device</span>
-        <select
-          className="min-h-11 min-w-0 flex-1 appearance-none truncate bg-transparent pr-7 outline-none"
-          aria-label="Audio input device"
-          value={activeDeviceId}
-          disabled={devices.length === 0 || Boolean(failure)}
-          onChange={(event) => {
-            void setActiveMediaDevice(event.target.value, { exact: true }).catch(() =>
-              setFailure('permission'),
-            )
-          }}
-        >
-          {devices.length === 0 ? <option value="default">Default microphone</option> : null}
-          {devices.map((device, index) => (
-            <option key={device.deviceId} value={device.deviceId}>
-              {device.label || `Microphone ${index + 1}`}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-4 size-4" aria-hidden="true" />
-      </label>
-
-      <button
-        type="button"
-        className="mx-auto mt-1 min-h-11 px-5 text-sm font-medium text-[var(--coach-text-secondary)]"
-        onClick={() => void hangUp()}
-      >
-        Continue with text
-      </button>
-      <PrivacyNotice />
-    </div>
+    </>
   )
 }
 
-function PrivacyNotice() {
+function VoiceDevicePicker({
+  devices,
+  activeDeviceId,
+  disabled,
+  onSelect,
+}: {
+  devices: MediaDeviceInfo[]
+  activeDeviceId: string
+  disabled: boolean
+  onSelect: (deviceId: string) => void
+}) {
+  const activeLabel =
+    devices.find((device) => device.deviceId === activeDeviceId)?.label || 'Default microphone'
+
   return (
-    <p className="mx-auto mt-2 max-w-[21rem] text-pretty text-center text-xs leading-4 text-[var(--coach-text-tertiary)]">
-      语音会被转写并保存到当前对话，原始音频不会保存。
-    </p>
+    <label className="relative grid size-11 place-items-center rounded-full text-[var(--coach-text-tertiary)] transition-colors hover:bg-[var(--coach-surface-glass)] hover:text-[var(--coach-ink)] has-[:disabled]:opacity-45">
+      <Mic className="size-5" aria-hidden="true" />
+      <span className="sr-only">Audio input device: {activeLabel}</span>
+      <select
+        className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-not-allowed"
+        aria-label="Audio input device"
+        title={activeLabel}
+        value={activeDeviceId}
+        disabled={disabled}
+        onChange={(event) => onSelect(event.target.value)}
+      >
+        {devices.length === 0 ? <option value="default">Default microphone</option> : null}
+        {devices.map((device, index) => (
+          <option key={device.deviceId} value={device.deviceId}>
+            {device.label || `Microphone ${index + 1}`}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }

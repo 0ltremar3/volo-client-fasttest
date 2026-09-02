@@ -71,8 +71,6 @@ function WelcomeScreen({ onSchedule, onStart }: { onSchedule: () => void; onStar
         </p>
         <p className="mx-auto mt-5 max-w-[20rem] text-base leading-[18px] text-[var(--coach-text-secondary)]">
           Make a little space for this conversation.
-          <br />
-          20–40 minutes is usually enough.
         </p>
       </div>
 

@@ -48,7 +48,7 @@ Use short chips when a user may need help beginning a reply. Do not hide these p
 
 Reuse the official Beautiful UI-derived Coach prompt bar through its app adapter. The visual form is a white pill with a warm border and soft shadow. Every icon keeps a 44px touch target even when the visible glyph is smaller. Empty, filled, multiline, voice-available, voice-disabled, keyboard submit, and inspiration-filled states are required.
 
-The visible trailing action is stateful: an empty composer shows the 26px orange waveform button, while a non-empty composer shows the 26px orange send button. In real mode, the waveform is enabled only for an idle ongoing Coach session without Pause/ending/voice state; it opens the same-route full-screen voice layer. Dictation remains unavailable. The voice layer preserves the Coach atmosphere, uses one centered audio signal, state copy, transcript, microphone/device/hangup controls, 44px targets, safe areas, reduced motion, and a persistent privacy notice. It never exposes camera or screen controls.
+The visible trailing action is stateful: an empty composer shows the 26px orange waveform button, while a non-empty composer shows the 26px orange send button. In real mode, the waveform is enabled only for an idle ongoing Coach session without Pause/ending/voice state; it opens the same-route full-screen voice layer. Dictation remains unavailable. The voice layer preserves the Coach atmosphere, uses one centered audio signal, state copy, a scrollable transcript, microphone/hangup controls, a quiet corner input-device icon, 44px targets, safe areas, and reduced motion. It never exposes camera or screen controls.
 
 ### Move card
 
