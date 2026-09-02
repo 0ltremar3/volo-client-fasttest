@@ -41,9 +41,11 @@ import {
 } from '@/features/coach/coach-model'
 import {
   canRequestCoachEnd,
+  findPendingMoveCard,
   findPendingSessionEnd,
   isEmptyCoachConversation,
   resolveCoachStartView,
+  resolveCoachEndAction,
   type CoachStartView,
 } from '@/features/coach/coach-conversation-state'
 import {
@@ -361,6 +363,8 @@ function SessionView({ sessionId }: { sessionId: string }) {
     createCoachTurnState(),
   )
   const [voiceOpen, setVoiceOpen] = useState(false)
+  const [targetCardId, setTargetCardId] = useState<string | null>(null)
+  const [endGuardCardId, setEndGuardCardId] = useState<string | null>(null)
   const streamControllerRef = useRef<AbortController | null>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const timeline = useMemo(() => buildCoachTimeline(turnState), [turnState])
@@ -368,6 +372,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
   const conversationRef = useRef<HTMLDivElement>(null)
   const adjustmentMode = Boolean(thread.data?.session.related_move_id)
   const pauseCard = adjustmentMode ? null : findPendingSessionEnd(turnState.cards)
+  const pendingMoveCard = findPendingMoveCard(turnState.cards)
   // A revision card carries no schedule, so seed its editor from the Move the
   // adjustment targets instead of guessing.
   const relatedMoveId = thread.data?.session.related_move_id ?? null
@@ -385,6 +390,15 @@ function SessionView({ sessionId }: { sessionId: string }) {
       dispatch({ type: 'hydrate', messages: thread.data.messages, cards: thread.data.cards })
     }
   }, [thread.data])
+
+  useEffect(() => {
+    if (!targetCardId || voiceOpen) return
+    const target = document.getElementById(`coach-card-${targetCardId}`)
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    target.focus({ preventScroll: true })
+    queueMicrotask(() => setTargetCardId(null))
+  }, [targetCardId, timeline, voiceOpen])
 
   useEffect(
     () => () => {
@@ -503,6 +517,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
     sending,
     preparing: ending || voiceOpen,
   })
+  const endAction = resolveCoachEndAction(turnState.cards)
   const voiceAvailable = canStartVoice({
     sessionStatus: thread.data.session.status,
     sending,
@@ -519,15 +534,22 @@ function SessionView({ sessionId }: { sessionId: string }) {
     <>
       <main className="flex min-h-0 flex-1 flex-col">
         <CoachConversationHeader
-          onDone={() =>
-            isEmptyCoachConversation(turnState.messages)
-              ? discardEmptySession.mutate()
-              : prepareEnd.mutate()
-          }
+          onDone={() => {
+            if (endAction.kind === 'review_move') {
+              setEndGuardCardId(endAction.cardId)
+              setTargetCardId(endAction.cardId)
+              return
+            }
+            if (isEmptyCoachConversation(turnState.messages)) discardEmptySession.mutate()
+            else prepareEnd.mutate()
+          }}
           disabled={!canPrepareEnd}
           busy={ending}
           showDone={!adjustmentMode}
         />
+        <p className="sr-only" aria-live="polite">
+          {endGuardCardId === pendingMoveCard?.id ? t('resolveMoveBeforeDone') : ''}
+        </p>
         <div
           ref={conversationRef}
           className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-[15px] pb-6 pt-2"
@@ -555,16 +577,22 @@ function SessionView({ sessionId }: { sessionId: string }) {
               const card = item.card
               const presentation = getCoachCardPresentation(card, adjustmentMode)
               return presentation ? (
-                <CoachCard
+                <div
                   key={item.id}
-                  card={card}
-                  presentation={presentation}
-                  sessionId={sessionId}
-                  adjustmentMode={adjustmentMode}
-                  currentSchedule={relatedSchedule}
-                  relatedLocalDate={thread.data.session.related_local_date}
-                  onCardChanged={updateCard}
-                />
+                  id={`coach-card-${card.id}`}
+                  className="rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--coach-accent)] focus:ring-offset-2"
+                  tabIndex={-1}
+                >
+                  <CoachCard
+                    card={card}
+                    presentation={presentation}
+                    sessionId={sessionId}
+                    adjustmentMode={adjustmentMode}
+                    currentSchedule={relatedSchedule}
+                    relatedLocalDate={thread.data.session.related_local_date}
+                    onCardChanged={updateCard}
+                  />
+                </div>
               ) : null
             })}
             {turnState.failed && !turnState.draft ? (
@@ -627,6 +655,12 @@ function SessionView({ sessionId }: { sessionId: string }) {
             retryVoiceSession(voiceSession)
           }}
           onCanonicalChange={refreshCanonicalThread}
+          pendingMove={pendingMoveCard}
+          onReviewPendingMove={(cardId) => {
+            setTargetCardId(cardId)
+            voiceSession.reset()
+            setVoiceOpen(false)
+          }}
           onClose={() => {
             refreshCanonicalThread()
             voiceSession.reset()

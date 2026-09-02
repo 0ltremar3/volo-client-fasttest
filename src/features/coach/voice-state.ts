@@ -78,6 +78,10 @@ export function visibleVoiceUserText(state: VoiceTranscriptState) {
   return [state.finalUser, state.interimUser].filter(Boolean).join(' ')
 }
 
+export function isPendingMoveNoticeExpanded(pendingCardId: string, deferredCardId: string | null) {
+  return pendingCardId !== deferredCardId
+}
+
 export function retryVoiceSession(mutation: { reset: () => void; mutate: () => void }) {
   mutation.reset()
   mutation.mutate()

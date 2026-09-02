@@ -6,7 +6,17 @@ import {
   useTranscriptions,
   useVoiceAssistant,
 } from '@livekit/components-react'
-import { AudioLines, Mic, MicOff, PhoneOff, RefreshCw, Volume2, X } from 'lucide-react'
+import {
+  AudioLines,
+  ChevronRight,
+  ClipboardCheck,
+  Mic,
+  MicOff,
+  PhoneOff,
+  RefreshCw,
+  Volume2,
+  X,
+} from 'lucide-react'
 import { ParticipantKind, Room, RoomEvent, Track, type Participant } from 'livekit-client'
 import {
   useCallback,
@@ -20,11 +30,12 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { VoiceConnectionDetails } from '@/api/volo'
+import type { VoiceConnectionDetails, VoloCard } from '@/api/volo'
 import {
   deferVoiceRoomDisconnect,
   createVoiceTranscriptState,
   finishVoiceCall,
+  isPendingMoveNoticeExpanded,
   reduceVoiceTranscript,
   visibleVoiceUserText,
   type VoiceFailure,
@@ -38,6 +49,8 @@ type VoiceOverlayProps = {
   onRetry: () => void
   onClose: () => void
   onCanonicalChange: () => void
+  pendingMove: VoloCard | null
+  onReviewPendingMove: (cardId: string) => void
 }
 
 const emptyTranscript = createVoiceTranscriptState()
@@ -49,6 +62,8 @@ export function VoiceOverlay({
   onRetry,
   onClose,
   onCanonicalChange,
+  pendingMove,
+  onReviewPendingMove,
 }: VoiceOverlayProps) {
   const { t } = useTranslation('coach')
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -75,6 +90,8 @@ export function VoiceOverlay({
           onClose={onClose}
           onCanonicalChange={onCanonicalChange}
           onRetry={onRetry}
+          pendingMove={pendingMove}
+          onReviewPendingMove={onReviewPendingMove}
         />
       ) : (
         <>
@@ -175,12 +192,16 @@ function VoiceRoom({
   onClose,
   onRetry,
   onCanonicalChange,
+  pendingMove,
+  onReviewPendingMove,
 }: {
   closeRef: RefObject<HTMLButtonElement | null>
   details: VoiceConnectionDetails
   onClose: () => void
   onRetry: () => void
   onCanonicalChange: () => void
+  pendingMove: VoloCard | null
+  onReviewPendingMove: (cardId: string) => void
 }) {
   const room = useMemo(
     () =>
@@ -200,6 +221,8 @@ function VoiceRoom({
         onClose={onClose}
         onRetry={onRetry}
         onCanonicalChange={onCanonicalChange}
+        pendingMove={pendingMove}
+        onReviewPendingMove={onReviewPendingMove}
       />
       <RoomAudioRenderer room={room} />
     </RoomContext.Provider>
@@ -213,6 +236,8 @@ function VoiceRoomContent({
   onClose,
   onRetry,
   onCanonicalChange,
+  pendingMove,
+  onReviewPendingMove,
 }: {
   closeRef: RefObject<HTMLButtonElement | null>
   room: Room
@@ -220,6 +245,8 @@ function VoiceRoomContent({
   onClose: () => void
   onRetry: () => void
   onCanonicalChange: () => void
+  pendingMove: VoloCard | null
+  onReviewPendingMove: (cardId: string) => void
 }) {
   const { t } = useTranslation('coach')
   const [transcript, updateTranscript] = useReducer(reduceVoiceTranscript, emptyTranscript)
@@ -227,6 +254,8 @@ function VoiceRoomContent({
   const [reconnecting, setReconnecting] = useState(false)
   const [micEnabled, setMicEnabled] = useState(false)
   const [audioBlocked, setAudioBlocked] = useState(false)
+  const [deferredMoveId, setDeferredMoveId] = useState<string | null>(null)
+  const [reviewingMove, setReviewingMove] = useState(false)
   const closingRef = useRef(false)
   const transcriptRef = useRef<HTMLDivElement>(null)
   const connectionRef = useRef<Promise<void> | null>(null)
@@ -258,6 +287,17 @@ function VoiceRoomContent({
     closingRef.current = true
     await finishVoiceCall(room, onCanonicalChange, onClose)
   }, [onCanonicalChange, onClose, room])
+
+  const reviewPendingMove = useCallback(async () => {
+    if (!pendingMove || reviewingMove) return
+    setReviewingMove(true)
+    closingRef.current = true
+    setMicEnabled(false)
+    await room.localParticipant
+      .setMicrophoneEnabled(false, undefined, { source: Track.Source.Microphone })
+      .catch(() => undefined)
+    await finishVoiceCall(room, onCanonicalChange, () => onReviewPendingMove(pendingMove.id))
+  }, [onCanonicalChange, onReviewPendingMove, pendingMove, reviewingMove, room])
 
   useEffect(() => {
     const effectGeneration = ++effectGenerationRef.current
@@ -378,6 +418,14 @@ function VoiceRoomContent({
     const timeout = window.setTimeout(() => setFailure('worker_start'), 20_000)
     return () => window.clearTimeout(timeout)
   }, [agentState])
+
+  const previousAgentStateRef = useRef(agentState)
+  useEffect(() => {
+    if (agentState === 'speaking' && previousAgentStateRef.current !== 'speaking') {
+      onCanonicalChange()
+    }
+    previousAgentStateRef.current = agentState
+  }, [agentState, onCanonicalChange])
 
   useEffect(() => {
     const onEscape = (event: KeyboardEvent) => {
@@ -507,6 +555,16 @@ function VoiceRoomContent({
           </button>
         ) : null}
 
+        {pendingMove ? (
+          <PendingMoveNotice
+            card={pendingMove}
+            expanded={isPendingMoveNoticeExpanded(pendingMove.id, deferredMoveId)}
+            reviewing={reviewingMove}
+            onReview={() => void reviewPendingMove()}
+            onLater={() => setDeferredMoveId(pendingMove.id)}
+          />
+        ) : null}
+
         <div className="flex shrink-0 items-center justify-center gap-5">
           <button
             type="button"
@@ -545,6 +603,85 @@ function VoiceRoomContent({
         </button>
       </div>
     </>
+  )
+}
+
+export function PendingMoveNotice({
+  card,
+  expanded,
+  reviewing,
+  onReview,
+  onLater,
+}: {
+  card: VoloCard
+  expanded: boolean
+  reviewing: boolean
+  onReview: () => void
+  onLater: () => void
+}) {
+  const { t } = useTranslation('coach')
+  const description = card.payload.description?.trim() || t('voice.moveDraftFallback')
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        className="mx-auto mb-3 flex min-h-11 w-full max-w-[21rem] items-center gap-2 rounded-lg bg-[var(--coach-accent-muted)] px-3 text-left text-sm font-medium text-[var(--coach-ink)]"
+        onClick={onReview}
+      >
+        <ClipboardCheck className="size-4 shrink-0 text-[var(--coach-accent)]" aria-hidden="true" />
+        <span className="min-w-0 flex-1 break-words">{t('voice.moveDraftPending')}</span>
+        <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
+      </button>
+    )
+  }
+
+  return (
+    <section
+      className="mx-auto mb-3 w-full max-w-[21rem] rounded-lg bg-[var(--coach-surface-glass-strong)] p-3 shadow-[var(--bui-shadow-card)]"
+      aria-labelledby={`voice-move-draft-${card.id}`}
+    >
+      <div className="flex min-w-0 items-start gap-2.5">
+        <ClipboardCheck
+          className="mt-0.5 size-5 shrink-0 text-[var(--coach-accent)]"
+          aria-hidden="true"
+        />
+        <div className="min-w-0 flex-1">
+          <p
+            id={`voice-move-draft-${card.id}`}
+            className="text-sm font-semibold"
+            role="status"
+            aria-live="polite"
+          >
+            {t('voice.moveDraftPending')}
+          </p>
+          <p className="mt-1 line-clamp-2 break-words text-sm leading-5 text-[var(--coach-text-secondary)]">
+            {description}
+          </p>
+          <p className="mt-1 text-xs text-[var(--coach-text-secondary)]">
+            {t('voice.moveDraftNotAdded')}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+        <button
+          type="button"
+          className="min-h-11 min-w-0 rounded-full bg-[var(--coach-chrome-dark)] px-4 text-sm font-semibold text-[var(--coach-on-dark)] disabled:opacity-50"
+          disabled={reviewing}
+          onClick={onReview}
+        >
+          {reviewing ? t('voice.openingMoveDraft') : t('voice.reviewMoveDraft')}
+        </button>
+        <button
+          type="button"
+          className="min-h-11 rounded-full px-3 text-sm font-medium text-[var(--coach-text-secondary)] disabled:opacity-50"
+          disabled={reviewing}
+          onClick={onLater}
+        >
+          {t('voice.later')}
+        </button>
+      </div>
+    </section>
   )
 }
 

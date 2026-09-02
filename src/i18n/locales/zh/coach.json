@@ -39,6 +39,7 @@
   "openError": "Coach 无法打开。",
   "complete": "这次对话已经结束。",
   "endError": "无法结束这次对话，请再点一次完成。",
+  "resolveMoveBeforeDone": "请先确认或跳过待处理的 Move 草稿，再结束这次对话。",
   "pauseTitle": "这里适合停一停",
   "topicToExplore": "想继续探索的主题",
   "takeAway": "带走的一句",
@@ -140,6 +141,12 @@
     "permission": "麦克风权限被拒绝。请在浏览器中允许麦克风后重试。",
     "workerDisconnect": "语音转写已停止。你可以重新连接继续说；已保存的对话不会改变。",
     "workerStart": "语音 Coach 未能就绪。请重新连接以开始新的语音会话。",
-    "connection": "语音连接已结束。你可以重新连接，或改用文字继续。"
+    "connection": "语音连接已结束。你可以重新连接，或改用文字继续。",
+    "moveDraftPending": "Move 草稿待确认",
+    "moveDraftFallback": "有一张 Move 草稿等待查看。",
+    "moveDraftNotAdded": "尚未加入 Moves",
+    "reviewMoveDraft": "查看并确认",
+    "openingMoveDraft": "正在打开草稿…",
+    "later": "稍后"
   }
 }

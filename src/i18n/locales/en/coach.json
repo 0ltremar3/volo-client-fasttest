@@ -39,6 +39,7 @@
   "openError": "Coach could not open.",
   "complete": "This conversation is complete.",
   "endError": "Couldn’t end this conversation. Try Done again.",
+  "resolveMoveBeforeDone": "Review or skip the pending Move draft before ending this conversation.",
   "pauseTitle": "A Good Place to Pause",
   "topicToExplore": "TOPIC TO EXPLORE",
   "takeAway": "TAKE AWAY",
@@ -140,6 +141,12 @@
     "permission": "Microphone access was denied. Allow microphone access in your browser, then try again.",
     "workerDisconnect": "Voice transcription stopped. You can reconnect to keep talking; your saved conversation is unchanged.",
     "workerStart": "The Voice Coach did not become available. Reconnect to start a new voice session.",
-    "connection": "The voice connection ended. You can reconnect or continue with text."
+    "connection": "The voice connection ended. You can reconnect or continue with text.",
+    "moveDraftPending": "Move draft waiting",
+    "moveDraftFallback": "A Move draft is ready to review.",
+    "moveDraftNotAdded": "Not added to Moves yet",
+    "reviewMoveDraft": "Review and confirm",
+    "openingMoveDraft": "Opening draft…",
+    "later": "Later"
   }
 }

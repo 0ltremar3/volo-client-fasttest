@@ -2,10 +2,20 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 
 import '@/i18n'
-import { VoiceOverlay } from './voice-overlay'
+import { PendingMoveNotice, VoiceOverlay } from './voice-overlay'
 import { deferVoiceRoomDisconnect, finishVoiceCall, voiceFailureCopy } from './voice-state'
 
 const noOp = () => undefined
+const pendingMove = {
+  id: 'move-card-1',
+  message_id: 'assistant-1',
+  type: 'move_create' as const,
+  status: 'pending' as const,
+  payload: { description: 'Write for ten focused minutes' },
+  related_move_id: null,
+  created_at: '2026-09-03T02:00:00.000Z',
+  decided_at: null,
+}
 
 describe('VoiceOverlay', () => {
   it('renders a full-screen same-route dialog while connecting', () => {
@@ -17,6 +27,8 @@ describe('VoiceOverlay', () => {
         onRetry={noOp}
         onClose={noOp}
         onCanonicalChange={noOp}
+        pendingMove={null}
+        onReviewPendingMove={noOp}
       />,
     )
     expect(html).toContain('role="dialog"')
@@ -36,6 +48,8 @@ describe('VoiceOverlay', () => {
         onRetry={noOp}
         onClose={noOp}
         onCanonicalChange={noOp}
+        pendingMove={null}
+        onReviewPendingMove={noOp}
       />,
     )
     expect(html).toContain('Voice is unavailable')
@@ -48,6 +62,34 @@ describe('VoiceOverlay', () => {
     expect(voiceFailureCopy('worker_disconnect')).toContain('reconnect')
     expect(voiceFailureCopy('worker_disconnect')).not.toContain('start this voice session')
     expect(voiceFailureCopy('worker_start')).toContain('did not become available')
+  })
+
+  it('shows a persistent pending Move notice without duplicating the editor', () => {
+    const expanded = renderToStaticMarkup(
+      <PendingMoveNotice
+        card={pendingMove}
+        expanded
+        reviewing={false}
+        onReview={noOp}
+        onLater={noOp}
+      />,
+    )
+    const collapsed = renderToStaticMarkup(
+      <PendingMoveNotice
+        card={pendingMove}
+        expanded={false}
+        reviewing={false}
+        onReview={noOp}
+        onLater={noOp}
+      />,
+    )
+
+    expect(expanded).toContain('Move draft waiting')
+    expect(expanded).toContain('Write for ten focused minutes')
+    expect(expanded).toContain('Review and confirm')
+    expect(expanded).toContain('Later')
+    expect(expanded).not.toContain('textarea')
+    expect(collapsed).toContain('Move draft waiting')
   })
 
   it('disconnects microphone tracks before refreshing and closing on hangup', async () => {

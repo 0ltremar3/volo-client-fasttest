@@ -3,13 +3,36 @@ import { describe, expect, it } from 'vitest'
 import {
   canStartVoice,
   createVoiceTranscriptState,
+  isPendingMoveNoticeExpanded,
   reduceVoiceTranscript,
   retryVoiceSession,
   voicePhaseLabel,
   visibleVoiceUserText,
 } from './voice-state'
+import { findPendingMoveCard } from './coach-conversation-state'
 
 describe('voice state', () => {
+  it('keeps the latest pending Move discoverable and resurfaces replacements', () => {
+    const first = {
+      id: 'move-card-1',
+      type: 'move_create' as const,
+      status: 'pending' as const,
+      created_at: '2026-09-03T01:00:00.000Z',
+    }
+    const second = {
+      id: 'move-card-2',
+      type: 'move_create' as const,
+      status: 'pending' as const,
+      created_at: '2026-09-03T02:00:00.000Z',
+    }
+
+    expect(
+      findPendingMoveCard([first, { ...first, id: 'ignored', status: 'rejected' }, second]),
+    ).toMatchObject({ id: 'move-card-2' })
+    expect(isPendingMoveNoticeExpanded(second.id, second.id)).toBe(false)
+    expect(isPendingMoveNoticeExpanded('move-card-3', second.id)).toBe(true)
+  })
+
   it('enables voice only for an idle ongoing Coach session', () => {
     expect(
       canStartVoice({

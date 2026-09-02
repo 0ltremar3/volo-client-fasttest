@@ -3,6 +3,11 @@ export type CoachEndCardLike = {
   status: string
 }
 
+export type CoachMoveCardLike = CoachEndCardLike & {
+  id: string
+  created_at?: string
+}
+
 export type CoachEndMode = 'conversation' | 'offer' | 'summary' | 'completed'
 
 export function isEmptyCoachConversation(messages: Array<{ role: string }>) {
@@ -11,6 +16,28 @@ export function isEmptyCoachConversation(messages: Array<{ role: string }>) {
 
 export function findPendingSessionEnd<T extends CoachEndCardLike>(cards: T[]) {
   return cards.find((card) => card.type === 'session_end' && card.status === 'pending') ?? null
+}
+
+export function findPendingMoveCard<T extends CoachMoveCardLike>(cards: T[]) {
+  return (
+    cards.reduce<T | null>((latest, card) => {
+      if (
+        card.status !== 'pending' ||
+        (card.type !== 'move_create' && card.type !== 'move_revision')
+      ) {
+        return latest
+      }
+      if (!latest || (card.created_at ?? '') >= (latest.created_at ?? '')) return card
+      return latest
+    }, null) ?? null
+  )
+}
+
+export function resolveCoachEndAction<T extends CoachMoveCardLike>(cards: T[]) {
+  const pendingMove = findPendingMoveCard(cards)
+  return pendingMove
+    ? ({ kind: 'review_move', cardId: pendingMove.id } as const)
+    : ({ kind: 'prepare_end' } as const)
 }
 
 export function resolveCoachEndMode(

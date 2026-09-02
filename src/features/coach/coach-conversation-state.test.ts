@@ -10,15 +10,23 @@ import {
   canRequestCoachEnd,
   findPendingSessionEnd,
   isEmptyCoachConversation,
+  resolveCoachEndAction,
   resolveCoachEndMode,
   resolveCoachLanding,
   resolveCoachStartView,
 } from './coach-conversation-state'
 
-const pendingSummary = { type: 'session_end', status: 'pending' }
-const pendingOffer = { type: 'session_end_offer', status: 'pending' }
+const pendingSummary = { id: 'summary', type: 'session_end', status: 'pending' }
+const pendingOffer = { id: 'offer', type: 'session_end_offer', status: 'pending' }
 
 describe('Coach conversation end state', () => {
+  it('reviews a pending Move before preparing the session end', () => {
+    expect(
+      resolveCoachEndAction([{ id: 'move-card', type: 'move_create', status: 'pending' }]),
+    ).toEqual({ kind: 'review_move', cardId: 'move-card' })
+    expect(resolveCoachEndAction([])).toEqual({ kind: 'prepare_end' })
+  })
+
   it('treats an assistant-only thread as empty until the user speaks', () => {
     expect(isEmptyCoachConversation([{ role: 'assistant' }])).toBe(true)
     expect(isEmptyCoachConversation([{ role: 'assistant' }, { role: 'user' }])).toBe(false)
