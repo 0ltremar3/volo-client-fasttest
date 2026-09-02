@@ -42,6 +42,9 @@
   --daily-decoration-filter: invert(1) brightness(0.72) sepia(0.2);
   --daily-badge-foreground: #171615;
   --daily-profile-background: #3d3a36;
+  --account-background: #1d1b19;
+  --account-surface: #252321;
+  --account-avatar: #ff7a2b;
   --daily-move-on-track: #d9692f;
   --daily-move-drifting: #8f6c96;
   --daily-move-status-foreground: #fffaf5;

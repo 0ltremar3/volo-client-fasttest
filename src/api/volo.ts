@@ -152,22 +152,40 @@ export type ReviewDetail = {
   messages: EchoMessage[]
 }
 
+export type AccountProfile = {
+  display_name: string
+  age_range: string | null
+  current_status: string | null
+  goal_clarity: string | null
+  onboarding_goal_text: string | null
+}
+
+export type AccountMe = {
+  account: { email: string }
+  profile: AccountProfile
+}
+
 const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone
 
 export const authApi = {
-  me: () => apiFetch<{ profile: { display_name: string } }>('/v1/me'),
+  me: () => apiFetch<AccountMe>('/v1/me'),
+  updateProfile: (displayName: string) =>
+    apiFetch<AccountProfile>('/v1/me/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({ display_name: displayName }),
+    }),
   sendOtp: (email: string) =>
     apiFetch('/v1/auth/email-otp/send-verification-otp', {
       method: 'POST',
       body: JSON.stringify({ email, type: 'sign-in' }),
     }),
-  signIn: async (email: string, otp: string) => {
+  signIn: async (email: string, otp: string, rememberMe = false) => {
     const result = await apiFetch<{ token: string }>('/v1/auth/sign-in/email-otp', {
       method: 'POST',
       body: JSON.stringify({ email, otp }),
     })
     if (!result?.token) throw new Error('Sign-in response did not include a session token')
-    setAccessToken(result.token)
+    setAccessToken(result.token, rememberMe)
     return result
   },
   signOut: async () => {

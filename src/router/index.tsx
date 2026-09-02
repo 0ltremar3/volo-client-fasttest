@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 
 import { HomeRedirect, ProtectedAppShell } from '@/components/layout/route-boundaries'
+import { AccountPage } from '@/pages/AccountPage'
 import { ChatPage } from '@/pages/ChatPage'
 import { DailyPage } from '@/pages/DailyPage'
 import { DebugPage } from '@/pages/DebugPage'
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
     element: <ProtectedAppShell />,
     children: [
       { path: '/daily', element: <DailyPage /> },
+      { path: '/account', element: <AccountPage /> },
       { path: '/daily/echo/:echoId', element: <DailyEchoPage /> },
       { path: '/chat', element: <ChatPage /> },
       { path: '/chat/scheduled/:sessionId', element: <ScheduledCoachPage /> },

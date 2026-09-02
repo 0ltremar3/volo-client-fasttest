@@ -55,6 +55,9 @@
   --daily-decoration-filter: none;
   --daily-badge-foreground: #f3efe8;
   --daily-profile-background: #3d3a36;
+  --account-background: #f3efe8;
+  --account-surface: #ffffff;
+  --account-avatar: #f45f00;
   --daily-move-on-track: #ff843d;
   --daily-move-drifting: #cca3d1;
   --daily-move-status-foreground: #ffffff;

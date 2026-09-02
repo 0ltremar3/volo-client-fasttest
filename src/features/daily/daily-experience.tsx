@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { Settings2 } from 'lucide-react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import echoArc from '@/assets/daily/echo-arc.svg'
 import echoMarker from '@/assets/daily/echo-marker.svg'
@@ -50,13 +50,15 @@ function DailyHeader() {
         className="mx-auto h-[22px] w-[75px]"
         style={{ filter: 'var(--app-brand-asset-filter)' }}
       />
-      <span
-        className="grid size-8 place-items-center rounded-full bg-[var(--daily-profile-background)]"
-        aria-label="Profile"
-        role="img"
+      <Link
+        to="/account"
+        className="grid size-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label="Account details"
       >
-        <img src={profileGlyph} alt="" width="11" height="20" className="h-5 w-[11px]" />
-      </span>
+        <span className="grid size-8 place-items-center rounded-full bg-[var(--daily-profile-background)]">
+          <img src={profileGlyph} alt="" width="11" height="20" className="h-5 w-[11px]" />
+        </span>
+      </Link>
     </header>
   )
 }

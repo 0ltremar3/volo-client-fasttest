@@ -443,10 +443,7 @@ function ConversationScreen({
               className="flex items-center gap-2 text-sm text-[var(--coach-text-secondary)]"
               role="status"
             >
-              <CoachOrb
-                className="size-7 [&_img]:!inset-[3px_5px] [&_img]:!h-[22px] [&_img]:!w-[18px] [&_.coach-orb__glow]:!inset-[5px]"
-                speaking
-              />
+              <CoachOrb className="size-7" speaking />
               <span>Listening for what matters…</span>
             </div>
           ) : null}

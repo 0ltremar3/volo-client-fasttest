@@ -568,48 +568,25 @@ export function CoachPromptBar({
   onVoice?: () => void
 }) {
   const [draft, setDraft] = useState('')
-  const [startersOpen, setStartersOpen] = useState(false)
-  const [activeStarter, setActiveStarter] = useState(0)
-  const rootRef = useRef<HTMLDivElement>(null)
+  const [inspirationsOpen, setInspirationsOpen] = useState(false)
   const internalInputRef = useRef<HTMLTextAreaElement>(null)
   const inputRef = providedInputRef ?? internalInputRef
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const starterRefs = useRef<(HTMLButtonElement | null)[]>([])
   const hasDraft = draft.trim().length > 0
   const canSend = hasDraft && !disabled
-
-  useEffect(() => {
-    if (!startersOpen) return
-    starterRefs.current[activeStarter]?.focus()
-    const close = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setStartersOpen(false)
-    }
-    const closeWithKeyboard = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      event.preventDefault()
-      setStartersOpen(false)
-      triggerRef.current?.focus()
-    }
-    document.addEventListener('pointerdown', close)
-    document.addEventListener('keydown', closeWithKeyboard)
-    return () => {
-      document.removeEventListener('pointerdown', close)
-      document.removeEventListener('keydown', closeWithKeyboard)
-    }
-  }, [activeStarter, startersOpen])
 
   function send() {
     if (!canSend) return
     onSend(draft.trim())
     setDraft('')
-    setStartersOpen(false)
+    setInspirationsOpen(false)
     if (inputRef.current) inputRef.current.style.height = '44px'
   }
 
   return (
-    <div ref={rootRef} data-promptbar className="relative w-full">
-      {showInspirations && !draft && !disabled ? (
+    <div data-promptbar className="relative w-full">
+      {showInspirations && inspirationsOpen && !draft && !disabled ? (
         <div
+          id="coach-inspiration-options"
           className="coach-scrollbar-none -mx-5 mb-2 flex gap-3 overflow-x-auto px-5"
           aria-label="Inspiration options"
         >
@@ -620,7 +597,7 @@ export function CoachPromptBar({
               disabled={disabled}
               onClick={() => {
                 setDraft(starter)
-                setStartersOpen(false)
+                setInspirationsOpen(false)
                 inputRef.current?.focus()
               }}
               className="coach-pressable flex min-h-touch shrink-0 touch-manipulation items-center whitespace-nowrap rounded-full text-sm font-medium text-[var(--coach-ink)] transition-transform duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45"
@@ -633,71 +610,17 @@ export function CoachPromptBar({
         </div>
       ) : null}
 
-      {startersOpen ? (
-        <div
-          id="coach-conversation-starters"
-          className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-card bg-surface p-1 shadow-raised"
-          role="listbox"
-          aria-label="Conversation starters"
-          style={{ animation: 'pop-in 180ms cubic-bezier(0.23,1,0.32,1) both' }}
-        >
-          {COACH_STARTERS.map((starter, index) => (
-            <button
-              key={starter}
-              ref={(element) => {
-                starterRefs.current[index] = element
-              }}
-              type="button"
-              role="option"
-              aria-selected={index === activeStarter}
-              onFocus={() => setActiveStarter(index)}
-              onKeyDown={(event) => {
-                if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
-                event.preventDefault()
-                const offset = event.key === 'ArrowDown' ? 1 : COACH_STARTERS.length - 1
-                const next = (index + offset) % COACH_STARTERS.length
-                setActiveStarter(next)
-                starterRefs.current[next]?.focus()
-              }}
-              onClick={() => {
-                setDraft(starter)
-                setStartersOpen(false)
-                inputRef.current?.focus()
-              }}
-              className="flex min-h-touch w-full items-center gap-2 rounded-chip px-3 text-left text-xs leading-5 text-ink transition-colors hover:bg-hover"
-            >
-              <span className="shrink-0 text-accent-ink">
-                <Icon size={14}>
-                  <path d="M12 3l1.1 3.1L16 7.3l-2.9 1.2L12 12l-1.1-3.5L8 7.3l2.9-1.2L12 3z" />
-                </Icon>
-              </span>
-              {starter}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
       <div
-        className="grid min-h-12 grid-cols-[44px_minmax(0,1fr)_44px_44px] items-center rounded-full border border-[var(--coach-border-warm)] bg-[var(--coach-surface-glass-strong)] p-px shadow-[var(--coach-shadow)] transition-colors focus-within:border-[var(--coach-border-strong)]"
+        className="grid min-h-12 grid-cols-[44px_minmax(0,1fr)_44px] items-center rounded-full border border-[var(--coach-border-warm)] bg-[var(--coach-surface-glass-strong)] p-px shadow-[var(--coach-shadow)] transition-colors focus-within:border-[var(--coach-border-strong)]"
         aria-busy={disabled || undefined}
       >
         <button
-          ref={triggerRef}
           type="button"
-          disabled={disabled}
-          aria-label="Open conversation starters"
-          aria-expanded={startersOpen}
-          aria-controls={startersOpen ? 'coach-conversation-starters' : undefined}
-          onClick={() => {
-            setActiveStarter(0)
-            setStartersOpen((current) => !current)
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== 'ArrowDown') return
-            event.preventDefault()
-            setActiveStarter(0)
-            setStartersOpen(true)
-          }}
+          disabled={disabled || !showInspirations}
+          aria-label={inspirationsOpen ? 'Hide inspirations' : 'Show inspirations'}
+          aria-expanded={inspirationsOpen}
+          aria-controls="coach-inspiration-options"
+          onClick={() => setInspirationsOpen((current) => !current)}
           className="flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"
         >
           <span className="grid size-[26px] place-items-center rounded-full bg-[var(--coach-chrome-dark)] text-[var(--coach-on-dark)]">
@@ -714,11 +637,12 @@ export function CoachPromptBar({
           disabled={disabled}
           onChange={(event) => {
             setDraft(event.target.value)
+            setInspirationsOpen(false)
             event.target.style.height = '44px'
             event.target.style.height = `${Math.min(Math.max(event.target.scrollHeight, 44), 96)}px`
           }}
           onKeyDown={(event) => {
-            if (event.key === 'Escape') setStartersOpen(false)
+            if (event.key === 'Escape') setInspirationsOpen(false)
             if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
               event.preventDefault()
               send()
@@ -728,18 +652,7 @@ export function CoachPromptBar({
           aria-label="Prompt"
           className="h-11 min-h-11 min-w-0 w-full resize-none overflow-y-auto bg-transparent px-1 py-3 text-base leading-5 text-ink outline-none [overflow-wrap:anywhere] placeholder:text-[var(--coach-text-tertiary)] disabled:cursor-not-allowed disabled:opacity-55"
         />
-        <button
-          type="button"
-          aria-label="Dictation unavailable"
-          title="Voice input is not connected"
-          disabled
-          className="flex size-11 items-center justify-center rounded-full text-ink-3 opacity-45"
-        >
-          <Icon size={15} strokeWidth={2}>
-            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3" />
-          </Icon>
-        </button>
+        {/* TODO: Restore the speech-to-text icon when dictation is implemented. */}
         {hasDraft ? (
           <button
             type="button"

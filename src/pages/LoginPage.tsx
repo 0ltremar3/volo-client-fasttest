@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type MouseEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { Check } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { AppMark } from '@/components/app-mark'
@@ -21,6 +22,7 @@ export function LoginPage() {
   const [email, setEmail] = useState(mockAuthEnabled ? mockCredentials.email : '')
   const [password, setPassword] = useState(mockAuthEnabled ? mockCredentials.password : '')
   const [otp, setOtp] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { tryBeginSend, markSent, releaseSend, remainingSeconds, wasSent } = useOtpSendCooldown()
@@ -55,12 +57,12 @@ export function LoginPage() {
           setNotice('Email or password does not match the test account.')
           return
         }
-        createMockSession()
+        createMockSession(rememberMe)
       } else if (!otpSent) {
         await sendCode()
         return
       } else {
-        await authApi.signIn(email.trim(), otp.trim())
+        await authApi.signIn(email.trim(), otp.trim(), rememberMe)
       }
       queryClient.removeQueries({ queryKey: ['me'] })
       await navigate('/daily', { replace: true })
@@ -117,7 +119,7 @@ export function LoginPage() {
 
           <div className="mb-8">
             <h1 className="font-display text-[var(--font-size-title)] font-semibold leading-tight tracking-[var(--letter-spacing-title)]">
-              Welcome back.
+              Welcom,
             </h1>
             <p className="mt-3 text-sm text-text-secondary">Sign in with your email to continue.</p>
           </div>
@@ -197,6 +199,24 @@ export function LoginPage() {
                 />
               )}
             </div>
+
+            <label className="flex min-h-touch cursor-pointer items-center gap-3 text-xs font-normal text-text-secondary">
+              <span className="relative grid size-5 shrink-0 place-items-center">
+                <input
+                  type="checkbox"
+                  className="peer size-5 appearance-none rounded-[5px] border border-input bg-surface shadow-none transition-[background-color,border-color,box-shadow] checked:border-primary checked:bg-primary focus-visible:border-primary focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+                  checked={rememberMe}
+                  disabled={isSubmitting}
+                  onChange={(event) => setRememberMe(event.target.checked)}
+                />
+                <Check
+                  className="pointer-events-none absolute size-3.5 text-primary-foreground opacity-0 peer-checked:opacity-100"
+                  strokeWidth={2.5}
+                  aria-hidden="true"
+                />
+              </span>
+              Remember me
+            </label>
 
             <Button
               type="submit"

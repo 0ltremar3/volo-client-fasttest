@@ -37,8 +37,9 @@ Email:    demo@example.com
 Password: demo1234
 ```
 
-Mock login stores only the canonical test email in `sessionStorage`. The password is never stored.
-Set `VITE_MOCK_MODE=false` in production builds.
+Mock login stores only the canonical test email in Web Storage. `Remember me` uses `localStorage`;
+otherwise the session remains in `sessionStorage`. The password is never stored. Set
+`VITE_MOCK_MODE=false` in production builds.
 
 ## Available routes
 
@@ -46,6 +47,7 @@ Set `VITE_MOCK_MODE=false` in production builds.
 | ---------------------------- | ----------------------------------------- | ------------------------------ |
 | `/login`                     | Mock password or real email OTP sign-in   | Mode-selected authentication   |
 | `/daily`                     | Date navigator and Period Moves           | Echo card and traces hidden    |
+| `/account`                   | Account details and display-name editing  | Mock preview or `/v1/me` data  |
 | `/daily/echo/:echoId`        | Resumable Daily Echo conversation         | Persisted Volo V2 Echo         |
 | `/chat`                      | Coach experience                          | Mock flow or persisted Volo V2 |
 | `/chat/scheduled/:sessionId` | Scheduled-session preview and early start | Persisted Volo V2 Coach        |
@@ -110,10 +112,12 @@ new Free Coach session without reopening the completed source. Each real Review 
 separate delete action with confirmation; success removes it from the selected day and month activity.
 
 In mock mode, application routes redirect to `/login` until the local test session is created and
-Coach replies remain fixtures. In real mode, login uses the backend email OTP endpoints, stores the
-returned session token, and sends `Authorization: Bearer <token>` on `/v1/me` and Volo V2 requests.
+Coach replies remain fixtures. In real mode, login uses the backend email OTP endpoints and sends
+the returned session token as `Authorization: Bearer <token>` on `/v1/me` and Volo V2 requests.
+Without `Remember me`, the token stays in `sessionStorage`; with it, the token stays in
+`localStorage` across browser restarts until the backend session expires or returns `401`.
 Calendar sync, device notifications, hardware traces, and frontend Daily summary generation remain
-out of scope.
+out of scope. Account details support updating the display name; avatar upload is not available yet.
 
 ## Commands
 

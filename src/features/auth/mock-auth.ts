@@ -8,11 +8,17 @@ export const mockCredentials = {
 const sessionKey = 'mock-auth-session'
 
 export function hasMockSession() {
-  return sessionStorage.getItem(sessionKey) === mockCredentials.email
+  return (
+    localStorage.getItem(sessionKey) === mockCredentials.email ||
+    sessionStorage.getItem(sessionKey) === mockCredentials.email
+  )
 }
 
-export function createMockSession() {
-  sessionStorage.setItem(sessionKey, mockCredentials.email)
+export function createMockSession(rememberMe = false) {
+  localStorage.removeItem(sessionKey)
+  sessionStorage.removeItem(sessionKey)
+  const storage = rememberMe ? localStorage : sessionStorage
+  storage.setItem(sessionKey, mockCredentials.email)
 }
 
 export function authenticateMock(email: string, password: string) {

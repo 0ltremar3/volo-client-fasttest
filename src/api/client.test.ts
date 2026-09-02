@@ -1,8 +1,13 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { clearAccessToken } from '@/api/auth-session'
 import { streamVoloCoachPost } from '@/api/sse'
 import { authApi, reviewApi } from '@/api/volo'
+
+beforeEach(() => {
+  vi.stubGlobal('localStorage', createStorage())
+  vi.stubGlobal('sessionStorage', createStorage())
+})
 
 afterEach(() => {
   clearAccessToken()
@@ -20,7 +25,57 @@ function requestHeaders(call: unknown[] | undefined) {
   return new Headers((call?.[1] as RequestInit | undefined)?.headers)
 }
 
+function requestBody(call: unknown[] | undefined) {
+  return (call?.[1] as RequestInit | undefined)?.body
+}
+
+function createStorage(): Storage {
+  const values = new Map<string, string>()
+  return {
+    get length() {
+      return values.size
+    },
+    clear: () => values.clear(),
+    getItem: (key) => values.get(key) ?? null,
+    key: (index) => [...values.keys()][index] ?? null,
+    removeItem: (key) => values.delete(key),
+    setItem: (key, value) => values.set(key, value),
+  }
+}
+
 describe('email OTP session contract', () => {
+  it('keeps a remembered token across browser sessions without changing the backend request', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ token: 'session-token', user: { email: 'alex@example.com' } }),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await authApi.signIn('alex@example.com', '123456', true)
+
+    expect(localStorage.getItem('volo-access-token')).toBe('session-token')
+    expect(sessionStorage.getItem('volo-access-token')).toBeNull()
+    expect(JSON.parse(requestBody(fetchMock.mock.calls[0]) as string)).toEqual({
+      email: 'alex@example.com',
+      otp: '123456',
+    })
+  })
+
+  it('keeps a non-remembered token in the current browser session only', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ token: 'session-token', user: { email: 'alex@example.com' } }),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await authApi.signIn('alex@example.com', '123456')
+
+    expect(sessionStorage.getItem('volo-access-token')).toBe('session-token')
+    expect(localStorage.getItem('volo-access-token')).toBeNull()
+  })
+
   it('sends the sign-in token as Authorization on the following /v1/me request', async () => {
     const fetchMock = vi
       .fn()
@@ -37,6 +92,27 @@ describe('email OTP session contract', () => {
     expect(requestHeaders(fetchMock.mock.calls[1]).get('Authorization')).toBe(
       'Bearer session-token',
     )
+  })
+
+  it('updates only the display name through the account profile endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({
+        display_name: 'Jiayu',
+        age_range: null,
+        current_status: null,
+        goal_clarity: null,
+        onboarding_goal_text: null,
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await authApi.updateProfile('Jiayu')
+
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('/v1/me/profile')
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: 'PATCH' })
+    expect(JSON.parse(requestBody(fetchMock.mock.calls[0]) as string)).toEqual({
+      display_name: 'Jiayu',
+    })
   })
 
   it('sends the stored Bearer token on Coach SSE requests', async () => {
