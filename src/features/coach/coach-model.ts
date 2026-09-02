@@ -218,3 +218,28 @@ export function formatScheduleTime(value: string, locale: AppLocale = 'en') {
     minute: '2-digit',
   }).format(new Date(2026, 0, 1, hours, minutes))
 }
+
+export function formatCoachAppointment(
+  value: string | null | undefined,
+  locale: AppLocale,
+  missingLabel: string,
+) {
+  if (!value) return missingLabel
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return missingLabel
+  return `${formatScheduleDatePart(date, locale)} · ${formatScheduleTimePart(date, locale)}`
+}
+
+function formatScheduleDatePart(date: Date, locale: AppLocale) {
+  return new Intl.DateTimeFormat(toBcp47(locale), {
+    month: 'short',
+    day: 'numeric',
+  }).format(date)
+}
+
+function formatScheduleTimePart(date: Date, locale: AppLocale) {
+  return new Intl.DateTimeFormat(toBcp47(locale), {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)
+}

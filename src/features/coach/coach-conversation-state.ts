@@ -45,6 +45,7 @@ export function canRequestCoachEnd({
 }
 
 export type CoachLanding = 'session' | 'scheduled' | 'welcome'
+export type CoachStartView = 'home' | 'new' | 'schedule'
 
 export function resolveCoachLanding(
   hasCurrentSession: boolean,
@@ -52,4 +53,13 @@ export function resolveCoachLanding(
 ): CoachLanding {
   if (hasCurrentSession) return 'session'
   return scheduledCount > 0 ? 'scheduled' : 'welcome'
+}
+
+export function resolveCoachStartView(
+  entry: CoachStartView,
+  scheduledCount: number,
+): CoachStartView {
+  if (entry === 'schedule') return 'schedule'
+  if (scheduledCount > 0 && entry === 'home') return 'home'
+  return 'new'
 }

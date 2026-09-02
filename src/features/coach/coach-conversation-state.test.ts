@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildMoveScheduleRule,
+  formatCoachAppointment,
   parseMockCoachHomeState,
   resolveMoveScheduleDraft,
 } from './coach-model'
@@ -11,6 +12,7 @@ import {
   isEmptyCoachConversation,
   resolveCoachEndMode,
   resolveCoachLanding,
+  resolveCoachStartView,
 } from './coach-conversation-state'
 
 const pendingSummary = { type: 'session_end', status: 'pending' }
@@ -78,6 +80,14 @@ describe('Coach landing selection', () => {
     expect(resolveCoachLanding(false, 0)).toBe('welcome')
   })
 
+  it('opens the New Session gate unless an appointment home is requested and available', () => {
+    expect(resolveCoachStartView('home', 0)).toBe('new')
+    expect(resolveCoachStartView('home', 2)).toBe('home')
+    expect(resolveCoachStartView('new', 2)).toBe('new')
+    expect(resolveCoachStartView('schedule', 0)).toBe('schedule')
+    expect(resolveCoachStartView('schedule', 2)).toBe('schedule')
+  })
+
   it('parses valid mock home state and rejects malformed dev state', () => {
     expect(
       parseMockCoachHomeState(
@@ -127,5 +137,18 @@ describe('Move check plan', () => {
       frequency: 'none',
       time: '09:05',
     })
+  })
+})
+
+describe('Coach appointment copy', () => {
+  it('formats a scheduled instant as date · time', () => {
+    expect(formatCoachAppointment('2026-06-15T12:00:00.000Z', 'en', 'Time not set')).toContain(
+      ' · ',
+    )
+  })
+
+  it('uses the missing label when the appointment is absent', () => {
+    expect(formatCoachAppointment(null, 'en', 'Time not set')).toBe('Time not set')
+    expect(formatCoachAppointment('not-a-date', 'en', 'Time not set')).toBe('Time not set')
   })
 })

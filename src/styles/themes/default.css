@@ -97,6 +97,18 @@
     #f45f00 74%,
     #c17a31 100%
   );
+  --logo-dark-gold: #ffc37e;
+  --logo-dark-shadow: #1c0c00;
+  --logo-dark-brown: #995719;
+  --logo-dark-bronze: #d5965d;
+  --logo-dark-ink: #1b1000;
+  --logo-dark-sand: #ecc28a;
+  --logo-dark-tan: #e5bb82;
+  --logo-dark-amber: #ffc260;
+  --logo-dark-copper: #f8792c;
+  --logo-dark-taupe: #bea17a;
+  --logo-dark-ember: #ff6e03;
+  --logo-dark-glass: #ffffff;
   --coach-toggle-off: #aaa49e;
   --coach-success: #3f7650;
   --coach-focus: rgb(255 255 255 / 80%);

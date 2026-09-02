@@ -1,0 +1,64 @@
+<!--
+  Full nav mark from Figma node 462:3907 「对话气泡」.
+
+  Exporting only the Union overlay (462:3923 / previous logo-dark.svg) is a 10%
+  white glass wash. The copper look lives in four blurred radial blobs clipped
+  to the silhouette. Edit the stop colors below to retune the metal.
+-->
+<svg width="38" height="47" viewBox="0 0 38 47" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="logo-dark-clip">
+      <path
+        fill="#000"
+        fill-rule="evenodd"
+        d="M19 9.396C29.229 9.396 37.521 17.688 37.521 27.917C37.521 38.146 29.229 46.438 19 46.438C8.771 46.438 0.479 38.146 0.479 27.917C0.479 17.688 8.771 9.396 19 9.396ZM19 14.026C11.328 14.026 5.11 20.245 5.109 27.917C5.109 35.589 11.328 41.809 19 41.809C26.672 41.809 32.891 35.589 32.891 27.917C32.891 20.245 26.672 14.026 19 14.026ZM30.109 2.642C27.227 5.302 23.377 6.93 19.148 6.938H19.083L18.903 6.938C14.743 6.885 10.959 5.265 8.116 2.642L10.921 0.605C13.144 2.45 15.999 3.558 19.112 3.559C22.226 3.559 25.082 2.45 27.305 0.605L30.109 2.642Z"
+      />
+    </clipPath>
+    <filter id="logo-dark-blur-a" x="-63.232" y="-115.017" width="161.694" height="160.347" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6.732" />
+    </filter>
+    <filter id="logo-dark-blur-b" x="-66.462" y="-136.962" width="161.694" height="144.057" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6.732" />
+    </filter>
+    <filter id="logo-dark-blur-c" x="-34.151" y="2.922" width="103.667" height="149.577" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6.732" />
+    </filter>
+    <filter id="logo-dark-blur-d" x="-64.462" y="5.038" width="161.694" height="160.347" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6.732" />
+    </filter>
+    <radialGradient id="logo-dark-blob-a" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1.8696 -83.6022 84.4458 1.88564 150.435 108.152)">
+      <stop offset="0.075" stop-color="var(--logo-dark-gold, #FFC37E)" />
+      <stop offset="0.792" stop-color="var(--logo-dark-shadow, #1C0C00)" />
+      <stop offset="0.877" stop-color="var(--logo-dark-brown, #995719)" />
+      <stop offset="0.952" stop-color="var(--logo-dark-bronze, #D5965D)" />
+    </radialGradient>
+    <radialGradient id="logo-dark-blob-b" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(1.8696 -73.3945 84.4458 1.6554 147.204 60.603)">
+      <stop offset="0.075" stop-color="var(--logo-dark-ink, #1B1000)" />
+      <stop offset="0.792" stop-color="var(--logo-dark-sand, #ECC28A)" />
+      <stop offset="0.952" stop-color="var(--logo-dark-tan, #E5BB82)" />
+    </radialGradient>
+    <radialGradient id="logo-dark-blob-c" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(112.532 31.733) rotate(61.866) scale(77.473 123.821)">
+      <stop stop-color="var(--logo-dark-amber, #FFC260)" />
+      <stop offset="1" stop-color="var(--logo-dark-copper, #F8792C)" />
+    </radialGradient>
+    <radialGradient id="logo-dark-blob-d" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(5.45264 122.583 -123.82 5.5118 143.545 156.432)">
+      <stop offset="0.075" stop-color="var(--logo-dark-taupe, #BEA17A)" />
+      <stop offset="0.952" stop-color="var(--logo-dark-bronze, #D5965D)" />
+      <stop offset="1" stop-color="var(--logo-dark-ember, #FF6E03)" />
+    </radialGradient>
+  </defs>
+
+  <g clip-path="url(#logo-dark-clip)">
+    <rect x="84.999" y="31.867" width="134.767" height="133.421" rx="66.711" transform="rotate(-180 84.999 31.867)" fill="url(#logo-dark-blob-a)" filter="url(#logo-dark-blur-a)" />
+    <rect x="81.768" y="-6.368" width="134.767" height="117.13" rx="58.565" transform="rotate(-180 81.768 -6.368)" fill="url(#logo-dark-blob-b)" filter="url(#logo-dark-blur-b)" />
+    <rect x="56.053" y="16.385" width="122.65" height="76.741" rx="38.37" transform="rotate(90 56.053 16.385)" fill="url(#logo-dark-blob-c)" filter="url(#logo-dark-blur-c)" />
+    <rect x="83.768" y="151.922" width="134.767" height="133.421" rx="66.711" transform="rotate(-180 83.768 151.922)" fill="url(#logo-dark-blob-d)" filter="url(#logo-dark-blur-d)" />
+  </g>
+
+  <path
+    class="logo-dark-glass"
+    d="M19 8.917C29.493 8.917 38 17.424 38 27.917C38 38.41 29.493 46.917 19 46.917C8.507 46.917 0 38.41 0 27.917C0 17.424 8.507 8.917 19 8.917ZM19 14.505C11.593 14.505 5.587 20.51 5.587 27.917C5.587 35.324 11.593 41.33 19 41.33C26.407 41.33 32.412 35.324 32.412 27.917C32.412 20.51 26.407 14.505 19 14.505ZM27.586 0.219L30.391 2.255L30.862 2.598L30.434 2.993C27.467 5.731 23.503 7.408 19.148 7.417H18.897C14.614 7.362 10.719 5.693 7.792 2.993L7.362 2.598L7.835 2.255L10.64 0.219L10.94 0L11.226 0.237C13.366 2.013 16.115 3.08 19.112 3.08C22.111 3.08 24.859 2.013 26.999 0.237L27.286 0L27.586 0.219Z"
+    fill="var(--logo-dark-glass, #fff)"
+    fill-opacity="0.66"
+  />
+</svg>

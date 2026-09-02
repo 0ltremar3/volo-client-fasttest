@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Check, ChevronDown, Pencil, RefreshCw } from 'lucide-react'
+import { CalendarClock, Check, ChevronDown, Pencil, RefreshCw, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   getGetV2DailyQueryKey,
@@ -12,14 +12,7 @@ import {
   usePostV2CoachCardsIdReject,
 } from '@/api/generated/endpoints'
 import { VoloCoachStreamError } from '@/api/sse'
-import {
-  authApi,
-  coachApi,
-  voiceApi,
-  type MoveSchedule,
-  type VoloCard,
-  type VoloMessage,
-} from '@/api/volo'
+import { coachApi, voiceApi, type MoveSchedule, type VoloCard, type VoloMessage } from '@/api/volo'
 import { BeautifulPromptComposer } from '@/components/ai/beautiful-prompt-composer'
 import { StreamingText } from '@/components/ai/beautiful-ui/streaming-text'
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
@@ -29,6 +22,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CoachOrb } from '@/features/coach/coach-orb'
 import {
+  CoachComposeFab,
+  CoachNewSessionPanel,
+  CoachNextSessionHero,
+} from '@/features/coach/coach-landing-ui'
+import {
   CoachConversationHeader,
   CoachFocusCard,
   CoachPauseDialog,
@@ -37,6 +35,7 @@ import {
 } from '@/features/coach/coach-conversation-ui'
 import {
   buildMoveScheduleRule,
+  formatCoachAppointment,
   resolveMoveScheduleDraft,
   type MoveScheduleFrequency,
 } from '@/features/coach/coach-model'
@@ -44,6 +43,8 @@ import {
   canRequestCoachEnd,
   findPendingSessionEnd,
   isEmptyCoachConversation,
+  resolveCoachStartView,
+  type CoachStartView,
 } from '@/features/coach/coach-conversation-state'
 import {
   buildCoachTimeline,
@@ -59,8 +60,6 @@ import {
 import { VoiceOverlay } from '@/features/coach/voice-overlay'
 import { canStartVoice, retryVoiceSession } from '@/features/coach/voice-state'
 import { currentAppLocale } from '@/i18n'
-import type { AppLocale } from '@/lib/locale'
-import { toBcp47 } from '@/lib/locale'
 
 const today = () => new Date().toLocaleDateString('en-CA')
 
@@ -105,12 +104,10 @@ async function copyText(text: string) {
 }
 
 export function VoloCoachExperience() {
-  const { t } = useTranslation('coach')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const sessionId = searchParams.get('session')
   const home = useQuery({ queryKey: ['volo-coach-home'], queryFn: coachApi.home })
-  const profile = useQuery({ queryKey: ['me'], queryFn: authApi.me })
 
   useEffect(() => {
     if (!sessionId && home.data?.current_session) {
@@ -127,30 +124,27 @@ export function VoloCoachExperience() {
     <div className="app-canvas relative isolate flex h-dvh min-h-0 w-full flex-col overflow-hidden text-[var(--coach-ink)]">
       <AppAtmosphere />
       {sessionId ? (
-        <SessionView key={sessionId} sessionId={sessionId} />
+        <>
+          <SessionView key={sessionId} sessionId={sessionId} />
+          <AppBottomNavigation onCoach={() => void navigate('/chat')} />
+        </>
       ) : (
-        <CoachStart
-          scheduled={scheduled}
-          displayName={profile.data?.profile.display_name ?? t('fallbackName')}
-        />
+        <CoachStart scheduled={scheduled} />
       )}
-      <AppBottomNavigation onCoach={() => void navigate('/chat')} />
     </div>
   )
 }
 
 function CoachStart({
   scheduled,
-  displayName,
 }: {
   scheduled: Awaited<ReturnType<typeof coachApi.home>>['scheduled_sessions']
-  displayName: string
 }) {
   const { t, i18n } = useTranslation('coach')
   const locale = currentAppLocale(i18n.language)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [scheduling, setScheduling] = useState(false)
+  const [entry, setEntry] = useState<CoachStartView>(scheduled.length ? 'home' : 'new')
   const [topic, setTopic] = useState('')
   const [date, setDate] = useState(today())
   const [time, setTime] = useState('21:00')
@@ -159,68 +153,61 @@ function CoachStart({
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] })
       if (result.session.status === 'ongoing') void navigate(`/chat?session=${result.session.id}`)
-      else setScheduling(false)
+      else setEntry('home')
     },
   })
 
   const next = scheduled[0]
-  return (
-    <main className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-[15px] pb-8">
-      {scheduled.length ? (
-        <>
-          <header className="safe-top flex h-[104px] items-end px-[21px] pb-[10px]">
-            <h1 className="text-lg font-semibold">{t('scheduleTitle')}</h1>
-          </header>
-          <ScheduledSessionStack sessions={scheduled} />
-          {next ? (
-            <Link
-              to={`/chat/scheduled/${next.id}`}
-              className="mt-10 block w-full min-h-11 rounded-[22px] text-center focus-visible:outline-offset-4"
-              aria-labelledby="next-session-heading next-session-topic"
-            >
-              <h2 id="next-session-heading" className="text-lg font-semibold">
-                {t('nextSession')}
-              </h2>
-              <CoachOrb className="mx-auto mt-6" />
-              <h3
-                id="next-session-topic"
-                className="mt-7 text-wrap-balance text-4xl font-semibold leading-none"
-              >
-                {next.topic || next.title}
-              </h3>
-              <p className="mt-3 text-sm font-medium text-[var(--coach-text-secondary)]">
-                {formatAppointment(next.scheduled_at, locale, t('timeNotSet'))}
-              </p>
-            </Link>
-          ) : null}
-        </>
-      ) : (
-        <section className="pt-[200px] text-center">
-          <CoachOrb className="mx-auto" />
-          <h1 className="mx-auto mt-[35px] max-w-[21rem] text-wrap-balance font-display text-4xl font-medium leading-none">
-            {t('hello', { name: displayName })}
-          </h1>
-          <p className="mx-auto mt-2 max-w-[20rem] text-[26px] font-semibold leading-8">
-            {t('tagline')}
-          </p>
-          <p className="mx-auto mt-5 max-w-[20rem] text-base leading-[18px] text-[var(--coach-text-secondary)]">
-            {t('makeSpace')}
-          </p>
-        </section>
-      )}
+  const view = resolveCoachStartView(entry, scheduled.length)
+  if (view === 'new') {
+    return (
+      <CoachNewSessionPanel
+        onFindTime={() => {
+          create.reset()
+          setEntry('schedule')
+        }}
+        onStartNow={() => create.mutate({ startType: 'instant' })}
+        onClose={scheduled.length ? () => setEntry('home') : undefined}
+        startPending={create.isPending}
+        startError={create.isError ? t('sessionStartError') : null}
+      />
+    )
+  }
 
-      {scheduling ? (
-        <form
-          className="daily-card mt-8 space-y-4 p-4"
-          onSubmit={(event) => {
-            event.preventDefault()
-            create.mutate({
-              startType: 'scheduled',
-              topic,
-              scheduledAt: new Date(`${date}T${time}:00`).toISOString(),
-            })
-          }}
-        >
+  if (view === 'schedule') {
+    return (
+      <form
+        className="flex min-h-0 flex-1 flex-col px-6 pb-10"
+        onSubmit={(event) => {
+          event.preventDefault()
+          create.mutate({
+            startType: 'scheduled',
+            topic,
+            scheduledAt: new Date(`${date}T${time}:00`).toISOString(),
+          })
+        }}
+      >
+        <div className="relative flex h-12 items-center justify-center">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute left-[-0.5rem]"
+            onClick={() => {
+              create.reset()
+              setEntry('new')
+            }}
+            aria-label={t('closeScheduling')}
+          >
+            <X />
+          </Button>
+          <h1 className="text-base font-semibold">{t('findATime')}</h1>
+        </div>
+        <CoachOrb className="mx-auto mt-2" />
+        <p className="mx-auto mt-4 max-w-[16rem] text-center text-base leading-5 text-[var(--coach-ink)]">
+          {t('chooseUnrushed')}
+        </p>
+        <div className="mt-9 space-y-4">
           <Input
             value={topic}
             onChange={(event) => setTopic(event.target.value)}
@@ -241,41 +228,47 @@ function CoachStart({
               required
             />
           </div>
-          <div className="flex gap-2">
-            <Button type="submit" disabled={create.isPending}>
-              {t('schedule')}
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setScheduling(false)}>
-              {t('cancel')}
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <div className="mt-9 space-y-1">
-          <Button
-            type="button"
-            className="h-[50px] w-full rounded-full bg-[var(--coach-surface)] text-[var(--coach-ink)] shadow-[0_6px_18px_rgb(52_51_48/8%)] hover:bg-[var(--coach-surface-glass-strong)]"
-            disabled={create.isPending}
-            onClick={() =>
-              scheduled.length ? setScheduling(true) : create.mutate({ startType: 'instant' })
-            }
-          >
-            {scheduled.length ? t('scheduleASession') : t('startNow')}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-12 w-full rounded-full"
-            onClick={() =>
-              scheduled.length ? create.mutate({ startType: 'instant' }) : setScheduling(true)
-            }
-          >
-            {scheduled.length ? null : <CalendarClock />}
-            {scheduled.length ? t('newConversation') : t('findATime')}
-          </Button>
         </div>
-      )}
-    </main>
+        <Button
+          type="submit"
+          disabled={create.isPending}
+          className="mt-auto h-[50px] rounded-full bg-[var(--coach-surface)] text-base text-[var(--coach-ink)] shadow-[var(--coach-shadow)] hover:bg-[var(--coach-surface-glass-strong)]"
+        >
+          {t('schedule')}
+        </Button>
+        {create.isError ? (
+          <p className="mt-3 text-center text-sm text-[var(--danger)]" role="alert">
+            {t('sessionStartError')}
+          </p>
+        ) : null}
+      </form>
+    )
+  }
+
+  return (
+    <>
+      <main className="relative min-h-0 flex-1">
+        <div className="coach-scrollbar-none h-full overflow-y-auto px-[15px] pb-24 pt-[62px]">
+          <ScheduledSessionStack sessions={scheduled} />
+          {next ? (
+            <div className="mt-9">
+              <CoachNextSessionHero
+                topic={next.topic || next.title}
+                when={formatCoachAppointment(next.scheduled_at, locale, t('timeNotSet'))}
+                onOpen={() => void navigate(`/chat/scheduled/${next.id}`)}
+              />
+            </div>
+          ) : null}
+        </div>
+        <CoachComposeFab
+          onClick={() => {
+            create.reset()
+            setEntry('new')
+          }}
+        />
+      </main>
+      <AppBottomNavigation onCoach={() => void navigate('/chat')} />
+    </>
   )
 }
 
@@ -343,7 +336,7 @@ function ScheduledSession({ session }: { session: ScheduledSessionValue }) {
           {session.topic || session.title}
         </span>
         <span className="mt-3 block text-xs text-[var(--coach-text-tertiary)]">
-          {formatAppointment(session.scheduled_at, locale, t('timeNotSet'))}
+          {formatCoachAppointment(session.scheduled_at, locale, t('timeNotSet'))}
           {session.schedule_state === 'expired' ? t('passedStillAvailable') : ''}
         </span>
       </button>
@@ -899,18 +892,4 @@ function CoachError({ onRetry }: { onRetry: () => void }) {
       </div>
     </div>
   )
-}
-
-function formatAppointment(
-  value: string | null | undefined,
-  locale: AppLocale,
-  missingLabel: string,
-) {
-  if (!value) return missingLabel
-  return new Intl.DateTimeFormat(toBcp47(locale), {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(value))
 }

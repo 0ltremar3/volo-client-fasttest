@@ -67,9 +67,11 @@ uses a separate confirmation dialog and the empty state links back to Coach. The
 route and `/v2/daily/echo/*` lifecycle remain in place for the next Echo slice. Completing an Echo
 still persists the generated summary for Review from the same backend record.
 
-The Coach route opens on the Figma-aligned conversation state and includes appointment stacking on
-home, Next Session preview routing, absolute-time start routing, scheduling, conversation, Move
-proposal, and editable Pause states. An open conversation does not repeat the appointment stack. The
+The Coach route opens on the Figma-aligned conversation state. With no appointment, home is a New
+Session gate: Find a Time is primary and Start Now is secondary, without the tab bar. With
+appointments, home keeps the stack plus a Next Session orb; the date/arrow opens the scheduled
+preview, and a plus FAB returns to the New Session gate. Scheduling, conversation, Move proposal, and
+editable Pause states remain. An open conversation does not repeat the appointment stack. The
 conversation header's `Done` action prepares the full-height Pause sheet; `Into Your Day` confirms its
 editable topic and takeaway, completes the session, and returns to Daily, while `Keep talking` rejects
 only the pending Pause. If the user has not sent a message, `Done` cancels the empty session and returns

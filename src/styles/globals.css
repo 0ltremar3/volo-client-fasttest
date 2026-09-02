@@ -115,6 +115,18 @@
   }
 }
 
+@keyframes coach-nav-mark-bounce {
+  0% {
+    transform: scale(0.82);
+  }
+  48% {
+    transform: scale(1.16);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 @keyframes coach-stream-delta {
   from {
     opacity: 0.45;
@@ -399,6 +411,88 @@
   }
 }
 
+.coach-nav-mark {
+  transform: scale(1);
+  transform-origin: 50% 58%;
+  transition: transform 140ms var(--ease-out);
+}
+
+.coach-nav-mark__glow {
+  position: absolute;
+  left: 50%;
+  top: 54%;
+  z-index: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--coach-accent) 42%, transparent) 0%,
+    color-mix(in srgb, var(--coach-accent) 8%, transparent) 58%,
+    transparent 72%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.72);
+  transition:
+    opacity 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
+}
+
+.coach-nav-mark__logo {
+  z-index: 1;
+}
+
+.logo-dark-glass {
+  opacity: 0.1;
+  pointer-events: none;
+  transition: opacity 140ms var(--ease-out);
+}
+
+.coach-nav-mark[data-active] .coach-nav-mark__glow {
+  opacity: 0.55;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.coach-nav-mark[data-active] .logo-dark-glass {
+  opacity: 0.22;
+}
+
+.coach-nav-link[data-press='pressed'] .coach-nav-mark {
+  transform: scale(0.9);
+  transition-duration: 90ms;
+}
+
+.coach-nav-link[data-press='pressed'] .coach-nav-mark__glow {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.18);
+  transition-duration: 90ms;
+}
+
+.coach-nav-link[data-press='pressed'] .logo-dark-glass {
+  opacity: 0.55;
+  transition-duration: 90ms;
+}
+
+.coach-nav-link[data-press='release'] .coach-nav-mark {
+  animation: coach-nav-mark-bounce 320ms var(--ease-out);
+}
+
+.coach-nav-link[data-press='release'] .logo-dark-glass {
+  opacity: 0.18;
+  transition-duration: 280ms;
+}
+
+@media (hover: none) {
+  .coach-nav-link[data-press='pressed'] .coach-nav-mark {
+    transform: scale(0.82);
+  }
+
+  .coach-nav-link[data-press='pressed'] .coach-nav-mark__glow {
+    transform: translate(-50%, -50%) scale(1.32);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -412,5 +506,15 @@
   .coach-thinking-cell {
     opacity: 0.18;
     animation: none !important;
+  }
+
+  .coach-nav-link[data-press] .coach-nav-mark,
+  .coach-nav-link[data-press] .coach-nav-mark__glow {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .coach-nav-link[data-press='pressed'] .logo-dark-glass {
+    opacity: 0.45;
   }
 }

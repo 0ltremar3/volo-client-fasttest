@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Pencil, X } from 'lucide-react'
+import { Check, Pencil, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -9,6 +9,11 @@ import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
 import { CoachOrb } from '@/features/coach/coach-orb'
+import {
+  CoachComposeFab,
+  CoachNewSessionPanel,
+  CoachNextSessionHero,
+} from '@/features/coach/coach-landing-ui'
 import {
   CoachConversationHeader,
   CoachFocusCard,
@@ -21,6 +26,7 @@ import {
 } from '@/features/coach/coach-conversation-state'
 import {
   defaultSchedule,
+  formatCoachAppointment,
   formatScheduleDate,
   formatScheduleTime,
   mockMoveProposal,
@@ -43,58 +49,12 @@ import { VoloCoachExperience } from '@/features/coach/volo-coach-experience'
 
 type MoveState = 'hidden' | 'suggested' | 'editing' | 'added' | 'skipped'
 
-function CoachHomeHeader() {
-  const { t } = useTranslation('coach')
-  return (
-    <header className="safe-top relative z-30 flex h-[104px] shrink-0 items-end px-9 pb-[10px]">
-      <h1 className="text-lg font-semibold text-[var(--coach-ink)]">{t('scheduleTitle')}</h1>
-    </header>
-  )
-}
-
 function FocusCard() {
   return (
     <CoachFocusCard
       title="The cost of choice, and what I truly want"
       topics={['Career Choice', 'Inner Standards']}
     />
-  )
-}
-
-function WelcomeScreen({ onSchedule, onStart }: { onSchedule: () => void; onStart: () => void }) {
-  const { t } = useTranslation('coach')
-  return (
-    <section className="flex flex-1 flex-col items-center px-[25px] pb-[145px] pt-[220px] text-center">
-      <CoachOrb />
-      <div className="mt-[35px] w-full">
-        <h1 className="font-display text-4xl font-medium leading-none tracking-[-0.02em] text-[var(--coach-ink)]">
-          {t('hello', { name: 'Jiayu' })}
-        </h1>
-        <p className="mx-auto mt-2 max-w-[19rem] text-[1.625rem] font-semibold leading-8 text-[var(--coach-ink)]">
-          {t('tagline')}
-        </p>
-        <p className="mx-auto mt-5 max-w-[20rem] text-base leading-[18px] text-[var(--coach-text-secondary)]">
-          {t('makeSpace')}
-        </p>
-      </div>
-
-      <div className="mt-auto w-full pt-14">
-        <Button
-          type="button"
-          onClick={onSchedule}
-          className="h-[50px] w-full rounded-full bg-[var(--coach-surface)] text-base text-[var(--coach-ink)] shadow-[var(--coach-shadow)] hover:bg-[var(--coach-surface)]/90"
-        >
-          {t('findATimeTitle')}
-        </Button>
-        <button
-          type="button"
-          onClick={onStart}
-          className="mt-2 min-h-touch px-5 text-sm font-medium text-[var(--coach-text-secondary)] transition-colors hover:text-[var(--coach-ink)]"
-        >
-          {t('startNowTitle')}
-        </button>
-      </div>
-    </section>
   )
 }
 
@@ -222,51 +182,31 @@ function SessionCard({ schedule }: { schedule: CoachSchedule }) {
 function HomeScreen({
   schedule,
   onStart,
-  onSchedule,
+  onCompose,
 }: {
   schedule: CoachSchedule
   onStart: () => void
-  onSchedule: () => void
+  onCompose: () => void
 }) {
   const { t, i18n } = useTranslation('coach')
   const locale = currentAppLocale(i18n.language)
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
-      <div className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+    <section className="relative flex min-h-0 flex-1 flex-col">
+      <div className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-5 pb-20 pt-[62px]">
         <SessionCard schedule={schedule} />
-        <p className="mt-12 text-center text-lg font-semibold">{t('nextSession')}</p>
-        <CoachOrb className="mx-auto mt-[35px]" />
-        <button
-          type="button"
-          onClick={onStart}
-          className="group mt-7 block min-h-touch w-full text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <span className="block text-4xl font-semibold leading-none tracking-[-0.03em]">
-            {schedule.topic}
-          </span>
-          <span className="mt-3 inline-flex items-center gap-1.5 text-sm text-[var(--coach-text-secondary)]">
-            {formatScheduleDate(schedule.date, locale)} ·{' '}
-            {formatScheduleTime(schedule.time, locale)}
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-          </span>
-        </button>
+        <div className="mt-9">
+          <CoachNextSessionHero
+            topic={schedule.topic}
+            when={formatCoachAppointment(
+              `${schedule.date}T${schedule.time}:00`,
+              locale,
+              t('timeNotSet'),
+            )}
+            onOpen={onStart}
+          />
+        </div>
       </div>
-      <div className="shrink-0 px-[25px] pb-4 pt-2">
-        <Button
-          type="button"
-          onClick={onSchedule}
-          className="h-[50px] w-full rounded-full bg-[var(--coach-surface)] text-base font-medium text-[var(--coach-ink)] shadow-[var(--coach-shadow)] hover:bg-[var(--coach-surface-glass-strong)]"
-        >
-          {t('scheduleASession')}
-        </Button>
-        <button
-          type="button"
-          onClick={onStart}
-          className="mt-2 min-h-11 w-full rounded-full px-5 text-sm font-medium text-[var(--coach-text-secondary)]"
-        >
-          {t('newConversation')}
-        </button>
-      </div>
+      <CoachComposeFab onClick={onCompose} />
     </section>
   )
 }
@@ -646,13 +586,15 @@ function CoachExperienceState({
           disabled={replying || preparingPause || pauseOpen}
           busy={preparingPause}
         />
-      ) : coachChromeVisible ? (
-        <CoachHomeHeader />
       ) : null}
 
       <main className="flex min-h-0 flex-1 flex-col">
         {screen === 'welcome' ? (
-          <WelcomeScreen onSchedule={() => setScreen('schedule')} onStart={startConversation} />
+          <CoachNewSessionPanel
+            onFindTime={() => setScreen('schedule')}
+            onStartNow={startConversation}
+            onClose={homeState.hasScheduledSession ? () => setScreen('home') : undefined}
+          />
         ) : null}
         {screen === 'schedule' ? (
           <ScheduleScreen
@@ -666,7 +608,7 @@ function CoachExperienceState({
           <HomeScreen
             schedule={schedule}
             onStart={startConversation}
-            onSchedule={() => setScreen('schedule')}
+            onCompose={() => setScreen('welcome')}
           />
         ) : null}
         {screen === 'conversation' ? (
