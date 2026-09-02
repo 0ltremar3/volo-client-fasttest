@@ -1,0 +1,15 @@
+{
+  "title": "你的资料",
+  "back": "返回",
+  "saveName": "保存昵称",
+  "savingName": "正在保存昵称",
+  "nickname": "昵称",
+  "tapToEdit": "点按即可编辑",
+  "saveError": "无法保存昵称，请再试一次。",
+  "email": "邮箱",
+  "cantChange": "无法修改",
+  "mockReset": "离开此页后，模拟资料的修改会被重置。",
+  "loading": "正在加载账户资料",
+  "openErrorTitle": "无法打开你的资料",
+  "openErrorBody": "请检查网络后重试。"
+}

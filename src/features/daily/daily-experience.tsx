@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { Settings2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import echoArc from '@/assets/daily/echo-arc.svg'
@@ -39,6 +40,7 @@ const showMockDailyTraces = false
 const showMockDailySummary = true
 
 function DailyHeader() {
+  const { t } = useTranslation('daily')
   return (
     <header className="safe-top grid h-24 shrink-0 grid-cols-[2rem_1fr_2rem] items-center px-5">
       <span aria-hidden="true" />
@@ -53,7 +55,7 @@ function DailyHeader() {
       <Link
         to="/account"
         className="grid size-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label="Account details"
+        aria-label={t('accountDetails')}
       >
         <span className="grid size-8 place-items-center rounded-full bg-[var(--daily-profile-background)]">
           <img src={profileGlyph} alt="" width="11" height="20" className="h-5 w-[11px]" />
@@ -64,6 +66,7 @@ function DailyHeader() {
 }
 
 function DailyEchoCard({ echo, onSettings }: { echo: DailyEcho | null; onSettings: () => void }) {
+  const { t } = useTranslation('daily')
   if (!echo) {
     return (
       <section
@@ -72,21 +75,21 @@ function DailyEchoCard({ echo, onSettings }: { echo: DailyEcho | null; onSetting
       >
         <div className="flex items-center justify-between">
           <p id="daily-echo-title" className="daily-overline">
-            DAILY ECHO
+            {t('echo.title')}
           </p>
           <button
             type="button"
             className="grid size-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={onSettings}
-            aria-label="Daily Echo settings"
+            aria-label={t('echo.settings')}
           >
             <Settings2 className="size-4" />
           </button>
         </div>
-        <p className="mt-8 font-display text-[22px] font-medium leading-7">No Echo for this day.</p>
-        <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">
-          Choose another date to revisit a reflection.
+        <p className="mt-8 font-display text-[22px] font-medium leading-7">
+          {t('echo.emptyTitle')}
         </p>
+        <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">{t('echo.emptyBody')}</p>
       </section>
     )
   }
@@ -99,13 +102,13 @@ function DailyEchoCard({ echo, onSettings }: { echo: DailyEcho | null; onSetting
     >
       <div className="absolute left-5 right-5 top-6 z-10 flex items-center justify-between">
         <p id="daily-echo-title" className="daily-overline">
-          DAILY ECHO
+          {t('echo.title')}
         </p>
         <button
           type="button"
           className="grid size-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onSettings}
-          aria-label="Daily Echo settings"
+          aria-label={t('echo.settings')}
         >
           <Settings2 className="size-4" />
         </button>
@@ -139,13 +142,12 @@ function DailyEchoCard({ echo, onSettings }: { echo: DailyEcho | null; onSetting
 }
 
 function DailySummaryCard({ summary }: { summary: DailySummary | null }) {
+  const { t } = useTranslation('daily')
   if (!summary) {
     return (
       <div className="daily-card px-[18px] py-6">
-        <p className="font-medium">No summary for this day.</p>
-        <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">
-          A summary appears only when there is reflected material to gather.
-        </p>
+        <p className="font-medium">{t('summary.emptyTitle')}</p>
+        <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">{t('summary.emptyBody')}</p>
       </div>
     )
   }
@@ -166,18 +168,19 @@ function DailySummaryCard({ summary }: { summary: DailySummary | null }) {
         style={{ filter: 'var(--daily-decoration-filter)' }}
         aria-hidden="true"
       />
-      <p className="daily-overline">TAKE AWAY</p>
+      <p className="daily-overline">{t('summary.takeaway')}</p>
       <p className="mt-1.5 text-pretty text-sm leading-normal">{summary.takeaway}</p>
     </article>
   )
 }
 
 function DailyTracesCard({ traces }: { traces: DailyTrace[] }) {
+  const { t } = useTranslation('daily')
   return (
     <section className="daily-card relative px-[18px] py-6" aria-labelledby="daily-traces-title">
       <div className="flex items-center justify-between">
         <h2 id="daily-traces-title" className="daily-overline">
-          TODAY’S TRACES
+          {t('traces.title')}
         </h2>
         <img src={traceDotGlyph} alt="" width="9" height="13" className="h-[13px] w-[9px]" />
       </div>
@@ -210,10 +213,8 @@ function DailyTracesCard({ traces }: { traces: DailyTrace[] }) {
         </div>
       ) : (
         <div className="mt-6">
-          <p className="font-medium">No traces for this day.</p>
-          <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">
-            Small notes and pebbles will remain separate from the daily summary.
-          </p>
+          <p className="font-medium">{t('traces.emptyTitle')}</p>
+          <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">{t('traces.emptyBody')}</p>
         </div>
       )}
     </section>
@@ -221,6 +222,7 @@ function DailyTracesCard({ traces }: { traces: DailyTrace[] }) {
 }
 
 function MockDailyExperience() {
+  const { t } = useTranslation('daily')
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [echoSettingsOpen, setEchoSettingsOpen] = useState(false)
@@ -292,7 +294,7 @@ function MockDailyExperience() {
           {showMockDailySummary || showMockDailyTraces ? (
             <section className="w-full" aria-labelledby="daily-summary-title">
               <h2 id="daily-summary-title" className="daily-section-title px-[5px]">
-                DAILY SUMMARY
+                {t('summary.title')}
               </h2>
               <div className="mt-6 space-y-3">
                 {showMockDailySummary ? <DailySummaryCard summary={record.summary} /> : null}

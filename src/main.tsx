@@ -7,10 +7,13 @@ import '@fontsource/playfair-display/latin-500.css'
 import '@fontsource/playfair-display/latin-600.css'
 
 import { App } from '@/App'
+import { applyStoredLocale } from '@/lib/locale'
 import { applyStoredTheme } from '@/lib/theme'
+import '@/i18n'
 import '@/styles/globals.css'
 
 applyStoredTheme()
+applyStoredLocale()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

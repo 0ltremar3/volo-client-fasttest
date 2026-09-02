@@ -18,6 +18,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import type { VoiceConnectionDetails } from '@/api/volo'
 import {
@@ -26,8 +27,6 @@ import {
   finishVoiceCall,
   reduceVoiceTranscript,
   visibleVoiceUserText,
-  voiceFailureCopy,
-  voicePhaseLabel,
   type VoiceFailure,
   type VoicePhase,
 } from '@/features/coach/voice-state'
@@ -51,6 +50,7 @@ export function VoiceOverlay({
   onClose,
   onCanonicalChange,
 }: VoiceOverlayProps) {
+  const { t } = useTranslation('coach')
   const closeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export function VoiceOverlay({
       className="voice-overlay app-canvas fixed inset-0 isolate mx-auto flex h-dvh w-full max-w-[390px] flex-col overflow-hidden text-[var(--coach-ink)]"
       role="dialog"
       aria-modal="true"
-      aria-label="Voice conversation"
+      aria-label={t('voice.conversation')}
       onKeyDown={(event) => {
         if (event.key === 'Escape') onClose()
       }}
@@ -102,6 +102,7 @@ function VoicePending({
   onRetry: () => void
   onClose: () => void
 }) {
+  const { t } = useTranslation('coach')
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 pb-[max(24px,env(safe-area-inset-bottom))] text-center">
       <div className="grid size-24 place-items-center rounded-full bg-[var(--coach-surface-glass)] shadow-[var(--coach-shadow)]">
@@ -115,12 +116,10 @@ function VoicePending({
         )}
       </div>
       <h3 className="mt-6 text-xl font-semibold">
-        {error ? 'Voice is unavailable' : 'Connecting'}
+        {error ? t('voice.unavailable') : t('voice.connecting')}
       </h3>
       <p className="mt-2 max-w-[19rem] text-sm leading-5 text-[var(--coach-text-secondary)]">
-        {error
-          ? 'We couldn’t start this voice session. Your text conversation is still available.'
-          : 'Preparing a private microphone connection.'}
+        {error ? t('voice.startFailed') : t('voice.preparing')}
       </p>
       {error ? (
         <button
@@ -128,7 +127,7 @@ function VoicePending({
           className="mt-6 min-h-11 rounded-full bg-[var(--coach-chrome-dark)] px-6 text-sm font-semibold text-[var(--coach-on-dark)]"
           onClick={onRetry}
         >
-          Try again
+          {t('voice.tryAgain')}
         </button>
       ) : null}
       <button
@@ -137,7 +136,7 @@ function VoicePending({
         disabled={loading && !error}
         onClick={onClose}
       >
-        Continue with text
+        {t('voice.continueText')}
       </button>
     </div>
   )
@@ -152,15 +151,16 @@ function VoiceChrome({
   onClose: () => void
   leading?: ReactNode
 }) {
+  const { t } = useTranslation('coach')
   return (
     <header className="safe-top flex min-h-[72px] shrink-0 items-end justify-between px-4 pb-2">
       {leading ?? <span className="size-11" aria-hidden="true" />}
-      <h2 className="pb-3 text-base font-semibold">Voice Coach</h2>
+      <h2 className="pb-3 text-base font-semibold">{t('voice.title')}</h2>
       <button
         ref={closeRef}
         type="button"
         className="grid size-11 place-items-center rounded-full text-[var(--coach-ink)] transition-colors hover:bg-[var(--coach-surface-glass)]"
-        aria-label="Return to text chat"
+        aria-label={t('voice.returnToText')}
         onClick={onClose}
       >
         <X className="size-5" aria-hidden="true" />
@@ -221,6 +221,7 @@ function VoiceRoomContent({
   onRetry: () => void
   onCanonicalChange: () => void
 }) {
+  const { t } = useTranslation('coach')
   const [transcript, updateTranscript] = useReducer(reduceVoiceTranscript, emptyTranscript)
   const [failure, setFailure] = useState<VoiceFailure | null>(null)
   const [reconnecting, setReconnecting] = useState(false)
@@ -387,7 +388,17 @@ function VoiceRoomContent({
   }, [hangUp])
 
   const visibleUserText = visibleVoiceUserText(transcript)
-  const failureCopy = failure ? voiceFailureCopy(failure) : ''
+  const failureCopy = failure
+    ? t(
+        failure === 'permission'
+          ? 'voice.permission'
+          : failure === 'worker_disconnect'
+            ? 'voice.workerDisconnect'
+            : failure === 'worker_start'
+              ? 'voice.workerStart'
+              : 'voice.connection',
+      )
+    : ''
 
   useEffect(() => {
     const node = transcriptRef.current
@@ -431,7 +442,19 @@ function VoiceRoomContent({
             </BarVisualizer>
           </div>
           <p className="mt-5 shrink-0 text-lg font-semibold" aria-live="polite">
-            {voicePhaseLabel(phase)}
+            {t(
+              phase === 'connecting'
+                ? 'voice.connecting'
+                : phase === 'listening'
+                  ? 'voice.listening'
+                  : phase === 'thinking'
+                    ? 'voice.thinking'
+                    : phase === 'speaking'
+                      ? 'voice.speaking'
+                      : phase === 'reconnecting'
+                        ? 'voice.reconnecting'
+                        : 'voice.failed',
+            )}
           </p>
 
           {failure ? (
@@ -442,7 +465,7 @@ function VoiceRoomContent({
                 className="mt-3 min-h-11 rounded-full bg-[var(--coach-chrome-dark)] px-5 text-sm font-semibold text-[var(--coach-on-dark)]"
                 onClick={onRetry}
               >
-                Reconnect
+                {t('voice.reconnect')}
               </button>
             </div>
           ) : (
@@ -454,7 +477,7 @@ function VoiceRoomContent({
               {visibleUserText ? (
                 <div>
                   <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">
-                    {transcript.interimUser ? 'Hearing you' : 'You said'}
+                    {transcript.interimUser ? t('voice.hearingYou') : t('voice.youSaid')}
                   </p>
                   <p className="mt-1 text-pretty text-base leading-6 text-[var(--coach-text-warm)]">
                     {visibleUserText}
@@ -463,7 +486,9 @@ function VoiceRoomContent({
               ) : null}
               {transcript.assistant ? (
                 <div className={visibleUserText ? 'mt-4' : undefined}>
-                  <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">Coach</p>
+                  <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">
+                    {t('title')}
+                  </p>
                   <p className="mt-1 text-pretty text-base leading-6">{transcript.assistant}</p>
                 </div>
               ) : null}
@@ -478,7 +503,7 @@ function VoiceRoomContent({
             onClick={() => void room.startAudio().then(() => setAudioBlocked(false))}
           >
             <Volume2 className="size-4" aria-hidden="true" />
-            Hear Coach
+            {t('voice.hearCoach')}
           </button>
         ) : null}
 
@@ -486,7 +511,7 @@ function VoiceRoomContent({
           <button
             type="button"
             className="grid size-12 place-items-center rounded-full bg-[var(--coach-surface-glass-strong)] shadow-[var(--coach-shadow)] disabled:opacity-45"
-            aria-label={micEnabled ? 'Mute microphone' : 'Unmute microphone'}
+            aria-label={micEnabled ? t('voice.mute') : t('voice.unmute')}
             disabled={Boolean(failure)}
             onClick={() => {
               void room.localParticipant
@@ -504,7 +529,7 @@ function VoiceRoomContent({
           <button
             type="button"
             className="grid size-14 place-items-center rounded-full bg-[var(--danger)] text-white shadow-[0_4px_8px_rgb(61_31_31/20%)]"
-            aria-label="Hang up voice conversation"
+            aria-label={t('voice.hangUp')}
             onClick={() => void hangUp()}
           >
             <PhoneOff className="size-6" aria-hidden="true" />
@@ -516,7 +541,7 @@ function VoiceRoomContent({
           className="mx-auto mt-3 min-h-11 shrink-0 px-5 text-sm font-medium text-[var(--coach-text-secondary)]"
           onClick={() => void hangUp()}
         >
-          Continue with text
+          {t('voice.continueText')}
         </button>
       </div>
     </>
@@ -534,25 +559,26 @@ function VoiceDevicePicker({
   disabled: boolean
   onSelect: (deviceId: string) => void
 }) {
+  const { t } = useTranslation('coach')
   const activeLabel =
-    devices.find((device) => device.deviceId === activeDeviceId)?.label || 'Default microphone'
+    devices.find((device) => device.deviceId === activeDeviceId)?.label || t('voice.defaultMic')
 
   return (
     <label className="relative grid size-11 place-items-center rounded-full text-[var(--coach-text-tertiary)] transition-colors hover:bg-[var(--coach-surface-glass)] hover:text-[var(--coach-ink)] has-[:disabled]:opacity-45">
       <Mic className="size-5" aria-hidden="true" />
-      <span className="sr-only">Audio input device: {activeLabel}</span>
+      <span className="sr-only">{t('voice.audioDeviceNamed', { label: activeLabel })}</span>
       <select
         className="absolute inset-0 cursor-pointer opacity-0 disabled:cursor-not-allowed"
-        aria-label="Audio input device"
+        aria-label={t('voice.audioDevice')}
         title={activeLabel}
         value={activeDeviceId}
         disabled={disabled}
         onChange={(event) => onSelect(event.target.value)}
       >
-        {devices.length === 0 ? <option value="default">Default microphone</option> : null}
+        {devices.length === 0 ? <option value="default">{t('voice.defaultMic')}</option> : null}
         {devices.map((device, index) => (
           <option key={device.deviceId} value={device.deviceId}>
-            {device.label || `Microphone ${index + 1}`}
+            {device.label || t('voice.microphoneN', { n: index + 1 })}
           </option>
         ))}
       </select>

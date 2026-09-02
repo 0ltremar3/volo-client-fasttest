@@ -1,10 +1,12 @@
 import { useState, type FormEvent, type MouseEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 import { AppMark } from '@/components/app-mark'
 import { authApi } from '@/api/volo'
+import { LanguageToggle } from '@/components/language-toggle'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,14 +18,17 @@ import {
 } from '@/features/auth/mock-auth'
 import { normalizeLoginEmail, useOtpSendCooldown } from '@/features/auth/otp-send-cooldown'
 
+type LoginNotice = 'codeSent' | 'invalidCredentials' | 'invalidCode' | 'sendFailed'
+
 export function LoginPage() {
+  const { t } = useTranslation('auth')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [email, setEmail] = useState(mockAuthEnabled ? mockCredentials.email : '')
   const [password, setPassword] = useState(mockAuthEnabled ? mockCredentials.password : '')
   const [otp, setOtp] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<LoginNotice | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { tryBeginSend, markSent, releaseSend, remainingSeconds, wasSent } = useOtpSendCooldown()
 
@@ -38,7 +43,7 @@ export function LoginPage() {
       await authApi.sendOtp(sentEmail)
       markSent(sentEmail)
       setOtp('')
-      setNotice('We sent a six-digit sign-in code to your email.')
+      setNotice('codeSent')
     } catch (error) {
       releaseSend(sentEmail)
       throw error
@@ -54,7 +59,7 @@ export function LoginPage() {
       if (mockAuthEnabled) {
         await new Promise((resolve) => window.setTimeout(resolve, 300))
         if (!authenticateMock(email, password)) {
-          setNotice('Email or password does not match the test account.')
+          setNotice('invalidCredentials')
           return
         }
         createMockSession(rememberMe)
@@ -67,7 +72,7 @@ export function LoginPage() {
       queryClient.removeQueries({ queryKey: ['me'] })
       await navigate('/daily', { replace: true })
     } catch {
-      setNotice(otpSent ? 'That code is invalid or expired.' : 'We could not send a code yet.')
+      setNotice(otpSent ? 'invalidCode' : 'sendFailed')
     } finally {
       setIsSubmitting(false)
     }
@@ -82,7 +87,7 @@ export function LoginPage() {
     try {
       await sendCode()
     } catch {
-      setNotice('We could not send a code yet.')
+      setNotice('sendFailed')
     } finally {
       setIsSubmitting(false)
     }
@@ -97,17 +102,18 @@ export function LoginPage() {
   }
 
   const submitLabel = isSubmitting
-    ? 'Please wait…'
+    ? t('pleaseWait')
     : !mockAuthEnabled && !otpSent
       ? canSendCode
-        ? 'Send code'
-        : `Send code in ${cooldownRemaining}s`
-      : 'Sign in'
+        ? t('sendCode')
+        : t('sendCodeIn', { seconds: cooldownRemaining })
+      : t('signIn')
 
   return (
     <main className="safe-top safe-bottom flex min-h-dvh bg-background px-page py-4">
       <div className="mx-auto flex w-full max-w-sm flex-col">
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-1">
+          <LanguageToggle />
           <ThemeToggle />
         </div>
 
@@ -119,30 +125,34 @@ export function LoginPage() {
 
           <div className="mb-8">
             <h1 className="font-display text-[var(--font-size-title)] font-semibold leading-tight tracking-[var(--letter-spacing-title)]">
-              Welcom,
+              {t('welcome')}
             </h1>
-            <p className="mt-3 text-sm text-text-secondary">Sign in with your email to continue.</p>
+            <p className="mt-3 text-sm text-text-secondary">{t('subtitle')}</p>
           </div>
 
           <form onSubmit={(event) => void handleSubmit(event)} className="space-y-5">
             {mockAuthEnabled ? (
               <div className="rounded-lg bg-surface-subtle px-4 py-3 text-xs leading-5 text-text-secondary">
-                <p className="font-semibold text-foreground">Mock mode</p>
-                <p>Email: {mockCredentials.email}</p>
-                <p>Password: {mockCredentials.password}</p>
+                <p className="font-semibold text-foreground">{t('mockMode')}</p>
+                <p>
+                  {t('email')}: {mockCredentials.email}
+                </p>
+                <p>
+                  {t('password')}: {mockCredentials.password}
+                </p>
               </div>
             ) : null}
 
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
-                Email
+                {t('email')}
               </label>
               <Input
                 id="email"
                 name="email"
                 type="email"
                 autoComplete="email"
-                placeholder="you@example.com"
+                placeholder={t('emailPlaceholder')}
                 value={email}
                 onChange={(event) => handleEmailChange(event.target.value)}
                 disabled={isSubmitting}
@@ -156,7 +166,7 @@ export function LoginPage() {
                   htmlFor={mockAuthEnabled ? 'password' : 'otp'}
                   className="text-sm font-medium"
                 >
-                  {mockAuthEnabled ? 'Password' : 'Sign-in code'}
+                  {mockAuthEnabled ? t('password') : t('signInCode')}
                 </label>
                 {!mockAuthEnabled && otpSent ? (
                   <Button
@@ -167,7 +177,7 @@ export function LoginPage() {
                     onClick={(event) => void handleResend(event)}
                     aria-live="polite"
                   >
-                    {canSendCode ? 'Resend code' : `Resend in ${cooldownRemaining}s`}
+                    {canSendCode ? t('resendCode') : t('resendIn', { seconds: cooldownRemaining })}
                   </Button>
                 ) : null}
               </div>
@@ -191,7 +201,7 @@ export function LoginPage() {
                   name="otp"
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  placeholder={otpSent ? '6-digit code' : 'Request a code first'}
+                  placeholder={otpSent ? t('otpPlaceholder') : t('otpDisabledPlaceholder')}
                   value={otp}
                   onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
                   disabled={!otpSent || isSubmitting}
@@ -215,7 +225,7 @@ export function LoginPage() {
                   aria-hidden="true"
                 />
               </span>
-              Remember me
+              {t('rememberMe')}
             </label>
 
             <Button
@@ -228,7 +238,7 @@ export function LoginPage() {
 
             {notice ? (
               <p role="status" className="text-sm leading-6 text-warning">
-                {notice}
+                {t(notice)}
               </p>
             ) : null}
           </form>

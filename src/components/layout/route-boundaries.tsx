@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Navigate } from 'react-router-dom'
 
 import { hasAccessToken } from '@/api/auth-session'
@@ -27,11 +28,12 @@ export function ProtectedAppShell() {
 }
 
 function RealSessionBoundary() {
+  const { t } = useTranslation('common')
   const session = useQuery({ queryKey: ['me'], queryFn: authApi.me, retry: false })
   if (session.isPending) {
     return (
       <div className="app-canvas grid min-h-dvh place-items-center text-sm text-text-secondary">
-        Opening Volo…
+        {t('session.opening')}
       </div>
     )
   }

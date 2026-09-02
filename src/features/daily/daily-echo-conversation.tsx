@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, RefreshCw, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 import { dailyApi, type EchoMessage } from '@/api/volo'
@@ -10,6 +11,8 @@ import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
 
 export function DailyEchoConversation({ echoId }: { echoId: string }) {
+  const { t } = useTranslation('daily')
+  const { t: tCommon } = useTranslation('common')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const thread = useQuery({
@@ -85,9 +88,9 @@ export function DailyEchoConversation({ echoId }: { echoId: string }) {
     return (
       <div className="app-canvas grid h-dvh place-items-center px-6 text-center">
         <div>
-          <p>Daily Echo could not open.</p>
+          <p>{t('echo.openError')}</p>
           <Button className="mt-4" onClick={() => void thread.refetch()}>
-            <RefreshCw /> Retry
+            <RefreshCw /> {tCommon('actions.retry')}
           </Button>
         </div>
       </div>
@@ -101,19 +104,19 @@ export function DailyEchoConversation({ echoId }: { echoId: string }) {
         <button
           type="button"
           className="grid size-11 place-items-center rounded-full"
-          aria-label="Leave Daily Echo for now"
+          aria-label={t('echo.leave')}
           onClick={() => void navigate(`/daily?date=${thread.data.echo_session.local_date}`)}
         >
           <X className="size-5" />
         </button>
-        <p className="text-center text-base font-semibold">Daily Echo</p>
+        <p className="text-center text-base font-semibold">{t('echo.title')}</p>
         <button
           type="button"
           className="min-h-11 rounded-full px-3 text-sm font-medium disabled:opacity-40"
           onClick={() => complete.mutate()}
           disabled={thread.data.echo_session.status !== 'in_progress' || complete.isPending}
         >
-          {complete.isPending ? 'Finishing…' : 'Complete'}
+          {complete.isPending ? t('echo.finishing') : t('echo.complete')}
         </button>
       </header>
       <main className="coach-scrollbar-none relative z-10 min-h-0 flex-1 overflow-y-auto px-5 pb-8 pt-5">
@@ -143,12 +146,12 @@ export function DailyEchoConversation({ echoId }: { echoId: string }) {
               className="flex min-h-11 items-center gap-2 text-sm text-[var(--coach-accent)]"
               onClick={() => void send(failed.body, failed.clientTempId)}
             >
-              <RefreshCw className="size-4" /> Message failed. Retry
+              <RefreshCw className="size-4" /> {t('echo.messageFailed')}
             </button>
           ) : null}
           {complete.isError ? (
             <p className="flex items-center gap-2 text-sm text-[var(--danger)]" role="alert">
-              <Check className="size-4" /> Summary could not be completed. Try again.
+              <Check className="size-4" /> {t('echo.summaryFailed')}
             </p>
           ) : null}
           <div ref={endRef} />
@@ -156,7 +159,7 @@ export function DailyEchoConversation({ echoId }: { echoId: string }) {
       </main>
       {thread.data.echo_session.status !== 'completed' ? (
         <BeautifulPromptComposer
-          placeholder="What feels true about today?"
+          placeholder={t('echo.placeholder')}
           showInspirations={false}
           onSend={(body) => void send(body)}
         />

@@ -1,0 +1,15 @@
+{
+  "title": "Your details",
+  "back": "Back",
+  "saveName": "Save name",
+  "savingName": "Saving name",
+  "nickname": "Nickname",
+  "tapToEdit": "Tap to edit",
+  "saveError": "Couldn’t save your name. Try again.",
+  "email": "Email",
+  "cantChange": "Can’t change",
+  "mockReset": "Mock profile changes reset when you leave this page.",
+  "loading": "Loading account details",
+  "openErrorTitle": "Couldn’t open your details",
+  "openErrorBody": "Check your connection and try again."
+}

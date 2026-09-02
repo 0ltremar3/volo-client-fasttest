@@ -1,12 +1,14 @@
 import { Check, ChevronDown, Pencil } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
 import { Input } from '@/components/ui/input'
 import type { RepeatRule } from '@/api/volo'
 import { buildMoveScheduleRule } from '@/features/coach/coach-model'
 import { getPeriodMoveStatusLabel, type PeriodMoveStatus } from '@/features/daily/daily-model'
+import { currentAppLocale } from '@/i18n'
 import { cn } from '@/lib/utils'
 
 export type { PeriodMoveStatus } from '@/features/daily/daily-model'
@@ -41,18 +43,11 @@ type PeriodMovesProps = {
   onFindMove: () => void
 }
 
-const statusCopy = {
-  progressing: {
-    label: 'On Track',
-    description: 'I’m moving in the right direction.',
-  },
-  stuck: {
-    label: 'Drifting',
-    description: 'I haven’t made much progress yet.',
-  },
-} as const
-
 const selectableStatuses = ['progressing', 'stuck'] as const
+const isoWeekdayLetters = {
+  en: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
+  zh: ['一', '二', '三', '四', '五', '六', '日'],
+} as const
 
 export function PeriodMoves({
   items,
@@ -62,6 +57,8 @@ export function PeriodMoves({
   onDelete,
   onFindMove,
 }: PeriodMovesProps) {
+  const { t, i18n } = useTranslation('daily')
+  const locale = currentAppLocale(i18n.language)
   const [expanded, setExpanded] = useState(true)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -99,7 +96,7 @@ export function PeriodMoves({
     <section className="w-full" aria-labelledby={`${contentId}-title`}>
       <div className="flex min-h-11 items-center justify-between">
         <h2 id={`${contentId}-title`} className="text-base font-medium leading-5">
-          Period Moves
+          {t('moves.title')}
         </h2>
         <button
           ref={collapseButtonRef}
@@ -107,7 +104,7 @@ export function PeriodMoves({
           className="grid size-11 place-items-center rounded-full text-[var(--coach-text-secondary)] transition-colors hover:text-[var(--coach-ink)]"
           aria-expanded={expanded}
           aria-controls={contentId}
-          aria-label={expanded ? 'Collapse Period Moves' : 'Expand Period Moves'}
+          aria-label={expanded ? t('moves.collapse') : t('moves.expand')}
           onClick={() => setExpanded((current) => !current)}
         >
           <ChevronDown
@@ -127,7 +124,10 @@ export function PeriodMoves({
                 schedule={item.schedule}
                 source={item.source}
                 dueLabel={item.dueLabel}
-                actionLabel={`Check in for ${item.text}. Current status: ${getPeriodMoveStatusLabel(item.status)}`}
+                actionLabel={t('moves.checkInAria', {
+                  text: item.text,
+                  status: getPeriodMoveStatusLabel(item.status, locale),
+                })}
                 onAction={(event) => {
                   triggerRef.current = event.currentTarget
                   setError(null)
@@ -146,7 +146,7 @@ export function PeriodMoves({
                           'bg-[var(--coach-surface-muted)] text-[var(--coach-text-secondary)]',
                       )}
                     >
-                      {getPeriodMoveStatusLabel(item.status)}
+                      {getPeriodMoveStatusLabel(item.status, locale)}
                     </span>
                   </span>
                 }
@@ -158,17 +158,17 @@ export function PeriodMoves({
         ) : (
           <div className="px-3 pb-1 pt-1 text-center">
             <p className="text-sm font-medium text-[var(--coach-text-secondary)]">
-              What’s your next Move?
+              {t('moves.emptyTitle')}
             </p>
             <p className="mx-auto mt-1 max-w-[18rem] text-sm leading-5 text-[var(--coach-text-tertiary)]">
-              A conversation with Coach can help you find what feels right.
+              {t('moves.emptyBody')}
             </p>
             <button
               type="button"
               onClick={onFindMove}
               className="mt-3 min-h-11 w-full rounded-full bg-[var(--coach-surface-glass-strong)] px-5 text-sm font-medium shadow-[var(--coach-shadow)] transition-transform active:scale-[0.97]"
             >
-              Find My Move
+              {t('moves.find')}
             </button>
           </div>
         )}
@@ -191,19 +191,13 @@ export function PeriodMoves({
             }
           }}
           onStatusChange={async (status) => {
-            await run(
-              () => onStatusChange(activeItem, status),
-              'Your Move status could not be updated. Try again.',
-            )
+            await run(() => onStatusChange(activeItem, status), t('moves.statusError'))
           }}
           onRethink={async () => {
-            await run(() => onRethink(activeItem), 'Coach could not open this Move. Try again.')
+            await run(() => onRethink(activeItem), t('moves.rethinkError'))
           }}
           onScheduleChange={async (schedule) =>
-            run(
-              () => onScheduleChange(activeItem, schedule),
-              'This schedule could not be saved. Try again.',
-            )
+            run(() => onScheduleChange(activeItem, schedule), t('moves.scheduleError'))
           }
           onDelete={() => {
             setError(null)
@@ -224,10 +218,7 @@ export function PeriodMoves({
             }
           }}
           onConfirm={async () => {
-            const deleted = await run(
-              () => onDelete(deleteItem),
-              'This Move could not be deleted. Try again.',
-            )
+            const deleted = await run(() => onDelete(deleteItem), t('moves.deleteError'))
             if (deleted) {
               setDeleteId(null)
               window.setTimeout(() => collapseButtonRef.current?.focus(), 0)
@@ -258,6 +249,7 @@ function MoveStatusDialog({
   onScheduleChange: (schedule: PeriodMoveItem['scheduleValue']) => Promise<boolean>
   onDelete: () => void
 }) {
+  const { t } = useTranslation('daily')
   const dialogRef = useRef<HTMLDialogElement>(null)
   const editButtonRef = useRef<HTMLButtonElement>(null)
   const [scheduleOpen, setScheduleOpen] = useState(false)
@@ -290,12 +282,12 @@ function MoveStatusDialog({
               aria-hidden="true"
             />
             <div className="mt-5 flex min-h-11 items-center justify-between gap-2">
-              <p className="text-base font-semibold">Move Check-in</p>
+              <p className="text-base font-semibold">{t('moves.checkInTitle')}</p>
               <div className="flex items-center">
                 <button
                   ref={editButtonRef}
                   type="button"
-                  aria-label="Edit schedule"
+                  aria-label={t('moves.editSchedule')}
                   aria-haspopup="dialog"
                   aria-expanded={scheduleOpen}
                   disabled={pending}
@@ -310,7 +302,7 @@ function MoveStatusDialog({
                   disabled={pending || scheduleOpen}
                   className="min-h-11 rounded-full bg-[var(--coach-surface-glass-strong)] px-4 text-sm font-medium shadow-[var(--coach-shadow)] disabled:opacity-45"
                 >
-                  Done
+                  {t('actions.done', { ns: 'common' })}
                 </button>
               </div>
             </div>
@@ -318,10 +310,10 @@ function MoveStatusDialog({
               id="move-status-title"
               className="mt-2 font-display text-[28px] font-medium leading-9"
             >
-              How’s this Move going?
+              {t('moves.howGoing')}
             </h2>
             <p className="mt-1 text-sm leading-5 text-[var(--coach-text-secondary)]">
-              Choose what best describes where you are right now.
+              {t('moves.chooseBest')}
             </p>
 
             <div className="mt-4 space-y-2">
@@ -347,7 +339,7 @@ function MoveStatusDialog({
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block text-base font-semibold">
-                        {statusCopy[status].label}
+                        {status === 'progressing' ? t('moves.onTrack') : t('moves.drifting')}
                       </span>
                       <span
                         className={cn(
@@ -357,7 +349,9 @@ function MoveStatusDialog({
                             : 'text-[var(--coach-text-tertiary)]',
                         )}
                       >
-                        {statusCopy[status].description}
+                        {status === 'progressing'
+                          ? t('moves.onTrackDescription')
+                          : t('moves.driftingDescription')}
                       </span>
                     </span>
                     {selected ? <Check className="size-5 shrink-0" aria-hidden="true" /> : null}
@@ -372,7 +366,7 @@ function MoveStatusDialog({
               onClick={() => void onRethink()}
               className="mt-auto min-h-11 w-full rounded-full bg-[var(--coach-surface-glass-strong)] px-5 text-base font-medium shadow-[var(--coach-shadow)] transition-transform enabled:active:scale-[0.97] disabled:opacity-45"
             >
-              {pending ? 'Updating…' : 'Needs a Rethink'}
+              {pending ? t('moves.updating') : t('moves.needsRethink')}
             </button>
             <button
               type="button"
@@ -380,7 +374,7 @@ function MoveStatusDialog({
               onClick={onDelete}
               className="mt-2 min-h-11 w-full rounded-full px-5 text-sm text-[var(--coach-text-tertiary)] disabled:opacity-45"
             >
-              Delete Move
+              {t('moves.deleteMove')}
             </button>
             {error && !scheduleOpen ? (
               <p className="mt-1 text-center text-sm text-[var(--danger)]" role="alert">
@@ -420,6 +414,8 @@ function MoveScheduleDialog({
   onClose: () => void
   onSave: (schedule: PeriodMoveItem['scheduleValue']) => Promise<boolean>
 }) {
+  const { t, i18n } = useTranslation('daily')
+  const locale = currentAppLocale(i18n.language)
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [schedule, setSchedule] = useState(item.scheduleValue)
   const canConfirm = Boolean(schedule.startLocalDate && schedule.localTime)
@@ -460,7 +456,7 @@ function MoveScheduleDialog({
         />
         <div className="mt-5 flex min-h-11 items-center justify-between">
           <h2 id="move-schedule-title" className="text-base font-semibold">
-            Schedule
+            {t('moves.schedule')}
           </h2>
           <button
             type="button"
@@ -468,13 +464,13 @@ function MoveScheduleDialog({
             disabled={pending || !canConfirm}
             className="min-h-11 rounded-full bg-[var(--coach-surface-glass-strong)] px-4 text-sm font-medium shadow-[var(--coach-shadow)] disabled:opacity-45"
           >
-            {pending ? 'Saving…' : 'Done'}
+            {pending ? t('moves.saving') : t('actions.done', { ns: 'common' })}
           </button>
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           <label className="text-xs font-medium text-[var(--coach-text-secondary)]">
-            Date
+            {t('moves.date')}
             <Input
               type="date"
               className="mt-1 bg-[var(--coach-surface-glass)]"
@@ -494,7 +490,7 @@ function MoveScheduleDialog({
             />
           </label>
           <label className="text-xs font-medium text-[var(--coach-text-secondary)]">
-            Time
+            {t('moves.time')}
             <Input
               type="time"
               className="mt-1 bg-[var(--coach-surface-glass)]"
@@ -507,7 +503,7 @@ function MoveScheduleDialog({
           </label>
         </div>
         <label className="mt-3 block text-xs font-medium text-[var(--coach-text-secondary)]">
-          Repeat
+          {t('moves.repeat')}
           <select
             className="mt-1 min-h-11 w-full rounded-lg border border-[var(--coach-border)] bg-[var(--coach-surface-glass)] px-3 text-sm text-[var(--coach-ink)]"
             value={schedule.rule.frequency}
@@ -523,17 +519,23 @@ function MoveScheduleDialog({
               }))
             }
           >
-            <option value="none">No repeat</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
+            <option value="none">{t('moves.noRepeat')}</option>
+            <option value="daily">{t('moves.daily')}</option>
+            <option value="weekly">{t('moves.weekly')}</option>
+            <option value="monthly">{t('moves.monthly')}</option>
           </select>
         </label>
         {schedule.rule.frequency === 'weekly' ? (
           <div className="mt-3">
-            <p className="text-xs font-medium text-[var(--coach-text-secondary)]">Weekdays</p>
-            <div className="mt-1 grid grid-cols-7 gap-1" role="group" aria-label="Weekdays">
-              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((label, index) => {
+            <p className="text-xs font-medium text-[var(--coach-text-secondary)]">
+              {t('moves.weekdays')}
+            </p>
+            <div
+              className="mt-1 grid grid-cols-7 gap-1"
+              role="group"
+              aria-label={t('moves.weekdays')}
+            >
+              {isoWeekdayLetters[locale].map((label, index) => {
                 const day = index + 1
                 const selected =
                   schedule.rule.frequency === 'weekly' && schedule.rule.weekdays.includes(day)
@@ -570,7 +572,7 @@ function MoveScheduleDialog({
         ) : null}
         {schedule.rule.frequency === 'monthly' ? (
           <label className="mt-3 block text-xs font-medium text-[var(--coach-text-secondary)]">
-            Day of month
+            {t('moves.dayOfMonth')}
             <Input
               type="number"
               min={1}
@@ -598,7 +600,7 @@ function MoveScheduleDialog({
               setSchedule((current) => ({ ...current, alarmEnabled: event.target.checked }))
             }
           />
-          Alarm
+          {t('moves.alarm')}
         </label>
         {error ? (
           <p className="mt-auto pt-4 text-center text-sm text-[var(--danger)]" role="alert">
@@ -622,6 +624,7 @@ function DeleteMoveDialog({
   onCancel: () => void
   onConfirm: () => Promise<void>
 }) {
+  const { t } = useTranslation('daily')
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -645,9 +648,9 @@ function DeleteMoveDialog({
     >
       <div className="px-6 pb-5 pt-6 text-center">
         <h2 id="move-delete-title" className="text-lg font-medium">
-          Delete this Move?
+          {t('moves.deleteTitle')}
         </h2>
-        <p className="mt-1 text-sm text-[var(--coach-text-secondary)]">This can’t be undone.</p>
+        <p className="mt-1 text-sm text-[var(--coach-text-secondary)]">{t('moves.deleteBody')}</p>
         {error ? (
           <p className="mt-3 text-sm text-[var(--danger)]" role="alert">
             {error}
@@ -661,7 +664,7 @@ function DeleteMoveDialog({
           onClick={() => dialogRef.current?.close()}
           className="min-h-12 border-r border-[var(--coach-border)] text-sm font-medium disabled:opacity-45"
         >
-          Cancel
+          {t('actions.cancel', { ns: 'common' })}
         </button>
         <button
           type="button"
@@ -669,7 +672,7 @@ function DeleteMoveDialog({
           onClick={() => void onConfirm()}
           className="min-h-12 text-sm font-medium text-[var(--danger)] disabled:opacity-45"
         >
-          {pending ? 'Deleting…' : 'Delete'}
+          {pending ? t('moves.deleting') : t('actions.delete', { ns: 'common' })}
         </button>
       </div>
     </dialog>,

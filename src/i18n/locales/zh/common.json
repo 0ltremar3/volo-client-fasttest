@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "primary": "主导航",
+    "daily": "打开 Daily",
+    "coach": "打开 Coach",
+    "review": "打开 Review"
+  },
+  "theme": {
+    "switchToDefault": "切换到浅色主题",
+    "switchToDark": "切换到深色主题"
+  },
+  "language": {
+    "label": "语言",
+    "en": "English",
+    "zh": "中文",
+    "switchToEn": "切换到英文",
+    "switchToZh": "切换到中文"
+  },
+  "actions": {
+    "back": "返回",
+    "retry": "重试",
+    "tryAgain": "再试一次",
+    "cancel": "取消",
+    "save": "保存",
+    "done": "完成",
+    "delete": "删除",
+    "today": "今天",
+    "edit": "编辑"
+  },
+  "notFound": {
+    "title": "找不到页面",
+    "body": "这个地址没有对应的页面。",
+    "openChat": "打开对话"
+  },
+  "session": {
+    "opening": "正在打开 Volo…"
+  },
+  "debug": {
+    "eyebrow": "内部",
+    "title": "调试",
+    "description": "接入真实接口后，这里会用来检查请求。请勿渲染凭据或敏感信息。",
+    "apiBaseUrl": "API 根地址",
+    "apiBaseUrlEmpty": "同源 / 未配置",
+    "openapiClient": "OpenAPI 客户端",
+    "openapiClientValue": "尚未生成",
+    "authProtocol": "鉴权协议",
+    "authProtocolValue": "等待后端契约",
+    "streamingProtocol": "流式协议",
+    "streamingProtocolValue": "不在第一阶段范围",
+    "response": "响应",
+    "copyResponse": "复制响应",
+    "clearResponse": "清除响应",
+    "noRequest": "// 尚未发起请求。"
+  }
+}

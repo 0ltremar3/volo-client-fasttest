@@ -74,6 +74,12 @@ describe('Date strip presentation', () => {
     expect(dateStripWeekdayLetter('2026-05-25')).toBe('M')
   })
 
+  it('uses Chinese weekday letters and locale month titles', () => {
+    expect(formatDateStripWeekday('2026-05-25', 'zh')).toBe('星期一')
+    expect(formatDateStripMonthYear('2026-05-25', 'zh')).toBe('2026年5月')
+    expect(dateStripWeekdayLetter('2026-05-25', 'zh')).toBe('一')
+  })
+
   it('commits a new day only after focus differs from the published date', () => {
     expect(commitFocusedDate('2026-08-31', '2026-08-31')).toBeNull()
     expect(commitFocusedDate('2026-09-01', '2026-08-31')).toBe('2026-09-01')

@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 import backIcon from '@/assets/account/back.svg'
 import confirmIcon from '@/assets/account/confirm.svg'
 import { authApi, type AccountMe, type AccountProfile } from '@/api/volo'
+import { LanguageToggle } from '@/components/language-toggle'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { mockAuthEnabled, mockCredentials } from '@/features/auth/mock-auth'
@@ -35,6 +37,8 @@ export function AccountPage() {
 }
 
 function AccountForm({ account }: { account: AccountMe }) {
+  const { t } = useTranslation('account')
+  const { t: tCommon } = useTranslation('common')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const inputId = useId()
@@ -72,12 +76,12 @@ function AccountForm({ account }: { account: AccountMe }) {
           size="icon"
           className="rounded-full p-1.5 hover:bg-black/5"
           onClick={() => void navigate(-1)}
-          aria-label="Back"
+          aria-label={t('back')}
         >
           <img src={backIcon} alt="" width="32" height="32" className="size-8 dark:invert" />
         </Button>
         <h1 className="flex h-11 items-center justify-center text-center text-base font-semibold">
-          Your details
+          {t('title')}
         </h1>
         <Button
           type="submit"
@@ -85,7 +89,7 @@ function AccountForm({ account }: { account: AccountMe }) {
           size="icon"
           className="rounded-full p-[7px] hover:bg-transparent"
           disabled={!changed || updateProfile.isPending}
-          aria-label={updateProfile.isPending ? 'Saving name' : 'Save name'}
+          aria-label={updateProfile.isPending ? t('savingName') : t('saveName')}
         >
           <img src={confirmIcon} alt="" width="30" height="30" className="size-[30px]" />
         </Button>
@@ -104,7 +108,7 @@ function AccountForm({ account }: { account: AccountMe }) {
               htmlFor={inputId}
               className="block cursor-text text-[11px] text-[var(--coach-text-secondary)]"
             >
-              Nickname
+              {t('nickname')}
             </label>
             <Input
               id={inputId}
@@ -120,11 +124,11 @@ function AccountForm({ account }: { account: AccountMe }) {
               className="min-h-0 rounded-none border-0 bg-transparent px-0 py-1 text-[15px] font-medium shadow-none focus-visible:border-transparent focus-visible:shadow-none md:text-[15px]"
             />
             <p id={`${inputId}-hint`} className="text-[11px] text-[var(--coach-text-secondary)]">
-              Tap to edit
+              {t('tapToEdit')}
             </p>
             {updateProfile.isError ? (
               <p id={`${inputId}-error`} className="mt-1 text-xs text-danger" role="alert">
-                Couldn’t save your name. Try again.
+                {t('saveError')}
               </p>
             ) : null}
           </div>
@@ -132,15 +136,22 @@ function AccountForm({ account }: { account: AccountMe }) {
           <div className="h-px bg-[var(--coach-border)]" />
 
           <div className="px-4 py-3.5">
-            <p className="text-[11px] text-[var(--coach-text-secondary)]">Email</p>
+            <p className="text-[11px] text-[var(--coach-text-secondary)]">{t('email')}</p>
             <p className="mt-1 break-words text-[15px] font-medium">{account.account.email}</p>
-            <p className="mt-1 text-[11px] text-[var(--coach-text-secondary)]">Can’t change</p>
+            <p className="mt-1 text-[11px] text-[var(--coach-text-secondary)]">{t('cantChange')}</p>
           </div>
+        </section>
+
+        <section className="mt-4 overflow-hidden rounded-[20px] bg-[var(--account-surface)] px-4 py-3.5">
+          <p className="text-[11px] text-[var(--coach-text-secondary)]">
+            {tCommon('language.label')}
+          </p>
+          <LanguageToggle variant="segmented" className="mt-3" />
         </section>
 
         {mockAuthEnabled ? (
           <p className="mt-3 text-center text-xs text-[var(--coach-text-secondary)]">
-            Mock profile changes reset when you leave this page.
+            {t('mockReset')}
           </p>
         ) : null}
       </main>
@@ -149,10 +160,11 @@ function AccountForm({ account }: { account: AccountMe }) {
 }
 
 function AccountSkeleton() {
+  const { t } = useTranslation('account')
   return (
     <div
       className="min-h-dvh bg-[var(--account-background)] px-5 pt-[calc(env(safe-area-inset-top)+62px)]"
-      aria-label="Loading account details"
+      aria-label={t('loading')}
       role="status"
     >
       <div className="mx-auto h-5 w-24 animate-pulse rounded bg-[var(--coach-border)] motion-reduce:animate-none" />
@@ -163,20 +175,20 @@ function AccountSkeleton() {
 }
 
 function AccountError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation('account')
+  const { t: tCommon } = useTranslation('common')
   const navigate = useNavigate()
   return (
     <div className="grid min-h-dvh place-items-center bg-[var(--account-background)] px-5 text-center">
       <div>
-        <h1 className="text-base font-semibold">Couldn’t open your details</h1>
-        <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">
-          Check your connection and try again.
-        </p>
+        <h1 className="text-base font-semibold">{t('openErrorTitle')}</h1>
+        <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">{t('openErrorBody')}</p>
         <div className="mt-5 flex justify-center gap-2">
           <Button type="button" variant="ghost" onClick={() => void navigate(-1)}>
-            Back
+            {tCommon('actions.back')}
           </Button>
           <Button type="button" onClick={onRetry}>
-            Try again
+            {tCommon('actions.tryAgain')}
           </Button>
         </div>
       </div>

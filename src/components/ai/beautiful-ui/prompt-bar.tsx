@@ -11,6 +11,7 @@
 
 import { AudioWaveform } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 /* ─────────────────────────────────────────────────────────
  * PROMPT BAR
@@ -80,12 +81,6 @@ const MODELS = [
   { key: 'fast', name: 'Fast', tag: 'Mock' },
   { key: 'focused', name: 'Focused', tag: 'Mock' },
 ]
-
-const COACH_STARTERS = [
-  'I have too much on my mind',
-  'Help me figure out my next step',
-  'I keep avoiding a decision',
-] as const
 
 /* the last @word or /word being typed, if any */
 function parseToken(draft: string): { kind: 'at' | 'slash'; query: string; start: number } | null {
@@ -567,6 +562,7 @@ export function CoachPromptBar({
   onSend: (text: string) => void
   onVoice?: () => void
 }) {
+  const { t } = useTranslation('coach')
   const [draft, setDraft] = useState('')
   const [inspirationsOpen, setInspirationsOpen] = useState(false)
   const internalInputRef = useRef<HTMLTextAreaElement>(null)
@@ -588,9 +584,13 @@ export function CoachPromptBar({
         <div
           id="coach-inspiration-options"
           className="coach-scrollbar-none -mx-5 mb-2 flex gap-3 overflow-x-auto px-5"
-          aria-label="Inspiration options"
+          aria-label={t('composer.inspirations')}
         >
-          {COACH_STARTERS.map((starter) => (
+          {[
+            t('composer.starters.tooMuch'),
+            t('composer.starters.nextStep'),
+            t('composer.starters.avoiding'),
+          ].map((starter) => (
             <button
               key={starter}
               type="button"
@@ -617,7 +617,9 @@ export function CoachPromptBar({
         <button
           type="button"
           disabled={disabled || !showInspirations}
-          aria-label={inspirationsOpen ? 'Hide inspirations' : 'Show inspirations'}
+          aria-label={
+            inspirationsOpen ? t('composer.hideInspirations') : t('composer.showInspirations')
+          }
           aria-expanded={inspirationsOpen}
           aria-controls="coach-inspiration-options"
           onClick={() => setInspirationsOpen((current) => !current)}
@@ -649,14 +651,14 @@ export function CoachPromptBar({
             }
           }}
           placeholder={placeholder}
-          aria-label="Prompt"
+          aria-label={t('composer.prompt')}
           className="h-11 min-h-11 min-w-0 w-full resize-none overflow-y-auto bg-transparent px-1 py-3 text-base leading-5 text-ink outline-none [overflow-wrap:anywhere] placeholder:text-[var(--coach-text-tertiary)] disabled:cursor-not-allowed disabled:opacity-55"
         />
         {/* TODO: Restore the speech-to-text icon when dictation is implemented. */}
         {hasDraft ? (
           <button
             type="button"
-            aria-label="Send"
+            aria-label={t('composer.send')}
             disabled={!canSend}
             onClick={send}
             className="flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"
@@ -670,8 +672,8 @@ export function CoachPromptBar({
         ) : (
           <button
             type="button"
-            aria-label={onVoice ? 'Start voice conversation' : 'Voice chat unavailable'}
-            title={onVoice ? 'Start voice conversation' : 'Voice chat unavailable'}
+            aria-label={onVoice ? t('composer.voiceStart') : t('composer.voiceUnavailable')}
+            title={onVoice ? t('composer.voiceStart') : t('composer.voiceUnavailable')}
             disabled={disabled || !onVoice}
             onClick={onVoice}
             className="flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"

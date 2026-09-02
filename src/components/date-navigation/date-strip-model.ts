@@ -1,3 +1,6 @@
+import type { AppLocale } from '@/lib/locale'
+import { toBcp47 } from '@/lib/locale'
+
 /** Layout copied from EverEcho `DateStripLayoutMetrics` (Figma Calendar/Week·Strip). */
 export const dateStripLayout = {
   compactHeight: 83,
@@ -24,6 +27,16 @@ export const dateStripTickSizes = [
 ] as const
 
 export const weekdayLetters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const
+
+export const weekdayLettersByLocale: Record<AppLocale, readonly string[]> = {
+  en: weekdayLetters,
+  zh: ['日', '一', '二', '三', '四', '五', '六'],
+}
+
+export const weekdayHeadingsByLocale: Record<AppLocale, readonly string[]> = {
+  en: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'],
+  zh: ['日', '一', '二', '三', '四', '五', '六'],
+}
 
 export type DateWindow = {
   start: string
@@ -137,30 +150,37 @@ export function monthGrid({ year, month }: MonthYear) {
   return cells
 }
 
-function formatUtc(value: string, options: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(
+function formatUtc(value: string, options: Intl.DateTimeFormatOptions, locale: AppLocale = 'en') {
+  return new Intl.DateTimeFormat(toBcp47(locale), { ...options, timeZone: 'UTC' }).format(
     parseIsoDate(value),
   )
 }
 
-export function formatDateStripWeekday(value: string) {
-  return formatUtc(value, { weekday: 'long' })
+export function formatDateStripWeekday(value: string, locale: AppLocale = 'en') {
+  return formatUtc(value, { weekday: 'long' }, locale)
 }
 
-export function formatDateStripMonthYear(value: string) {
-  return formatUtc(value, { month: 'long', year: 'numeric' })
+export function formatDateStripMonthYear(value: string, locale: AppLocale = 'en') {
+  return formatUtc(value, { month: 'long', year: 'numeric' }, locale)
 }
 
-export function formatDateStripMonthYearValue({ year, month }: MonthYear) {
-  return formatDateStripMonthYear(`${year}-${String(month).padStart(2, '0')}-01`)
+export function formatDateStripMonthYearValue(
+  { year, month }: MonthYear,
+  locale: AppLocale = 'en',
+) {
+  return formatDateStripMonthYear(`${year}-${String(month).padStart(2, '0')}-01`, locale)
 }
 
-export function formatDateStripFullDate(value: string) {
-  return formatUtc(value, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+export function formatDateStripFullDate(value: string, locale: AppLocale = 'en') {
+  return formatUtc(
+    value,
+    { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' },
+    locale,
+  )
 }
 
-export function dateStripWeekdayLetter(value: string) {
-  return weekdayLetters[parseIsoDate(value).getUTCDay()] ?? ''
+export function dateStripWeekdayLetter(value: string, locale: AppLocale = 'en') {
+  return weekdayLettersByLocale[locale][parseIsoDate(value).getUTCDay()] ?? ''
 }
 
 export function dateStripDayNumber(value: string) {

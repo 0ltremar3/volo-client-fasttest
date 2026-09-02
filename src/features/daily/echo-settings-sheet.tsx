@@ -1,8 +1,10 @@
 import { ChevronDown, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { CoachOrb } from '@/features/coach/coach-orb'
 import { formatEchoScheduleTime, type EchoSchedule } from '@/features/daily/daily-model'
+import { currentAppLocale } from '@/i18n'
 import { cn } from '@/lib/utils'
 
 type EchoSettingsSheetProps = {
@@ -28,6 +30,8 @@ function fromTimeParts(hour: string, minute: string, period: string) {
 }
 
 export function EchoSettingsSheet({ open, value, onClose, onSave }: EchoSettingsSheetProps) {
+  const { t, i18n } = useTranslation('daily')
+  const locale = currentAppLocale(i18n.language)
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [draft, setDraft] = useState(value)
   const [timeOpen, setTimeOpen] = useState(false)
@@ -77,41 +81,41 @@ export function EchoSettingsSheet({ open, value, onClose, onSave }: EchoSettings
             type="button"
             onClick={onClose}
             className="absolute left-5 top-7 grid size-11 place-items-center rounded-full"
-            aria-label="Cancel Echo settings"
+            aria-label={t('echo.cancelSettings')}
           >
             <X className="size-5" />
           </button>
           <h2 id="echo-settings-title" className="text-base font-medium">
-            Daily Echo
+            {t('echo.title')}
           </h2>
           <button
             type="submit"
             className="absolute right-5 top-7 min-h-11 rounded-full px-3 text-sm font-semibold text-[var(--coach-accent)]"
           >
-            Save
+            {t('actions.save', { ns: 'common' })}
           </button>
         </div>
 
         <CoachOrb className="mx-auto mt-[17px] shrink-0" />
         <p className="mx-auto mt-5 max-w-[18rem] text-center text-sm leading-6 text-[var(--coach-text-secondary)]">
-          Keep one quiet time each day for a short reflection.
+          {t('echo.blurb')}
         </p>
 
         <div className="mx-5 mt-10 divide-y divide-[var(--coach-border)] px-4">
           <div className="relative flex min-h-[70px] items-center justify-between gap-4">
-            <span className="text-base font-medium">Time</span>
+            <span className="text-base font-medium">{t('echo.time')}</span>
             <button
               type="button"
               aria-expanded={timeOpen}
               onClick={() => setTimeOpen((current) => !current)}
               className="echo-settings-chip"
             >
-              {formatEchoScheduleTime(draft.time)} <ChevronDown className="size-3.5" />
+              {formatEchoScheduleTime(draft.time, locale)} <ChevronDown className="size-3.5" />
             </button>
             {timeOpen ? (
               <div className="echo-settings-popup absolute right-0 top-[50px] z-30 flex min-w-[210px] items-center gap-1.5 p-2">
                 <select
-                  aria-label="Hour"
+                  aria-label={t('echo.hour')}
                   value={parts.hour}
                   onChange={(event) => updateTime({ hour: event.target.value })}
                   className="h-11 rounded-full bg-[var(--echo-settings-selection)] px-3"
@@ -122,7 +126,7 @@ export function EchoSettingsSheet({ open, value, onClose, onSave }: EchoSettings
                 </select>
                 <span>:</span>
                 <select
-                  aria-label="Minute"
+                  aria-label={t('echo.minute')}
                   value={parts.minute}
                   onChange={(event) => updateTime({ minute: event.target.value })}
                   className="h-11 rounded-full bg-[var(--echo-settings-selection)] px-3"
@@ -132,20 +136,20 @@ export function EchoSettingsSheet({ open, value, onClose, onSave }: EchoSettings
                   ))}
                 </select>
                 <select
-                  aria-label="AM or PM"
+                  aria-label={t('echo.period')}
                   value={parts.period}
                   onChange={(event) => updateTime({ period: event.target.value })}
                   className="h-11 rounded-full bg-[var(--echo-settings-selection)] px-3"
                 >
-                  <option>AM</option>
-                  <option>PM</option>
+                  <option value="AM">{t('echo.am')}</option>
+                  <option value="PM">{t('echo.pm')}</option>
                 </select>
               </div>
             ) : null}
           </div>
 
           <div className="flex min-h-[70px] items-center justify-between gap-4">
-            <span className="text-base font-medium">Daily reminder</span>
+            <span className="text-base font-medium">{t('echo.dailyReminder')}</span>
             <button
               type="button"
               role="switch"
@@ -165,13 +169,15 @@ export function EchoSettingsSheet({ open, value, onClose, onSave }: EchoSettings
                   draft.alarm && 'translate-x-12',
                 )}
               />
-              <span className="sr-only">{draft.alarm ? 'Reminder on' : 'Reminder off'}</span>
+              <span className="sr-only">
+                {draft.alarm ? t('echo.reminderOn') : t('echo.reminderOff')}
+              </span>
             </button>
           </div>
         </div>
 
         <p className="mx-auto mt-auto max-w-[18rem] px-5 pb-6 text-center text-xs leading-5 text-[var(--coach-text-tertiary)]">
-          The plan is saved to your Volo account. Device notifications are not enabled yet.
+          {t('echo.planNote')}
         </p>
       </form>
     </dialog>

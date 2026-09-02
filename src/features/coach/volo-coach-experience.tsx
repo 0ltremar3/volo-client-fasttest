@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarClock, Check, ChevronDown, Pencil, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
@@ -57,18 +58,17 @@ import {
 } from '@/features/coach/schedule-routing'
 import { VoiceOverlay } from '@/features/coach/voice-overlay'
 import { canStartVoice, retryVoiceSession } from '@/features/coach/voice-state'
+import { currentAppLocale } from '@/i18n'
+import type { AppLocale } from '@/lib/locale'
+import { toBcp47 } from '@/lib/locale'
 
 const today = () => new Date().toLocaleDateString('en-CA')
 
-const moveScheduleSummaryLabels: Record<MoveScheduleFrequency, string> = {
-  none: 'No repeat',
-  daily: 'Daily',
-  weekly: 'Weekly',
-  monthly: 'Monthly',
-}
-
-function formatMoveScheduleSummary(draft: { frequency: MoveScheduleFrequency; time: string }) {
-  return `${moveScheduleSummaryLabels[draft.frequency]} · ${draft.time}`
+function formatMoveScheduleSummary(
+  draft: { frequency: MoveScheduleFrequency; time: string },
+  labels: Record<MoveScheduleFrequency, string>,
+) {
+  return `${labels[draft.frequency]} · ${draft.time}`
 }
 
 async function copyText(text: string) {
@@ -105,6 +105,7 @@ async function copyText(text: string) {
 }
 
 export function VoloCoachExperience() {
+  const { t } = useTranslation('coach')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const sessionId = searchParams.get('session')
@@ -130,7 +131,7 @@ export function VoloCoachExperience() {
       ) : (
         <CoachStart
           scheduled={scheduled}
-          displayName={profile.data?.profile.display_name ?? 'there'}
+          displayName={profile.data?.profile.display_name ?? t('fallbackName')}
         />
       )}
       <AppBottomNavigation onCoach={() => void navigate('/chat')} />
@@ -145,6 +146,8 @@ function CoachStart({
   scheduled: Awaited<ReturnType<typeof coachApi.home>>['scheduled_sessions']
   displayName: string
 }) {
+  const { t, i18n } = useTranslation('coach')
+  const locale = currentAppLocale(i18n.language)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [scheduling, setScheduling] = useState(false)
@@ -166,7 +169,7 @@ function CoachStart({
       {scheduled.length ? (
         <>
           <header className="safe-top flex h-[104px] items-end px-[21px] pb-[10px]">
-            <h1 className="text-lg font-semibold">Coach Schedule</h1>
+            <h1 className="text-lg font-semibold">{t('scheduleTitle')}</h1>
           </header>
           <ScheduledSessionStack sessions={scheduled} />
           {next ? (
@@ -176,7 +179,7 @@ function CoachStart({
               aria-labelledby="next-session-heading next-session-topic"
             >
               <h2 id="next-session-heading" className="text-lg font-semibold">
-                Next Session
+                {t('nextSession')}
               </h2>
               <CoachOrb className="mx-auto mt-6" />
               <h3
@@ -186,7 +189,7 @@ function CoachStart({
                 {next.topic || next.title}
               </h3>
               <p className="mt-3 text-sm font-medium text-[var(--coach-text-secondary)]">
-                {formatAppointment(next.scheduled_at)}
+                {formatAppointment(next.scheduled_at, locale, t('timeNotSet'))}
               </p>
             </Link>
           ) : null}
@@ -195,13 +198,13 @@ function CoachStart({
         <section className="pt-[200px] text-center">
           <CoachOrb className="mx-auto" />
           <h1 className="mx-auto mt-[35px] max-w-[21rem] text-wrap-balance font-display text-4xl font-medium leading-none">
-            Hello, {displayName}.
+            {t('hello', { name: displayName })}
           </h1>
           <p className="mx-auto mt-2 max-w-[20rem] text-[26px] font-semibold leading-8">
-            I’m here to help you hear yourself.
+            {t('tagline')}
           </p>
           <p className="mx-auto mt-5 max-w-[20rem] text-base leading-[18px] text-[var(--coach-text-secondary)]">
-            Make a little space for this conversation.
+            {t('makeSpace')}
           </p>
         </section>
       )}
@@ -221,7 +224,7 @@ function CoachStart({
           <Input
             value={topic}
             onChange={(event) => setTopic(event.target.value)}
-            placeholder="What’s on your mind?"
+            placeholder={t('placeholderMind')}
             required
           />
           <div className="grid grid-cols-2 gap-3">
@@ -240,10 +243,10 @@ function CoachStart({
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={create.isPending}>
-              Schedule
+              {t('schedule')}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setScheduling(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
           </div>
         </form>
@@ -257,7 +260,7 @@ function CoachStart({
               scheduled.length ? setScheduling(true) : create.mutate({ startType: 'instant' })
             }
           >
-            {scheduled.length ? 'Schedule a Session' : 'Start now'}
+            {scheduled.length ? t('scheduleASession') : t('startNow')}
           </Button>
           <Button
             type="button"
@@ -268,7 +271,7 @@ function CoachStart({
             }
           >
             {scheduled.length ? null : <CalendarClock />}
-            {scheduled.length ? 'New Conversation' : 'Find a time'}
+            {scheduled.length ? t('newConversation') : t('findATime')}
           </Button>
         </div>
       )}
@@ -279,10 +282,11 @@ function CoachStart({
 type ScheduledSessionValue = Awaited<ReturnType<typeof coachApi.home>>['scheduled_sessions'][number]
 
 function ScheduledSessionStack({ sessions }: { sessions: ScheduledSessionValue[] }) {
+  const { t } = useTranslation('coach')
   const [expanded, setExpanded] = useState(false)
   if (!sessions.length) return null
   return (
-    <section aria-label="Scheduled Coach sessions">
+    <section aria-label={t('scheduledSessions')}>
       <div className={expanded ? 'space-y-3' : 'relative pb-4'}>
         {expanded ? (
           sessions.map((session) => <ScheduledSession key={session.id} session={session} />)
@@ -301,7 +305,7 @@ function ScheduledSessionStack({ sessions }: { sessions: ScheduledSessionValue[]
           aria-expanded={expanded}
           onClick={() => setExpanded((value) => !value)}
         >
-          {expanded ? 'Show latest' : `Show all ${sessions.length}`}
+          {expanded ? t('showLatest') : t('showAll', { count: sessions.length })}
           <ChevronDown className={`size-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
         </button>
       ) : null}
@@ -310,6 +314,8 @@ function ScheduledSessionStack({ sessions }: { sessions: ScheduledSessionValue[]
 }
 
 function ScheduledSession({ session }: { session: ScheduledSessionValue }) {
+  const { t, i18n } = useTranslation('coach')
+  const locale = currentAppLocale(i18n.language)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const startOnce = useMemo(() => singleFlight(() => coachApi.start(session.id)), [session.id])
@@ -337,13 +343,13 @@ function ScheduledSession({ session }: { session: ScheduledSessionValue }) {
           {session.topic || session.title}
         </span>
         <span className="mt-3 block text-xs text-[var(--coach-text-tertiary)]">
-          {formatAppointment(session.scheduled_at)}
-          {session.schedule_state === 'expired' ? ' · Passed, still available' : ''}
+          {formatAppointment(session.scheduled_at, locale, t('timeNotSet'))}
+          {session.schedule_state === 'expired' ? t('passedStillAvailable') : ''}
         </span>
       </button>
       {start.isError ? (
         <p className="px-[18px] pb-3 text-xs text-[var(--danger)]" role="alert">
-          Could not start this session. Try again.
+          {t('startError')}
         </p>
       ) : null}
     </article>
@@ -351,6 +357,7 @@ function ScheduledSession({ session }: { session: ScheduledSessionValue }) {
 }
 
 function SessionView({ sessionId }: { sessionId: string }) {
+  const { t } = useTranslation('coach')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const thread = useQuery({
@@ -511,9 +518,9 @@ function SessionView({ sessionId }: { sessionId: string }) {
     voiceOpen,
   })
   const pauseError = confirmEnd.isError
-    ? 'This pause could not be saved. Your words are still here.'
+    ? t('pauseSaveError')
     : continueEnd.isError
-      ? 'The conversation could not be resumed. Try again.'
+      ? t('resumeError')
       : null
   return (
     <>
@@ -533,7 +540,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
           className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-[15px] pb-6 pt-2"
         >
           <CoachFocusCard
-            title={thread.data.session.topic || thread.data.session.title || 'What feels present'}
+            title={thread.data.session.topic || thread.data.session.title || t('defaultFocus')}
           />
           <div className="mt-6 space-y-6 px-[5px]">
             {timeline.map((item) => {
@@ -577,14 +584,14 @@ function SessionView({ sessionId }: { sessionId: string }) {
             ) : null}
             {prepareEnd.isError || discardEmptySession.isError ? (
               <p className="text-center text-sm text-[var(--danger)]" role="alert">
-                Couldn’t end this conversation. Try Done again.
+                {t('endError')}
               </p>
             ) : null}
           </div>
         </div>
         {thread.data.session.status === 'ongoing' ? (
           <BeautifulPromptComposer
-            placeholder="Say what feels present…"
+            placeholder={t('placeholderPresent')}
             showInspirations
             disabled={sending || ending || Boolean(pauseCard) || voiceOpen}
             inputRef={composerRef}
@@ -600,7 +607,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
           />
         ) : (
           <p className="safe-bottom px-5 py-5 text-center text-sm text-[var(--coach-text-secondary)]">
-            This conversation is complete.
+            {t('complete')}
           </p>
         )}
       </main>
@@ -668,6 +675,13 @@ function CoachCard({
   relatedLocalDate: string | null
   onCardChanged: (card: VoloCard) => void
 }) {
+  const { t } = useTranslation('coach')
+  const scheduleLabels: Record<MoveScheduleFrequency, string> = {
+    none: t('noRepeat'),
+    daily: t('daily'),
+    weekly: t('weekly'),
+    monthly: t('monthly'),
+  }
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
@@ -742,9 +756,9 @@ function CoachCard({
   if (card.type === 'session_end_offer') {
     return (
       <article className="rounded-[22px] bg-[var(--coach-surface-glass-strong)] p-4 shadow-[var(--coach-shadow)]">
-        <p className="text-base font-medium">This feels like a useful place to pause.</p>
+        <p className="text-base font-medium">{t('pauseOfferTitle')}</p>
         <p className="mt-2 text-sm leading-5 text-[var(--coach-text-secondary)]">
-          Pause here to shape an editable topic and takeaway, or keep exploring.
+          {t('pauseOfferBody')}
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Button
@@ -752,7 +766,7 @@ function CoachCard({
             onClick={() => acceptEnd.mutate()}
             disabled={acceptEnd.isPending}
           >
-            Pause
+            {t('pause')}
           </Button>
           <Button
             className="rounded-full"
@@ -760,12 +774,12 @@ function CoachCard({
             onClick={() => reject.mutate({ id: card.id })}
             disabled={reject.isPending}
           >
-            Continue
+            {t('continue')}
           </Button>
         </div>
         {acceptEnd.isError || reject.isError ? (
           <p className="mt-3 text-sm text-[var(--danger)]" role="alert">
-            The choice could not be saved. Try again.
+            {t('choiceError')}
           </p>
         ) : null}
       </article>
@@ -777,24 +791,24 @@ function CoachCard({
       className={settledReadOnly ? 'opacity-70' : undefined}
       aria-disabled={settledReadOnly || undefined}
     >
-      <p className="mb-3 text-base font-medium">Here’s a Move that reflects what matters:</p>
+      <p className="mb-3 text-base font-medium">{t('moveIntro')}</p>
       <MoveCardSurface
         schedule={
           settledReadOnly
             ? card.type === 'move_revision'
-              ? 'Move updated'
-              : 'Move added'
+              ? t('moveUpdated')
+              : t('moveAdded')
             : sendsSchedule
-              ? formatMoveScheduleSummary(scheduleDraft)
-              : 'Schedule unchanged'
+              ? formatMoveScheduleSummary(scheduleDraft, scheduleLabels)
+              : t('scheduleUnchanged')
         }
-        source="From this Coach conversation"
+        source={t('fromConversation')}
         dueLabel=""
         status={
           settledReadOnly ? (
             <span className="inline-flex items-center gap-1 font-medium text-[var(--coach-text-secondary)]">
               <Check className="size-3.5" />
-              {card.type === 'move_revision' ? 'Adjusted' : 'Added'}
+              {card.type === 'move_revision' ? t('adjusted') : t('added')}
             </span>
           ) : null
         }
@@ -836,29 +850,27 @@ function CoachCard({
             disabled={!value.trim() || confirm.isPending}
           >
             {card.type === 'move_revision'
-              ? 'Confirm Adjustment'
+              ? t('confirmAdjustment')
               : confirm.isPending
-                ? 'Saving Move…'
-                : 'Add Move'}
+                ? t('savingMove')
+                : t('addMove')}
           </Button>
           <Button variant="ghost" onClick={() => setEditing((current) => !current)}>
-            <Pencil /> Edit
+            <Pencil /> {t('actions.edit', { ns: 'common' })}
           </Button>
           {adjustmentMode && !sendsSchedule && !schedulePanelOpen ? (
             <Button variant="ghost" onClick={() => setSchedulePanelOpen(true)}>
-              <CalendarClock /> Change schedule
+              <CalendarClock /> {t('changeSchedule')}
             </Button>
           ) : null}
           <Button variant="ghost" onClick={() => reject.mutate({ id: card.id })}>
-            {card.type === 'move_revision' ? 'Keep talking' : 'Skip'}
+            {card.type === 'move_revision' ? t('keepTalking') : t('skip')}
           </Button>
         </div>
       ) : null}
       {!readOnly && (confirm.isError || reject.isError) ? (
         <p className="mt-3 text-sm text-[var(--danger)]" role="alert">
-          {card.type === 'move_revision'
-            ? 'This adjustment could not be saved. Try again.'
-            : 'This Move could not be saved. Try again.'}
+          {card.type === 'move_revision' ? t('adjustmentError') : t('moveSaveError')}
         </p>
       ) : null}
     </div>
@@ -866,29 +878,36 @@ function CoachCard({
 }
 
 function CoachLoading() {
+  const { t } = useTranslation('coach')
   return (
     <div className="app-canvas grid min-h-0 flex-1 place-items-center text-sm text-[var(--coach-text-secondary)]">
-      Listening for your place…
+      {t('listeningPlace')}
     </div>
   )
 }
 
 function CoachError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation('coach')
+  const { t: tCommon } = useTranslation('common')
   return (
     <div className="app-canvas grid min-h-0 flex-1 place-items-center px-8 text-center">
       <div>
-        <p className="font-medium">Coach could not open.</p>
+        <p className="font-medium">{t('openError')}</p>
         <Button className="mt-4" onClick={onRetry}>
-          <RefreshCw /> Retry
+          <RefreshCw /> {tCommon('actions.retry')}
         </Button>
       </div>
     </div>
   )
 }
 
-function formatAppointment(value: string | null | undefined) {
-  if (!value) return 'Time not set'
-  return new Intl.DateTimeFormat('en-US', {
+function formatAppointment(
+  value: string | null | undefined,
+  locale: AppLocale,
+  missingLabel: string,
+) {
+  if (!value) return missingLabel
+  return new Intl.DateTimeFormat(toBcp47(locale), {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',

@@ -201,6 +201,17 @@ To add a theme:
 3. Add the name to `ThemeName` in `src/lib/theme.ts` and update the theme selector UI.
 4. Verify `/login`, `/daily`, `/chat`, and `/debug` at 375px and desktop width.
 
+## Language
+
+The chrome UI is bilingual (`en` | `zh`). Preference is stored in `localStorage` under `ui-locale`
+and applied as `html lang` (`en` / `zh-CN`) plus `data-locale`. Resolution order: stored
+`ui-locale` → `navigator.language` starting with `zh` → `en`.
+
+Switch language on `/login` next to the theme control, or on `/account` with the Language segmented
+control. Signed-out users can change language on the login page. Coach and Echo AI replies, user
+input, and backend Move / Pause / Echo bodies stay in their original language and do not follow the
+UI locale.
+
 ## Beautiful UI
 
 Beautiful UI is used through its official copy-paste model, not as an npm package. The adapted
@@ -226,6 +237,7 @@ src/
 ├── api/          # shared request client and generated REST output
 ├── components/   # shadcn primitives, Beautiful UI source, and layout modules
 ├── features/     # feature-specific behavior such as mock auth
+├── i18n/         # i18next init and English/Chinese UI copy
 ├── pages/        # route-level UI
 ├── router/       # route configuration
 ├── styles/       # global tokens and themes
@@ -245,6 +257,7 @@ npm run format:check
 npm run typecheck
 npm run lint
 npm run build
+npm run test
 ```
 
 For UI changes, also verify both themes at 375px and desktop width, including keyboard navigation,

@@ -1,3 +1,6 @@
+import type { AppLocale } from '@/lib/locale'
+import { toBcp47 } from '@/lib/locale'
+
 export type DailyTrace = {
   id: string
   time: string
@@ -119,29 +122,49 @@ export function parseDailyDate(value: string | null) {
   return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value ? null : date
 }
 
-export function formatDailyDate(date: Date, options: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat('en', { ...options, timeZone: 'UTC' }).format(date)
+export function formatDailyDate(
+  date: Date,
+  options: Intl.DateTimeFormatOptions,
+  locale: AppLocale = 'en',
+) {
+  return new Intl.DateTimeFormat(toBcp47(locale), { ...options, timeZone: 'UTC' }).format(date)
 }
 
-export function formatIsoWeekday(day: number) {
-  return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day - 1] ?? String(day)
+const isoWeekdayLabels: Record<AppLocale, readonly string[]> = {
+  en: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  zh: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
 }
 
-export function getPeriodMoveStatusLabel(status: PeriodMoveStatus) {
-  if (status === 'progressing') return 'On Track'
-  if (status === 'stuck') return 'Drifting'
-  return 'Check in'
+export function formatIsoWeekday(day: number, locale: AppLocale = 'en') {
+  return isoWeekdayLabels[locale][day - 1] ?? String(day)
 }
 
-export function formatEchoScheduleDate(value: string) {
+const periodMoveStatusLabels: Record<
+  AppLocale,
+  { progressing: string; stuck: string; checkIn: string }
+> = {
+  en: { progressing: 'On Track', stuck: 'Drifting', checkIn: 'Check in' },
+  zh: { progressing: '进展顺利', stuck: '有些偏离', checkIn: '打卡' },
+}
+
+export function getPeriodMoveStatusLabel(status: PeriodMoveStatus, locale: AppLocale = 'en') {
+  const labels = periodMoveStatusLabels[locale]
+  if (status === 'progressing') return labels.progressing
+  if (status === 'stuck') return labels.stuck
+  return labels.checkIn
+}
+
+export function formatEchoScheduleDate(value: string, locale: AppLocale = 'en') {
   const date = parseDailyDate(value)
-  return date ? formatDailyDate(date, { month: 'short', day: 'numeric', year: 'numeric' }) : value
+  return date
+    ? formatDailyDate(date, { month: 'short', day: 'numeric', year: 'numeric' }, locale)
+    : value
 }
 
-export function formatEchoScheduleTime(value: string) {
+export function formatEchoScheduleTime(value: string, locale: AppLocale = 'en') {
   const [hour = '0', minute = '0'] = value.split(':')
   const date = new Date(Date.UTC(2026, 0, 1, Number(hour), Number(minute)))
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat(toBcp47(locale), {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true,

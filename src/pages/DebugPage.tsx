@@ -1,22 +1,24 @@
 import { Copy, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { PageIntro } from '@/components/layout/page-intro'
 import { Button } from '@/components/ui/button'
 
-const debugFields = [
-  ['API base URL', import.meta.env.VITE_API_BASE_URL || 'Same origin / not configured'],
-  ['OpenAPI client', 'Not generated'],
-  ['Auth protocol', 'Pending backend contract'],
-  ['Streaming protocol', 'Out of scope for Phase 1'],
-] as const
-
 export function DebugPage() {
+  const { t } = useTranslation('common')
+  const debugFields = [
+    [t('debug.apiBaseUrl'), import.meta.env.VITE_API_BASE_URL || t('debug.apiBaseUrlEmpty')],
+    [t('debug.openapiClient'), t('debug.openapiClientValue')],
+    [t('debug.authProtocol'), t('debug.authProtocolValue')],
+    [t('debug.streamingProtocol'), t('debug.streamingProtocolValue')],
+  ] as const
+
   return (
     <section>
       <PageIntro
-        eyebrow="Internal"
-        title="Debug"
-        description="Request inspection will live here after real endpoints are connected. No credentials or sensitive values should be rendered."
+        eyebrow={t('debug.eyebrow')}
+        title={t('debug.title')}
+        description={t('debug.description')}
       />
 
       <dl className="divide-y divide-border-subtle border-y border-border-subtle">
@@ -32,18 +34,32 @@ export function DebugPage() {
 
       <div className="mt-8 overflow-hidden rounded-lg border border-border bg-surface">
         <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-4 py-2.5">
-          <span className="font-mono text-xs font-medium text-text-secondary">Response</span>
+          <span className="font-mono text-xs font-medium text-text-secondary">
+            {t('debug.response')}
+          </span>
           <div className="flex gap-1">
-            <Button type="button" variant="ghost" size="icon" disabled aria-label="Copy response">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled
+              aria-label={t('debug.copyResponse')}
+            >
               <Copy />
             </Button>
-            <Button type="button" variant="ghost" size="icon" disabled aria-label="Clear response">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled
+              aria-label={t('debug.clearResponse')}
+            >
               <Trash2 />
             </Button>
           </div>
         </div>
         <pre className="min-h-40 overflow-x-auto p-4 font-mono text-xs leading-6 text-text-tertiary">
-          {'// No request has been made.'}
+          {t('debug.noRequest')}
         </pre>
       </div>
     </section>

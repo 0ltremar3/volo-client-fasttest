@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Settings2 } from 'lucide-react'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import echoArc from '@/assets/daily/echo-arc.svg'
@@ -26,6 +27,9 @@ import { Button } from '@/components/ui/button'
 import { EchoSettingsSheet } from '@/features/daily/echo-settings-sheet'
 import { PeriodMoves, type PeriodMoveItem } from '@/features/daily/period-moves'
 import { formatIsoWeekday, parseDailyDate, type EchoSchedule } from '@/features/daily/daily-model'
+import { currentAppLocale } from '@/i18n'
+import type { AppLocale } from '@/lib/locale'
+import type { TFunction } from 'i18next'
 
 const today = () => new Date().toLocaleDateString('en-CA')
 
@@ -39,6 +43,7 @@ const showDailyEchoCard = false
 const showDailyTraces = false
 
 export function VoloDailyExperience() {
+  const { t } = useTranslation('daily')
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedDate = searchParams.get('date')
   const selectedValue = requestedDate && parseDailyDate(requestedDate) ? requestedDate : today()
@@ -83,7 +88,7 @@ export function VoloDailyExperience() {
           <Link
             to="/account"
             className="grid size-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Account details"
+            aria-label={t('accountDetails')}
           >
             <span className="grid size-8 place-items-center rounded-full bg-[var(--daily-profile-background)]">
               <img src={profileGlyph} alt="" className="h-5 w-[11px]" />
@@ -127,12 +132,9 @@ export function VoloDailyExperience() {
               {showDailyTraces ? (
                 <section aria-labelledby="daily-traces-title">
                   <h2 id="daily-traces-title" className="daily-section-title">
-                    TRACES
+                    {t('traces.section')}
                   </h2>
-                  <EmptyBlock
-                    title="No traces for this day."
-                    body="Hardware traces will appear here in a later version."
-                  />
+                  <EmptyBlock title={t('traces.emptyTitle')} body={t('traces.hardwareEmpty')} />
                 </section>
               ) : null}
             </>
@@ -161,6 +163,7 @@ function DailyEchoCard({
   echo: GetV2Daily200Echo
   onSettings: () => void
 }) {
+  const { t } = useTranslation('daily')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const start = useMutation({
@@ -194,13 +197,13 @@ function DailyEchoCard({
         disabled={start.isPending}
         aria-label={
           echo.status === 'completed'
-            ? 'Open completed Daily Echo'
+            ? t('echo.openCompleted')
             : echo.status === 'in_progress'
-              ? 'Continue Daily Echo'
-              : 'Start Daily Echo'
+              ? t('echo.continue')
+              : t('echo.start')
         }
       >
-        <span className="daily-overline block">DAILY ECHO</span>
+        <span className="daily-overline block">{t('echo.title')}</span>
         {echo.status === 'completed' && echo.summary ? (
           <>
             <img
@@ -222,23 +225,25 @@ function DailyEchoCard({
           <span className="mt-6 block">
             {echo.status === 'in_progress' ? (
               <>
-                <span className="block text-sm text-[var(--coach-text-tertiary)]">IN PROGRESS</span>
-                <span className="mt-7 block font-display text-[22px] font-medium leading-7">
-                  Your reflection is still open.
+                <span className="block text-sm text-[var(--coach-text-tertiary)]">
+                  {t('echo.inProgress')}
                 </span>
-                <span className="mt-2 block text-base">Continue →</span>
+                <span className="mt-7 block font-display text-[22px] font-medium leading-7">
+                  {t('echo.stillOpen')}
+                </span>
+                <span className="mt-2 block text-base">{t('echo.continueArrow')}</span>
               </>
             ) : (
               <>
                 <span className="block font-display text-[22px] font-medium leading-7">
-                  Your Echo is set for
+                  {t('echo.setFor')}
                 </span>
                 <span className="mt-5 block font-display text-[28px] leading-none">
-                  {scheduledTime.time} {scheduledTime.period}
+                  {scheduledTime.time} {scheduledTime.period === 'PM' ? t('echo.pm') : t('echo.am')}
                 </span>
-                <span className="mt-9 block text-base">Take a moment when you’re ready.</span>
+                <span className="mt-9 block text-base">{t('echo.takeAMoment')}</span>
                 <span className="mt-1 block text-base">
-                  {start.isPending ? 'Starting…' : 'Start now →'}
+                  {start.isPending ? t('echo.starting') : t('echo.startNow')}
                 </span>
               </>
             )}
@@ -249,13 +254,13 @@ function DailyEchoCard({
         type="button"
         className="absolute right-2 top-2 z-20 grid size-11 place-items-center rounded-full"
         onClick={onSettings}
-        aria-label="Daily Echo settings"
+        aria-label={t('echo.settings')}
       >
         <Settings2 className="size-4" />
       </button>
       {start.isError ? (
         <p className="absolute bottom-3 left-5 right-5 text-sm text-[var(--danger)]" role="alert">
-          Daily Echo could not start. Try again.
+          {t('echo.startError')}
         </p>
       ) : null}
     </article>
@@ -273,6 +278,8 @@ function formatEchoTime(localTime: string) {
 }
 
 function VoloPeriodMoves({ moves }: { moves: GetV2Moves200ItemsItem[] }) {
+  const { t, i18n } = useTranslation('daily')
+  const locale = currentAppLocale(i18n.language)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const moveById = new Map(moves.map((move) => [move.id, move]))
@@ -280,12 +287,14 @@ function VoloPeriodMoves({ moves }: { moves: GetV2Moves200ItemsItem[] }) {
     (move) =>
       ({
         id: move.id,
-        schedule: formatMoveSchedule(move),
+        schedule: formatMoveSchedule(move, t, locale),
         text: move.description,
-        source: 'From Coach',
+        source: t('moves.fromCoach'),
         dueLabel: move.next_check_time
-          ? `${move.next_check_time.local_date === today() ? 'Today' : move.next_check_time.local_date} ${move.next_check_time.local_time}`
-          : 'No upcoming check',
+          ? move.next_check_time.local_date === today()
+            ? t('moves.todayDue', { time: move.next_check_time.local_time })
+            : `${move.next_check_time.local_date} ${move.next_check_time.local_time}`
+          : t('moves.noUpcoming'),
         status: move.check?.status ?? null,
         scheduleValue: {
           startLocalDate: move.schedule.start_local_date,
@@ -347,15 +356,24 @@ function VoloPeriodMoves({ moves }: { moves: GetV2Moves200ItemsItem[] }) {
   )
 }
 
-function formatMoveSchedule(move: GetV2Moves200ItemsItem) {
+function formatMoveSchedule(
+  move: GetV2Moves200ItemsItem,
+  t: TFunction<'daily'>,
+  locale: AppLocale,
+) {
   const time = move.schedule.local_time
   const rule = move.schedule.rule
-  if (rule.frequency === 'none') return `${move.schedule.start_local_date}  ·  ${time}`
-  if (rule.frequency === 'daily') return `Every day  ·  ${time}`
-  if (rule.frequency === 'weekly') {
-    return `Every ${rule.weekdays.map(formatIsoWeekday).join(', ')}  ·  ${time}`
+  if (rule.frequency === 'none') {
+    return t('moves.oneOff', { date: move.schedule.start_local_date, time })
   }
-  return `Monthly on day ${rule.day}  ·  ${time}`
+  if (rule.frequency === 'daily') return t('moves.everyDay', { time })
+  if (rule.frequency === 'weekly') {
+    return t('moves.everyWeekdays', {
+      weekdays: rule.weekdays.map((day) => formatIsoWeekday(day, locale)).join(', '),
+      time,
+    })
+  }
+  return t('moves.monthlyOnDay', { day: rule.day, time })
 }
 
 function EmptyBlock({ title, body }: { title: string; body: string }) {
@@ -368,8 +386,9 @@ function EmptyBlock({ title, body }: { title: string; body: string }) {
 }
 
 function DailySkeleton() {
+  const { t } = useTranslation('daily')
   return (
-    <div className="space-y-4" aria-label="Loading Daily">
+    <div className="space-y-4" aria-label={t('loading')}>
       {showDailyEchoCard ? (
         <div className="h-[250px] animate-pulse rounded-[22px] bg-[var(--coach-surface-muted)]" />
       ) : null}
@@ -379,14 +398,14 @@ function DailySkeleton() {
 }
 
 function DailyError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation('daily')
+  const { t: tCommon } = useTranslation('common')
   return (
     <div className="daily-card px-[18px] py-6">
-      <p className="font-medium">Daily could not load.</p>
-      <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">
-        Check your connection and try again.
-      </p>
+      <p className="font-medium">{t('loadErrorTitle')}</p>
+      <p className="mt-2 text-sm text-[var(--coach-text-secondary)]">{t('loadErrorBody')}</p>
       <Button className="mt-4" onClick={onRetry}>
-        Retry
+        {tCommon('actions.retry')}
       </Button>
     </div>
   )

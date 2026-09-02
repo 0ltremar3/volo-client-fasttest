@@ -1,4 +1,6 @@
 import type { RepeatRule } from '@/api/volo'
+import type { AppLocale } from '@/lib/locale'
+import { toBcp47 } from '@/lib/locale'
 
 export type CoachScreen = 'welcome' | 'schedule' | 'home' | 'conversation'
 
@@ -198,20 +200,20 @@ export const mockMoveProposal = {
 
 export const moveCopy: string = mockMoveProposal.description
 
-export function formatScheduleDate(value: string) {
+export function formatScheduleDate(value: string, locale: AppLocale = 'en') {
   const [year, month, day] = value.split('-').map(Number)
   if (!year || !month || !day) return value
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat(toBcp47(locale), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   }).format(new Date(year, month - 1, day))
 }
 
-export function formatScheduleTime(value: string) {
+export function formatScheduleTime(value: string, locale: AppLocale = 'en') {
   const [hours, minutes] = value.split(':').map(Number)
   if (Number.isNaN(hours) || Number.isNaN(minutes)) return value
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat(toBcp47(locale), {
     hour: 'numeric',
     minute: '2-digit',
   }).format(new Date(2026, 0, 1, hours, minutes))

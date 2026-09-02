@@ -1,5 +1,6 @@
 import { ArrowRight, Check, Pencil, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { BeautifulPromptComposer } from '@/components/ai/beautiful-prompt-composer'
@@ -35,6 +36,7 @@ import {
   type CoachScreen,
   type MoveScheduleFrequency,
 } from '@/features/coach/coach-model'
+import { currentAppLocale } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { mockAuthEnabled } from '@/features/auth/mock-auth'
 import { VoloCoachExperience } from '@/features/coach/volo-coach-experience'
@@ -42,9 +44,10 @@ import { VoloCoachExperience } from '@/features/coach/volo-coach-experience'
 type MoveState = 'hidden' | 'suggested' | 'editing' | 'added' | 'skipped'
 
 function CoachHomeHeader() {
+  const { t } = useTranslation('coach')
   return (
     <header className="safe-top relative z-30 flex h-[104px] shrink-0 items-end px-9 pb-[10px]">
-      <h1 className="text-lg font-semibold text-[var(--coach-ink)]">Coach Schedule</h1>
+      <h1 className="text-lg font-semibold text-[var(--coach-ink)]">{t('scheduleTitle')}</h1>
     </header>
   )
 }
@@ -59,18 +62,19 @@ function FocusCard() {
 }
 
 function WelcomeScreen({ onSchedule, onStart }: { onSchedule: () => void; onStart: () => void }) {
+  const { t } = useTranslation('coach')
   return (
     <section className="flex flex-1 flex-col items-center px-[25px] pb-[145px] pt-[220px] text-center">
       <CoachOrb />
       <div className="mt-[35px] w-full">
         <h1 className="font-display text-4xl font-medium leading-none tracking-[-0.02em] text-[var(--coach-ink)]">
-          Hello, Jiayu.
+          {t('hello', { name: 'Jiayu' })}
         </h1>
         <p className="mx-auto mt-2 max-w-[19rem] text-[1.625rem] font-semibold leading-8 text-[var(--coach-ink)]">
-          I’m here to help you hear yourself.
+          {t('tagline')}
         </p>
         <p className="mx-auto mt-5 max-w-[20rem] text-base leading-[18px] text-[var(--coach-text-secondary)]">
-          Make a little space for this conversation.
+          {t('makeSpace')}
         </p>
       </div>
 
@@ -80,14 +84,14 @@ function WelcomeScreen({ onSchedule, onStart }: { onSchedule: () => void; onStar
           onClick={onSchedule}
           className="h-[50px] w-full rounded-full bg-[var(--coach-surface)] text-base text-[var(--coach-ink)] shadow-[var(--coach-shadow)] hover:bg-[var(--coach-surface)]/90"
         >
-          Find a Time
+          {t('findATimeTitle')}
         </Button>
         <button
           type="button"
           onClick={onStart}
           className="mt-2 min-h-touch px-5 text-sm font-medium text-[var(--coach-text-secondary)] transition-colors hover:text-[var(--coach-ink)]"
         >
-          Start Now
+          {t('startNowTitle')}
         </button>
       </div>
     </section>
@@ -105,6 +109,7 @@ function ScheduleScreen({
   onClose: () => void
   onSchedule: () => void
 }) {
+  const { t } = useTranslation('coach')
   return (
     <section className="flex flex-1 flex-col px-6 pb-10">
       <div className="relative flex h-12 items-center justify-center">
@@ -114,23 +119,21 @@ function ScheduleScreen({
           size="icon"
           className="absolute left-[-0.5rem]"
           onClick={onClose}
-          aria-label="Close scheduling"
+          aria-label={t('closeScheduling')}
         >
           <X />
         </Button>
-        <h1 className="text-base font-semibold">Find a time</h1>
+        <h1 className="text-base font-semibold">{t('findATime')}</h1>
       </div>
 
       <CoachOrb className="mx-auto mt-2" />
       <p className="mx-auto mt-4 max-w-[16rem] text-center text-base leading-5 text-[var(--coach-ink)]">
-        Choose a time
-        <br />
-        when you won’t feel rushed.
+        {t('chooseUnrushed')}
       </p>
 
       <div className="mt-9 divide-y divide-[var(--coach-border-strong)]">
         <label className="flex min-h-[70px] items-center gap-4">
-          <span className="min-w-0 flex-1 text-base">What’s on your mind?</span>
+          <span className="min-w-0 flex-1 text-base">{t('whatsOnMind')}</span>
           <select
             value={value.topic}
             onChange={(event) => onChange({ ...value, topic: event.target.value })}
@@ -142,7 +145,7 @@ function ScheduleScreen({
           </select>
         </label>
         <label className="flex min-h-[70px] items-center gap-4">
-          <span className="min-w-0 flex-1 text-base">Date</span>
+          <span className="min-w-0 flex-1 text-base">{t('date')}</span>
           <input
             type="date"
             value={value.date}
@@ -151,7 +154,7 @@ function ScheduleScreen({
           />
         </label>
         <label className="flex min-h-[70px] items-center gap-4">
-          <span className="min-w-0 flex-1 text-base">Time</span>
+          <span className="min-w-0 flex-1 text-base">{t('time')}</span>
           <input
             type="time"
             value={value.time}
@@ -160,7 +163,7 @@ function ScheduleScreen({
           />
         </label>
         <div className="flex min-h-[70px] items-center gap-4">
-          <span className="min-w-0 flex-1 text-base">Alarm</span>
+          <span className="min-w-0 flex-1 text-base">{t('alarm')}</span>
           <button
             type="button"
             role="switch"
@@ -182,7 +185,7 @@ function ScheduleScreen({
                 value.alarm ? 'translate-x-12' : 'translate-x-0',
               )}
             />
-            <span className="sr-only">{value.alarm ? 'Alarm on' : 'Alarm off'}</span>
+            <span className="sr-only">{value.alarm ? t('alarmOn') : t('alarmOff')}</span>
           </button>
         </div>
       </div>
@@ -192,13 +195,15 @@ function ScheduleScreen({
         onClick={onSchedule}
         className="mt-auto h-[50px] rounded-full bg-[var(--coach-surface)] text-base text-[var(--coach-ink)] shadow-[var(--coach-shadow)] hover:bg-[var(--coach-surface)]/90"
       >
-        Schedule
+        {t('schedule')}
       </Button>
     </section>
   )
 }
 
 function SessionCard({ schedule }: { schedule: CoachSchedule }) {
+  const { i18n } = useTranslation('coach')
+  const locale = currentAppLocale(i18n.language)
   return (
     <article className="min-h-[116px] rounded-[22px] bg-[var(--coach-surface-glass)] px-[18px] py-[18px] shadow-[var(--coach-shadow)]">
       <p className="text-base font-medium leading-6 text-[var(--coach-ink)]">
@@ -207,7 +212,7 @@ function SessionCard({ schedule }: { schedule: CoachSchedule }) {
       <div className="mt-4 flex items-end gap-3 text-xs text-[var(--coach-text-tertiary)]">
         <span className="min-w-0 flex-1 truncate">From “The Cost of Choice”</span>
         <time className="shrink-0">
-          {formatScheduleDate(schedule.date)} · {formatScheduleTime(schedule.time)}
+          {formatScheduleDate(schedule.date, locale)} · {formatScheduleTime(schedule.time, locale)}
         </time>
       </div>
     </article>
@@ -223,11 +228,13 @@ function HomeScreen({
   onStart: () => void
   onSchedule: () => void
 }) {
+  const { t, i18n } = useTranslation('coach')
+  const locale = currentAppLocale(i18n.language)
   return (
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-5 pb-5">
         <SessionCard schedule={schedule} />
-        <p className="mt-12 text-center text-lg font-semibold">Next Session</p>
+        <p className="mt-12 text-center text-lg font-semibold">{t('nextSession')}</p>
         <CoachOrb className="mx-auto mt-[35px]" />
         <button
           type="button"
@@ -238,7 +245,8 @@ function HomeScreen({
             {schedule.topic}
           </span>
           <span className="mt-3 inline-flex items-center gap-1.5 text-sm text-[var(--coach-text-secondary)]">
-            {formatScheduleDate(schedule.date)} · {formatScheduleTime(schedule.time)}
+            {formatScheduleDate(schedule.date, locale)} ·{' '}
+            {formatScheduleTime(schedule.time, locale)}
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
           </span>
         </button>
@@ -249,14 +257,14 @@ function HomeScreen({
           onClick={onSchedule}
           className="h-[50px] w-full rounded-full bg-[var(--coach-surface)] text-base font-medium text-[var(--coach-ink)] shadow-[var(--coach-shadow)] hover:bg-[var(--coach-surface-glass-strong)]"
         >
-          Schedule a Session
+          {t('scheduleASession')}
         </Button>
         <button
           type="button"
           onClick={onStart}
           className="mt-2 min-h-11 w-full rounded-full px-5 text-sm font-medium text-[var(--coach-text-secondary)]"
         >
-          New Conversation
+          {t('newConversation')}
         </button>
       </div>
     </section>
@@ -300,25 +308,31 @@ function MoveCard({
   onSkip: () => void
   onSave: () => void
 }) {
+  const { t } = useTranslation('coach')
+  const { t: tCommon } = useTranslation('common')
   const initialSchedule = resolveMoveScheduleDraft(mockMoveProposal.suggested_schedule)
   const [frequency, setFrequency] = useState<MoveScheduleFrequency>(initialSchedule.frequency)
   const [time, setTime] = useState(initialSchedule.time)
+  const scheduleLabels = {
+    none: t('none'),
+    daily: t('daily'),
+    weekly: t('weekly'),
+    monthly: t('monthly'),
+  }
 
   if (state === 'hidden' || state === 'skipped') return null
 
   return (
     <div className="animate-[coach-rise_240ms_var(--ease-standard)_both]">
-      <p className="mb-4 text-pretty text-base font-medium leading-5">
-        Based on our conversation, here’s a move that reflects what matters most to you:
-      </p>
+      <p className="mb-4 text-pretty text-base font-medium leading-5">{t('moveIntroMock')}</p>
       <MoveCardSurface
-        schedule={`${frequency[0]!.toUpperCase()}${frequency.slice(1)} · ${time}`}
+        schedule={`${scheduleLabels[frequency]} · ${time}`}
         source="From “The Cost of Choice”"
-        dueLabel={state === 'added' ? `Today ${time}` : ''}
+        dueLabel={state === 'added' ? t('todayAt', { time }) : ''}
         status={
           state === 'added' ? (
             <span className="inline-flex items-center gap-1 font-medium text-[var(--coach-success)]">
-              <Check className="size-3.5" /> Added
+              <Check className="size-3.5" /> {t('added')}
             </span>
           ) : null
         }
@@ -329,7 +343,7 @@ function MoveCard({
             onChange={(event) => onTextChange(event.target.value)}
             rows={3}
             className="w-full resize-none rounded-lg bg-[var(--coach-surface-muted)] p-3 text-base leading-6 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Edit move"
+            aria-label={t('editMove')}
           />
         ) : (
           <p>{text}</p>
@@ -346,11 +360,11 @@ function MoveCard({
 
       {state === 'suggested' || state === 'editing' ? (
         <div className="mt-3 px-3">
-          <p className="text-base font-medium text-[var(--coach-ink)]">Make this your move?</p>
+          <p className="text-base font-medium text-[var(--coach-ink)]">{t('makeThisMove')}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {state === 'editing' ? (
               <Button type="button" onClick={onSave} className="min-h-touch rounded-full px-4">
-                Save move
+                {t('saveMove')}
               </Button>
             ) : (
               <>
@@ -359,7 +373,7 @@ function MoveCard({
                   onClick={onAccept}
                   className="min-h-touch rounded-full bg-[var(--coach-surface-glass)] px-4 text-[var(--coach-ink)] shadow-[var(--coach-shadow)] hover:bg-[var(--coach-surface-glass-strong)]"
                 >
-                  Add move
+                  {t('addMoveLower')}
                 </Button>
                 <Button
                   type="button"
@@ -367,7 +381,7 @@ function MoveCard({
                   onClick={onEdit}
                   className="min-h-touch rounded-full px-4"
                 >
-                  <Pencil /> Edit
+                  <Pencil /> {tCommon('actions.edit')}
                 </Button>
               </>
             )}
@@ -377,7 +391,7 @@ function MoveCard({
               onClick={onSkip}
               className="min-h-touch rounded-full px-4"
             >
-              Skip
+              {t('skip')}
             </Button>
           </div>
         </div>
@@ -407,6 +421,7 @@ function ConversationScreen({
   disabled: boolean
   inputRef: React.RefObject<HTMLTextAreaElement | null>
 }) {
+  const { t } = useTranslation('coach')
   const endRef = useRef<HTMLDivElement>(null)
   const previousScrollStateRef = useRef({
     messageCount: messages.length,
@@ -442,7 +457,7 @@ function ConversationScreen({
               role="status"
             >
               <CoachOrb className="size-7" speaking />
-              <span>Listening for what matters…</span>
+              <span>{t('listening')}</span>
             </div>
           ) : null}
 
@@ -460,7 +475,7 @@ function ConversationScreen({
         </div>
       </div>
       <BeautifulPromptComposer
-        placeholder="Say what feels present…"
+        placeholder={t('placeholderPresent')}
         showInspirations
         disabled={disabled}
         inputRef={inputRef}

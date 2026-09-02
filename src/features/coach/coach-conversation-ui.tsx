@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 import { Input } from '@/components/ui/input'
 import type { MoveScheduleFrequency } from '@/features/coach/coach-model'
@@ -11,16 +12,7 @@ export type CoachPausePayload = {
   takeaway: string
 }
 
-const moveScheduleOptions: Array<{
-  value: MoveScheduleFrequency
-  label: string
-  name: string
-}> = [
-  { value: 'none', label: 'None', name: 'No repeat' },
-  { value: 'daily', label: 'Daily', name: 'Daily' },
-  { value: 'weekly', label: 'Weekly', name: 'Weekly' },
-  { value: 'monthly', label: 'Monthly', name: 'Monthly' },
-]
+const moveScheduleOptionValues = ['none', 'daily', 'weekly', 'monthly'] as const
 
 export function MoveScheduleFields({
   frequency,
@@ -35,36 +27,46 @@ export function MoveScheduleFields({
   onFrequencyChange: (frequency: MoveScheduleFrequency) => void
   onTimeChange: (time: string) => void
 }) {
+  const { t } = useTranslation('coach')
+  const optionCopy: Record<
+    (typeof moveScheduleOptionValues)[number],
+    { label: string; name: string }
+  > = {
+    none: { label: t('none'), name: t('noRepeat') },
+    daily: { label: t('daily'), name: t('daily') },
+    weekly: { label: t('weekly'), name: t('weekly') },
+    monthly: { label: t('monthly'), name: t('monthly') },
+  }
   return (
     <fieldset className="mt-5 border-t border-[var(--coach-border-warm-subtle)] pt-4">
-      <legend className="sr-only">Move check plan</legend>
-      <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">REPEAT</p>
+      <legend className="sr-only">{t('checkPlan')}</legend>
+      <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">{t('repeat')}</p>
       <div
         className="mt-2 grid grid-cols-4 rounded-xl bg-[var(--coach-surface-muted)] p-1"
         role="group"
-        aria-label="Move check frequency"
+        aria-label={t('frequency')}
       >
-        {moveScheduleOptions.map((option) => (
+        {moveScheduleOptionValues.map((value) => (
           <button
-            key={option.value}
+            key={value}
             type="button"
             className={cn(
               'min-h-11 rounded-lg px-1 text-sm font-medium transition-[background-color,box-shadow,opacity]',
-              frequency === option.value
+              frequency === value
                 ? 'bg-[var(--coach-surface-glass-strong)] text-[var(--coach-ink)] shadow-sm'
                 : 'text-[var(--coach-text-secondary)]',
             )}
-            aria-label={option.name}
-            aria-pressed={frequency === option.value}
+            aria-label={optionCopy[value].name}
+            aria-pressed={frequency === value}
             disabled={disabled}
-            onClick={() => onFrequencyChange(option.value)}
+            onClick={() => onFrequencyChange(value)}
           >
-            {option.label}
+            {optionCopy[value].label}
           </button>
         ))}
       </div>
       <label className="mt-3 block">
-        <span className="text-xs font-semibold text-[var(--coach-text-tertiary)]">TIME</span>
+        <span className="text-xs font-semibold text-[var(--coach-text-tertiary)]">{t('time')}</span>
         <Input
           type="time"
           className="mt-2 bg-[var(--coach-surface-glass-strong)]"
@@ -89,10 +91,11 @@ export function CoachConversationHeader({
   busy?: boolean
   showDone?: boolean
 }) {
+  const { t } = useTranslation('coach')
   return (
     <header className="safe-top relative z-30 grid min-h-16 shrink-0 grid-cols-[57px_1fr_57px] items-center px-5 backdrop-blur-[15px]">
       <span aria-hidden="true" />
-      <p className="text-center text-base font-semibold text-[var(--coach-ink)]">Coach</p>
+      <p className="text-center text-base font-semibold text-[var(--coach-ink)]">{t('title')}</p>
       {showDone ? (
         <button
           type="button"
@@ -102,7 +105,7 @@ export function CoachConversationHeader({
           aria-busy={busy || undefined}
         >
           <span className="block h-[30px] w-[57px] rounded-full bg-[var(--coach-chrome-dark)] px-[10px] leading-[30px] shadow-[0_2px_2px_rgb(61_59_54/10%)]">
-            Done
+            {t('done')}
           </span>
         </button>
       ) : (
@@ -113,10 +116,11 @@ export function CoachConversationHeader({
 }
 
 export function CoachFocusCard({ title, topics = [] }: { title: string; topics?: string[] }) {
+  const { t } = useTranslation('coach')
   return (
     <article className="min-h-[175px] rounded-[22px] border border-white/80 bg-[var(--coach-focus)] px-[22px] py-5 shadow-[var(--coach-card-shadow)] backdrop-blur-sm">
       <p className="text-[11px] font-semibold tracking-[0.12em] text-[var(--coach-text-tertiary)]">
-        FOCUS
+        {t('focus')}
       </p>
       <h1 className="mt-4 max-w-[15.625rem] text-balance font-display text-[22px] font-semibold leading-[30px] text-[var(--coach-ink)]">
         {title}
@@ -152,6 +156,7 @@ export function CoachPauseDialog({
   onConfirm: (payload: CoachPausePayload) => void
   onKeepTalking: () => void
 }) {
+  const { t } = useTranslation('coach')
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [topic, setTopic] = useState(initialPayload.topic_to_explore)
   const [takeaway, setTakeaway] = useState(initialPayload.takeaway)
@@ -187,13 +192,13 @@ export function CoachPauseDialog({
 
         <CoachOrb size="pause" className="mx-auto mt-[69px] shrink-0" />
         <h2 id="coach-pause-title" className="mt-[38px] text-center text-base font-medium">
-          A Good Place to Pause
+          {t('pauseTitle')}
         </h2>
 
         <div className="mx-[18px] mt-[70px] shrink-0">
           <label className="block">
             <span className="text-xs font-semibold text-[var(--coach-text-tertiary)]">
-              TOPIC TO EXPLORE
+              {t('topicToExplore')}
             </span>
             <textarea
               autoFocus
@@ -207,7 +212,7 @@ export function CoachPauseDialog({
           </label>
           <label className="mt-4 block">
             <span className="text-xs font-semibold text-[var(--coach-text-tertiary)]">
-              TAKE AWAY
+              {t('takeAway')}
             </span>
             <textarea
               className="mt-2 min-h-[78px] w-full resize-none bg-transparent px-0 text-base leading-5 outline-none"
@@ -232,7 +237,7 @@ export function CoachPauseDialog({
             disabled={!canConfirm}
             onClick={() => onConfirm({ topic_to_explore: topic.trim(), takeaway: takeaway.trim() })}
           >
-            {confirming ? 'Taking this with you…' : 'Into Your Day'}
+            {confirming ? t('takingWithYou') : t('intoYourDay')}
           </button>
           <button
             type="button"
@@ -240,7 +245,7 @@ export function CoachPauseDialog({
             disabled={busy}
             onClick={onKeepTalking}
           >
-            {continuing ? 'Returning…' : 'Keep talking'}
+            {continuing ? t('returning') : t('keepTalking')}
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { Check, Copy, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export type StreamingTextStatus = 'streaming' | 'complete' | 'failed'
 
@@ -16,6 +17,7 @@ export function StreamingText({
   onCopy: () => Promise<void> | void
   onRetry?: () => void
 }) {
+  const { t } = useTranslation('coach')
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'copied' | 'failed'>('idle')
   const streaming = status === 'streaming'
   const showActions = status === 'complete' || status === 'failed'
@@ -66,7 +68,7 @@ export function StreamingText({
       </p>
       {status === 'failed' ? (
         <p className="mt-2 text-sm text-[var(--danger)]" role="alert">
-          Response interrupted.
+          {t('stream.interrupted')}
         </p>
       ) : null}
       {showActions ? (
@@ -77,8 +79,8 @@ export function StreamingText({
               className="flex size-touch items-center justify-start rounded-full transition-colors hover:text-[var(--coach-ink)] disabled:opacity-45"
               onClick={(event) => void copyResponse(event.currentTarget)}
               disabled={copyStatus === 'copying'}
-              aria-label={copyStatus === 'copied' ? 'Response copied' : 'Copy response'}
-              title={copyStatus === 'copied' ? 'Copied' : 'Copy response'}
+              aria-label={copyStatus === 'copied' ? t('stream.copied') : t('stream.copy')}
+              title={copyStatus === 'copied' ? t('stream.copiedShort') : t('stream.copy')}
             >
               {copyStatus === 'copied' ? (
                 <Check className="size-4 text-[var(--coach-success)]" />
@@ -93,12 +95,12 @@ export function StreamingText({
               className="flex min-h-touch items-center gap-2 rounded-full px-3 text-sm font-medium text-[var(--coach-accent)] transition-colors hover:bg-[var(--coach-accent-muted)]"
               onClick={onRetry}
             >
-              <RefreshCw className="size-4" /> Retry
+              <RefreshCw className="size-4" /> {t('stream.retry')}
             </button>
           ) : null}
           {copyStatus === 'failed' ? (
             <span className="text-xs text-[var(--danger)]" role="alert">
-              Couldn’t copy
+              {t('stream.copyFailed')}
             </span>
           ) : null}
         </div>
@@ -110,6 +112,7 @@ export function StreamingText({
 const driveDelays = [90, 180, 270, 0, 90, 180, 90, 180, 270]
 
 function CoachThinkingState() {
+  const { t } = useTranslation('coach')
   return (
     <div role="status" className="flex min-h-6 w-fit items-center gap-2.5 text-sm">
       <span aria-hidden="true" className="grid shrink-0 grid-cols-[repeat(3,4px)] gap-[1.5px]">
@@ -121,7 +124,9 @@ function CoachThinkingState() {
           />
         ))}
       </span>
-      <span className="font-medium text-[var(--coach-text-secondary)]">Reflecting</span>
+      <span className="font-medium text-[var(--coach-text-secondary)]">
+        {t('stream.reflecting')}
+      </span>
     </div>
   )
 }

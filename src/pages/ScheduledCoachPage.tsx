@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { coachApi } from '@/api/volo'
@@ -7,8 +8,12 @@ import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { Button } from '@/components/ui/button'
 import { CoachOrb } from '@/features/coach/coach-orb'
 import { singleFlight } from '@/features/coach/schedule-routing'
+import { currentAppLocale } from '@/i18n'
+import { toBcp47 } from '@/lib/locale'
 
 export function ScheduledCoachPage() {
+  const { t, i18n } = useTranslation('coach')
+  const locale = currentAppLocale(i18n.language)
   const { sessionId = '' } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -28,9 +33,9 @@ export function ScheduledCoachPage() {
     return (
       <div className="app-canvas grid h-dvh place-items-center px-6 text-center">
         <div>
-          <p>This scheduled session is no longer available.</p>
+          <p>{t('scheduledUnavailable')}</p>
           <Button className="mt-4 rounded-full" onClick={() => void navigate('/chat')}>
-            Return to Coach
+            {t('returnToCoach')}
           </Button>
         </div>
       </div>
@@ -41,13 +46,13 @@ export function ScheduledCoachPage() {
     <main className="app-canvas relative isolate flex h-dvh flex-col overflow-hidden text-[var(--coach-ink)]">
       <AppAtmosphere />
       <section className="relative z-10 flex flex-1 flex-col items-center px-[25px] pt-[22vh] text-center">
-        <p className="text-lg font-semibold">TIME FOR YOUR SESSION</p>
+        <p className="text-lg font-semibold">{t('timeForSession')}</p>
         <CoachOrb className="mt-14" />
         <h1 className="mt-8 text-wrap-balance text-4xl font-semibold leading-none">
           {session.topic || session.title}
         </h1>
         <p className="mt-3 text-sm font-medium text-[var(--coach-text-secondary)]">
-          {new Intl.DateTimeFormat('en-US', {
+          {new Intl.DateTimeFormat(toBcp47(locale), {
             month: 'short',
             day: 'numeric',
             hour: 'numeric',
@@ -60,18 +65,18 @@ export function ScheduledCoachPage() {
             disabled={start.isPending}
             onClick={() => start.mutate()}
           >
-            {start.isPending ? 'Starting…' : 'Start now'}
+            {start.isPending ? t('starting') : t('startNow')}
           </Button>
           <Button
             variant="ghost"
             className="h-12 w-full rounded-full text-[var(--coach-text-tertiary)]"
             onClick={() => void navigate('/chat')}
           >
-            Not Now
+            {t('notNow')}
           </Button>
           {start.isError ? (
             <p className="text-sm text-[var(--danger)]" role="alert">
-              The session could not start. Try again.
+              {t('sessionStartError')}
             </p>
           ) : null}
         </div>

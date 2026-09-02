@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import dailyIcon from '@/assets/coach/coach-nav-schedule.svg'
 import coachNavSurface from '@/assets/coach/coach-nav-surface.svg'
@@ -15,10 +16,11 @@ const navigationControl =
   'relative z-10 mx-auto grid min-h-touch min-w-touch place-items-center rounded-full text-[var(--coach-text-tertiary)] transition-[color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 export function AppBottomNavigation({ onCoach }: AppBottomNavigationProps) {
+  const { t } = useTranslation('common')
   return (
     <nav
       className="safe-bottom relative z-30 grid min-h-[93px] shrink-0 grid-cols-3 items-start px-11 pt-3"
-      aria-label="Primary navigation"
+      aria-label={t('nav.primary')}
     >
       <img
         src={coachNavSurface}
@@ -29,7 +31,7 @@ export function AppBottomNavigation({ onCoach }: AppBottomNavigationProps) {
         style={{ filter: 'var(--coach-nav-surface-filter)' }}
         aria-hidden="true"
       />
-      <NavLink to="/daily" aria-label="Open Daily" className={navigationControl}>
+      <NavLink to="/daily" aria-label={t('nav.daily')} className={navigationControl}>
         {({ isActive }) => (
           <img
             src={isActive ? dailyActiveIcon : dailyIcon}
@@ -46,13 +48,13 @@ export function AppBottomNavigation({ onCoach }: AppBottomNavigationProps) {
       <NavLink
         to="/chat"
         onClick={onCoach}
-        aria-label="Open Coach"
+        aria-label={t('nav.coach')}
         className="coach-pressable relative z-10 mx-auto -mt-3 grid size-16 place-items-center rounded-full transition-transform duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <CoachNavMark />
       </NavLink>
 
-      <NavLink to="/review" aria-label="Open Review" className={navigationControl}>
+      <NavLink to="/review" aria-label={t('nav.review')} className={navigationControl}>
         {({ isActive }) => (
           <img
             src={isActive ? reviewActiveIcon : reviewIcon}

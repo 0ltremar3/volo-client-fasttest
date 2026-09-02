@@ -2,18 +2,24 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronRight, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { reviewApi, type ReviewItem } from '@/api/volo'
+import { weekdayHeadingsByLocale } from '@/components/date-navigation/date-strip-model'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
 import { mockAuthEnabled } from '@/features/auth/mock-auth'
 import { mockReviewItems } from '@/features/review/review-mock'
+import { currentAppLocale } from '@/i18n'
+import { toBcp47 } from '@/lib/locale'
 
 const today = () => new Date().toLocaleDateString('en-CA')
 
 export function ReviewPage() {
+  const { t, i18n } = useTranslation('review')
+  const locale = currentAppLocale(i18n.language)
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedDate = validDate(searchParams.get('date')) ?? today()
@@ -70,15 +76,15 @@ export function ReviewPage() {
     <div className="app-canvas relative isolate flex h-dvh min-h-0 flex-col overflow-hidden text-[var(--coach-ink)]">
       <AppAtmosphere />
       <header className="safe-top relative z-10 grid min-h-16 shrink-0 place-items-center">
-        <h1 className="text-base font-semibold">Review</h1>
+        <h1 className="text-base font-semibold">{t('title')}</h1>
       </header>
       <main className="coach-scrollbar-none relative z-10 min-h-0 flex-1 overflow-y-auto px-[15px] pb-10">
         <div className="mt-3 flex items-end justify-between">
           <h2 className="font-display text-[28px] font-semibold leading-[38px]">
-            {selected.toLocaleDateString('en-US', { weekday: 'long' })}
+            {selected.toLocaleDateString(toBcp47(locale), { weekday: 'long' })}
           </h2>
           <p className="mb-1 flex items-center text-sm text-[var(--coach-text-secondary)]">
-            {selected.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            {selected.toLocaleDateString(toBcp47(locale), { month: 'long', year: 'numeric' })}
             <ChevronRight className="size-4" />
           </p>
         </div>
@@ -86,6 +92,7 @@ export function ReviewPage() {
           selectedDate={selectedDate}
           activityDates={activityDates}
           onSelect={(date) => setSearchParams({ date })}
+          locale={locale}
         />
 
         {day.isPending && !mockAuthEnabled ? (
@@ -95,7 +102,11 @@ export function ReviewPage() {
             {groups.map((group) => (
               <section key={group.type} aria-labelledby={`review-${group.type}`}>
                 <h3 id={`review-${group.type}`} className="mb-3 text-sm font-medium capitalize">
-                  {group.type === 'echo' ? 'Echo' : group.type === 'move' ? 'Move' : 'Coach'}
+                  {group.type === 'echo'
+                    ? t('groupEcho')
+                    : group.type === 'move'
+                      ? t('groupMove')
+                      : t('groupCoach')}
                 </h3>
                 <div className="space-y-3">
                   {group.items.map((item) => (
@@ -114,15 +125,15 @@ export function ReviewPage() {
           </div>
         ) : (
           <section className="mt-12 text-center text-[var(--coach-text-tertiary)]">
-            <p className="text-base font-semibold">Nothing here yet</p>
+            <p className="text-base font-semibold">{t('emptyTitle')}</p>
             <p className="mx-auto mt-1 max-w-[16rem] text-base font-semibold leading-6">
-              Your Coach conversations will appear here.
+              {t('emptyBody')}
             </p>
             <Button
               asChild
               className="mt-5 h-[50px] w-full rounded-full bg-[var(--coach-surface-glass-strong)] text-[var(--coach-ink)] shadow-[var(--coach-shadow)]"
             >
-              <Link to="/chat">Start a Conversation</Link>
+              <Link to="/chat">{t('startConversation')}</Link>
             </Button>
           </section>
         )}
@@ -132,7 +143,7 @@ export function ReviewPage() {
         <DeleteReviewDialog
           item={deleteItem}
           pending={deleteReview.isPending}
-          error={deleteReview.isError ? 'This history could not be deleted. Try again.' : null}
+          error={deleteReview.isError ? t('deleteError') : null}
           onCancel={() => {
             if (!deleteReview.isPending) setDeleteItem(null)
           }}
@@ -147,11 +158,14 @@ function MonthCalendar({
   selectedDate,
   activityDates,
   onSelect,
+  locale,
 }: {
   selectedDate: string
   activityDates: string[]
   onSelect: (date: string) => void
+  locale: ReturnType<typeof currentAppLocale>
 }) {
+  const headings = weekdayHeadingsByLocale[locale]
   const [year, month] = selectedDate.split('-').map(Number)
   const days = new Date(year!, month!, 0).getDate()
   const offset = new Date(year!, month! - 1, 1).getDay()
@@ -161,7 +175,7 @@ function MonthCalendar({
   return (
     <section className="mt-4 rounded-[22px] bg-[var(--coach-surface-glass)] px-[20px] py-8 shadow-[var(--coach-shadow)] backdrop-blur-md">
       <div className="grid grid-cols-7 text-center text-[11px] text-[var(--coach-text-secondary)]">
-        {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((label) => (
+        {headings.map((label) => (
           <span key={label}>{label}</span>
         ))}
       </div>
@@ -196,6 +210,8 @@ function MonthCalendar({
 }
 
 function ReviewCard({ item, onDelete }: { item: ReviewItem; onDelete?: () => void }) {
+  const { t, i18n } = useTranslation('review')
+  const locale = currentAppLocale(i18n.language)
   return (
     <article className="grid min-h-[90px] grid-cols-[minmax(0,1fr)_52px] overflow-hidden rounded-[18px] bg-[var(--coach-surface-glass)] shadow-[0_6px_18px_rgb(61_59_54/8%)]">
       <Link
@@ -208,14 +224,14 @@ function ReviewCard({ item, onDelete }: { item: ReviewItem; onDelete?: () => voi
         </span>
         <span className="mt-2 flex items-center justify-between text-[11px] text-[var(--coach-text-tertiary)]">
           <time>
-            {new Date(item.completed_at).toLocaleTimeString([], {
+            {new Date(item.completed_at).toLocaleTimeString(toBcp47(locale), {
               hour: 'numeric',
               minute: '2-digit',
             })}
           </time>
           {item.move_count ? (
             <span className="rounded-full bg-[var(--coach-surface-muted)] px-2 py-0.5">
-              {item.move_count} Move{item.move_count === 1 ? '' : 's'}
+              {t('moveCount', { count: item.move_count })}
             </span>
           ) : null}
         </span>
@@ -224,8 +240,15 @@ function ReviewCard({ item, onDelete }: { item: ReviewItem; onDelete?: () => voi
         <button
           type="button"
           className="mt-2 grid size-11 place-items-center justify-self-center rounded-full text-[var(--coach-text-tertiary)] transition-colors hover:bg-[var(--coach-surface-muted)] hover:text-[var(--danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={`Delete ${item.type} history`}
-          title="Delete history"
+          aria-label={t('deleteHistory', {
+            type:
+              item.type === 'echo'
+                ? t('groupEcho')
+                : item.type === 'move'
+                  ? t('groupMove')
+                  : t('groupCoach'),
+          })}
+          title={t('deleteHistoryTitle')}
           onClick={onDelete}
         >
           <Trash2 className="size-4" />
@@ -248,9 +271,14 @@ function DeleteReviewDialog({
   onCancel: () => void
   onConfirm: () => void
 }) {
+  const { t } = useTranslation('review')
   const dialogRef = useRef<HTMLDialogElement>(null)
   const label =
-    item.type === 'echo' ? 'Echo' : item.type === 'move' ? 'Move history' : 'conversation'
+    item.type === 'echo'
+      ? t('labelEcho')
+      : item.type === 'move'
+        ? t('labelMove')
+        : t('labelConversation')
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -274,13 +302,13 @@ function DeleteReviewDialog({
     >
       <div className="px-6 pb-5 pt-6 text-center">
         <h2 id="review-delete-title" className="text-lg font-medium">
-          Delete this {label}?
+          {t('deleteTitle', { label })}
         </h2>
         <p
           id="review-delete-description"
           className="mt-1 text-sm text-[var(--coach-text-secondary)]"
         >
-          It will be removed from Review. This can’t be undone.
+          {t('deleteBody')}
         </p>
         {error ? (
           <p className="mt-3 text-sm text-[var(--danger)]" role="alert">
@@ -295,7 +323,7 @@ function DeleteReviewDialog({
           onClick={() => dialogRef.current?.close()}
           className="min-h-12 border-r border-[var(--coach-border)] text-sm font-medium disabled:opacity-45"
         >
-          Cancel
+          {t('cancel')}
         </button>
         <button
           type="button"
@@ -303,7 +331,7 @@ function DeleteReviewDialog({
           onClick={onConfirm}
           className="min-h-12 text-sm font-medium text-[var(--danger)] disabled:opacity-45"
         >
-          {pending ? 'Deleting…' : 'Delete'}
+          {pending ? t('deleting') : t('delete')}
         </button>
       </div>
     </dialog>,

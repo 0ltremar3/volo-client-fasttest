@@ -9,6 +9,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import {
   commitFocusedDate,
@@ -33,8 +34,10 @@ import {
   monthYearFromIso,
   scrollLeftForIndex,
   shiftMonthYear,
+  weekdayHeadingsByLocale,
   type MonthYear,
 } from '@/components/date-navigation/date-strip-model'
+import { currentAppLocale } from '@/i18n'
 import { cn } from '@/lib/utils'
 
 type DateNavigatorProps = {
@@ -46,7 +49,6 @@ type DateNavigatorProps = {
   className?: string
 }
 
-const weekdayHeadings = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const
 const monthSwipeThreshold = 40
 
 export function DateNavigator({
@@ -112,6 +114,8 @@ function DateStrip({
   onCommit: (value: string) => void
   onOpenMonth?: () => void
 }) {
+  const { t, i18n } = useTranslation('daily')
+  const locale = currentAppLocale(i18n.language)
   const scrollerRef = useRef<HTMLDivElement>(null)
   const measureRef = useRef<HTMLDivElement>(null)
   const settleTimerRef = useRef(0)
@@ -220,7 +224,7 @@ function DateStrip({
           id={headingId}
           className="min-w-0 truncate font-display text-[28px] font-semibold leading-[38px]"
         >
-          {formatDateStripWeekday(focused)}
+          {formatDateStripWeekday(focused, locale)}
         </h1>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           {showToday ? (
@@ -229,7 +233,7 @@ function DateStrip({
               className="min-h-touch min-w-touch px-2 text-sm leading-[17px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => selectDate(today)}
             >
-              Today
+              {t('dates.today')}
             </button>
           ) : null}
           {onOpenMonth ? (
@@ -238,14 +242,16 @@ function DateStrip({
               className="flex min-h-touch items-center gap-1 px-1 text-sm leading-[17px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-haspopup="dialog"
               aria-expanded={false}
-              aria-label="Open month view"
+              aria-label={t('dates.openMonth')}
               onClick={onOpenMonth}
             >
-              <span>{formatDateStripMonthYear(focused)}</span>
+              <span>{formatDateStripMonthYear(focused, locale)}</span>
               <ChevronRight className="size-3" strokeWidth={2.25} aria-hidden="true" />
             </button>
           ) : (
-            <p className="px-1 text-sm leading-[17px]">{formatDateStripMonthYear(focused)}</p>
+            <p className="px-1 text-sm leading-[17px]">
+              {formatDateStripMonthYear(focused, locale)}
+            </p>
           )}
         </div>
       </div>
@@ -287,7 +293,7 @@ function DateStrip({
                   disabled={readOnly}
                   aria-pressed={selected}
                   aria-current={selected ? 'date' : undefined}
-                  aria-label={formatDateStripFullDate(date)}
+                  aria-label={formatDateStripFullDate(date, locale)}
                   onClick={() => selectDate(date)}
                   className="flex shrink-0 flex-col items-center text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-100"
                   style={{
@@ -298,7 +304,7 @@ function DateStrip({
                   }}
                 >
                   <span className="text-xs leading-none text-[var(--coach-text-tertiary)]">
-                    {dateStripWeekdayLetter(date)}
+                    {dateStripWeekdayLetter(date, locale)}
                   </span>
                   <span
                     className={cn(
@@ -359,6 +365,8 @@ function MonthCalendar({
   onSelect: (value: string) => void
   onClose: () => void
 }) {
+  const { t, i18n } = useTranslation('daily')
+  const locale = currentAppLocale(i18n.language)
   const [displayed, setDisplayed] = useState<MonthYear>(() => monthYearFromIso(selected))
   const dialogRef = useRef<HTMLDivElement>(null)
   const dragOrigin = useRef<number | null>(null)
@@ -422,7 +430,7 @@ function MonthCalendar({
     >
       <div className="flex min-h-touch items-center gap-3">
         <h1 id={headingId} className="text-sm font-medium leading-[17px] text-[var(--coach-ink)]">
-          {formatDateStripMonthYearValue(displayed)}
+          {formatDateStripMonthYearValue(displayed, locale)}
         </h1>
         <div className="ml-auto flex items-center">
           {showToday ? (
@@ -432,14 +440,14 @@ function MonthCalendar({
               onClick={() => onSelect(today)}
             >
               <span className="inline-flex h-[30px] items-center rounded-full border border-[var(--coach-border)] bg-[var(--coach-surface-glass)] px-3.5 text-sm font-medium text-[var(--coach-ink)]">
-                today
+                {t('dates.todayChip')}
               </span>
             </button>
           ) : null}
           <button
             type="button"
             className="grid size-11 place-items-center rounded-full text-[var(--coach-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Close month view"
+            aria-label={t('dates.closeMonth')}
             onClick={onClose}
           >
             <X className="size-[18px]" strokeWidth={1.75} />
@@ -455,11 +463,15 @@ function MonthCalendar({
         }}
       >
         <div className="grid grid-cols-7 text-center text-sm leading-[17px] text-[var(--coach-text-tertiary)]">
-          {weekdayHeadings.map((label) => (
+          {weekdayHeadingsByLocale[locale].map((label) => (
             <span key={label}>{label}</span>
           ))}
         </div>
-        <div className="mt-6 grid grid-cols-7 gap-y-2.5" role="grid" aria-label="Choose a date">
+        <div
+          className="mt-6 grid grid-cols-7 gap-y-2.5"
+          role="grid"
+          aria-label={t('dates.chooseDate')}
+        >
           {cells.map((date, index) =>
             date ? (
               <button
@@ -467,7 +479,7 @@ function MonthCalendar({
                 type="button"
                 role="gridcell"
                 aria-pressed={date === selected}
-                aria-label={formatDateStripFullDate(date)}
+                aria-label={formatDateStripFullDate(date, locale)}
                 onClick={() => onSelect(date)}
                 className="mx-auto grid size-11 place-items-center rounded-full font-numeric text-xl tabular-nums lining-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >

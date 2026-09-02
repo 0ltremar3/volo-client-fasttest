@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 
+import '@/i18n'
 import { VoiceOverlay } from './voice-overlay'
 import { deferVoiceRoomDisconnect, finishVoiceCall, voiceFailureCopy } from './voice-state'
 

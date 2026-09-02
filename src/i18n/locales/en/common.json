@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "primary": "Primary navigation",
+    "daily": "Open Daily",
+    "coach": "Open Coach",
+    "review": "Open Review"
+  },
+  "theme": {
+    "switchToDefault": "Switch to default theme",
+    "switchToDark": "Switch to dark theme"
+  },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "zh": "中文",
+    "switchToEn": "Switch to English",
+    "switchToZh": "Switch to Chinese"
+  },
+  "actions": {
+    "back": "Back",
+    "retry": "Retry",
+    "tryAgain": "Try again",
+    "cancel": "Cancel",
+    "save": "Save",
+    "done": "Done",
+    "delete": "Delete",
+    "today": "Today",
+    "edit": "Edit"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "The address does not match a page.",
+    "openChat": "Open chat"
+  },
+  "session": {
+    "opening": "Opening Volo…"
+  },
+  "debug": {
+    "eyebrow": "Internal",
+    "title": "Debug",
+    "description": "Request inspection will live here after real endpoints are connected. No credentials or sensitive values should be rendered.",
+    "apiBaseUrl": "API base URL",
+    "apiBaseUrlEmpty": "Same origin / not configured",
+    "openapiClient": "OpenAPI client",
+    "openapiClientValue": "Not generated",
+    "authProtocol": "Auth protocol",
+    "authProtocolValue": "Pending backend contract",
+    "streamingProtocol": "Streaming protocol",
+    "streamingProtocolValue": "Out of scope for Phase 1",
+    "response": "Response",
+    "copyResponse": "Copy response",
+    "clearResponse": "Clear response",
+    "noRequest": "// No request has been made."
+  }
+}
