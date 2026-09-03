@@ -1,4 +1,4 @@
-import type { RepeatRule } from '@/api/volo'
+import type { RepeatRule, VoloCard } from '@/api/volo'
 import type { AppLocale } from '@/lib/locale'
 import { toBcp47 } from '@/lib/locale'
 
@@ -66,6 +66,11 @@ export type CoachSchedule = {
 }
 
 export type MoveScheduleFrequency = RepeatRule['frequency']
+export type MoveScheduleDraft = {
+  frequency: MoveScheduleFrequency
+  time: string
+  rule: RepeatRule
+}
 
 export function toMoveScheduleTime(date: Date) {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
@@ -90,12 +95,25 @@ export function buildMoveScheduleRule(
 // Without an explicit AI suggestion the card starts where the backend default
 // would land: no repeat, at the current minute.
 export function resolveMoveScheduleDraft(
-  suggestedSchedule?: { frequency: 'daily'; local_time: string } | null,
+  suggestedSchedule?: NonNullable<VoloCard['payload']['suggested_schedule']> | null,
   now = new Date(),
-): { frequency: MoveScheduleFrequency; time: string } {
-  return suggestedSchedule
-    ? { frequency: suggestedSchedule.frequency, time: suggestedSchedule.local_time }
-    : { frequency: 'none', time: toMoveScheduleTime(now) }
+): MoveScheduleDraft {
+  if (!suggestedSchedule) {
+    return { frequency: 'none', time: toMoveScheduleTime(now), rule: { frequency: 'none' } }
+  }
+  const rule: RepeatRule =
+    suggestedSchedule.frequency === 'weekly' && suggestedSchedule.weekdays?.length
+      ? { frequency: 'weekly', weekdays: suggestedSchedule.weekdays }
+      : suggestedSchedule.frequency === 'monthly' && suggestedSchedule.day
+        ? { frequency: 'monthly', day: suggestedSchedule.day }
+        : suggestedSchedule.frequency === 'none' || suggestedSchedule.frequency === 'daily'
+          ? { frequency: suggestedSchedule.frequency }
+          : { frequency: 'none' }
+  return {
+    frequency: rule.frequency,
+    time: suggestedSchedule.local_time,
+    rule,
+  }
 }
 
 export const defaultSchedule: CoachSchedule = {

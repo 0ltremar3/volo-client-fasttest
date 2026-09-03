@@ -37,6 +37,7 @@ import {
   buildMoveScheduleRule,
   formatCoachAppointment,
   resolveMoveScheduleDraft,
+  type MoveScheduleDraft,
   type MoveScheduleFrequency,
 } from '@/features/coach/coach-model'
 import {
@@ -580,7 +581,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
                 <div
                   key={item.id}
                   id={`coach-card-${card.id}`}
-                  className="rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--coach-accent)] focus:ring-offset-2"
+                  className="rounded-lg p-2 transition-[background-color,box-shadow] duration-200 focus:bg-[color-mix(in_srgb,var(--coach-accent-muted)_58%,transparent)] focus:shadow-[0_8px_24px_rgb(244_95_0/10%)] focus:outline-none motion-reduce:transition-none"
                   tabIndex={-1}
                 >
                   <CoachCard
@@ -720,22 +721,23 @@ function CoachCard({
       card.payload.suggested_schedule
         ? resolveMoveScheduleDraft(card.payload.suggested_schedule)
         : currentSchedule
-          ? { frequency: currentSchedule.rule.frequency, time: currentSchedule.local_time }
+          ? {
+              frequency: currentSchedule.rule.frequency,
+              time: currentSchedule.local_time,
+              rule: currentSchedule.rule,
+            }
           : resolveMoveScheduleDraft(),
     [card.payload.suggested_schedule, currentSchedule],
   )
   // Only the user's override lives in state, so an untouched editor keeps
   // following the seed even though the related Move arrives after mount. An
   // untouched revision card must not overwrite a schedule the user already owns.
-  const [scheduleOverride, setScheduleOverride] = useState<{
-    frequency: MoveScheduleFrequency
-    time: string
-  } | null>(null)
+  const [scheduleOverride, setScheduleOverride] = useState<MoveScheduleDraft | null>(null)
   const [schedulePanelOpen, setSchedulePanelOpen] = useState(false)
   const scheduleDraft = scheduleOverride ?? initialSchedule
   const sendsSchedule = adjustmentMode ? scheduleOverride !== null : true
   const finalSchedule = {
-    rule: buildMoveScheduleRule(scheduleDraft.frequency, new Date(), currentSchedule?.rule),
+    rule: buildMoveScheduleRule(scheduleDraft.frequency, new Date(), scheduleDraft.rule),
     local_time: scheduleDraft.time,
   }
 
@@ -855,7 +857,13 @@ function CoachCard({
             frequency={scheduleDraft.frequency}
             time={scheduleDraft.time}
             disabled={confirm.isPending}
-            onFrequencyChange={(frequency) => setScheduleOverride({ ...scheduleDraft, frequency })}
+            onFrequencyChange={(frequency) =>
+              setScheduleOverride({
+                ...scheduleDraft,
+                frequency,
+                rule: buildMoveScheduleRule(frequency, new Date(), scheduleDraft.rule),
+              })
+            }
             onTimeChange={(time) => setScheduleOverride({ ...scheduleDraft, time })}
           />
         ) : null}

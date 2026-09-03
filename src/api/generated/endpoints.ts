@@ -58,6 +58,8 @@ import type {
   PostV2DailyEchoSessionsBody,
   PostV2DailyEchoSessionsIdMessagesStreamBody,
   PostV2MovesIdAdjustmentSession201,
+  PostV2VoiceSessions201,
+  PostV2VoiceSessionsBody,
   PutV2DailyEchoSchedule200,
   PutV2DailyEchoScheduleBody,
   PutV2MovesIdSchedule200,
@@ -2055,6 +2057,72 @@ const {mutation: mutationOptions} = options ?
       > => {
 
       const mutationOptions = getDeleteV2MovesIdMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+
+export const getPostV2VoiceSessionsUrl = () => {
+
+
+
+
+  return `/v2/voice/sessions`
+}
+
+export const postV2VoiceSessions = async (postV2VoiceSessionsBody: PostV2VoiceSessionsBody, options?: RequestInit): Promise<PostV2VoiceSessions201> => {
+
+  return apiFetch<PostV2VoiceSessions201>(getPostV2VoiceSessionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      postV2VoiceSessionsBody,)
+  }
+);}
+
+
+
+
+export const getPostV2VoiceSessionsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV2VoiceSessions>>, TError,{data: PostV2VoiceSessionsBody}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof postV2VoiceSessions>>, TError,{data: PostV2VoiceSessionsBody}, TContext> => {
+
+const mutationKey = ['postV2VoiceSessions'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postV2VoiceSessions>>, {data: PostV2VoiceSessionsBody}> = (props) => {
+          const {data} = props ?? {};
+
+          return  postV2VoiceSessions(data,)
+        }
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostV2VoiceSessionsMutationResult = NonNullable<Awaited<ReturnType<typeof postV2VoiceSessions>>>
+    export type PostV2VoiceSessionsMutationBody = PostV2VoiceSessionsBody
+    export type PostV2VoiceSessionsMutationError = unknown
+
+    export const usePostV2VoiceSessions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postV2VoiceSessions>>, TError,{data: PostV2VoiceSessionsBody}, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postV2VoiceSessions>>,
+        TError,
+        {data: PostV2VoiceSessionsBody},
+        TContext
+      > => {
+
+      const mutationOptions = getPostV2VoiceSessionsMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }

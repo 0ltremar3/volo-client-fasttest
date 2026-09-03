@@ -11,5 +11,8 @@ export type PostV2CoachSessionsIdStart200CardsItemPayloadSuggestedScheduleFreque
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const PostV2CoachSessionsIdStart200CardsItemPayloadSuggestedScheduleFrequency = {
+  none: 'none',
   daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
 } as const;

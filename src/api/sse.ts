@@ -21,8 +21,10 @@ export type VoloCoachCard = {
   payload: {
     description?: string
     suggested_schedule?: {
-      frequency: 'daily'
+      frequency: 'none' | 'daily' | 'weekly' | 'monthly'
       local_time: string
+      weekdays?: number[]
+      day?: number
     }
     topic_to_explore?: string
     takeaway?: string
@@ -255,11 +257,30 @@ function isSuggestedSchedule(
 ): value is NonNullable<VoloCoachCard['payload']['suggested_schedule']> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
   const schedule = value as Record<string, unknown>
+  if (!isString(schedule.local_time) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.local_time)) {
+    return false
+  }
+  if (schedule.frequency === 'none' || schedule.frequency === 'daily') {
+    return Object.keys(schedule).length === 2
+  }
+  if (schedule.frequency === 'weekly') {
+    return (
+      Object.keys(schedule).length === 3 &&
+      Array.isArray(schedule.weekdays) &&
+      schedule.weekdays.length > 0 &&
+      schedule.weekdays.length <= 7 &&
+      schedule.weekdays.every(
+        (day) => typeof day === 'number' && Number.isInteger(day) && day >= 1 && day <= 7,
+      )
+    )
+  }
   return (
-    Object.keys(schedule).length === 2 &&
-    schedule.frequency === 'daily' &&
-    isString(schedule.local_time) &&
-    /^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.local_time)
+    schedule.frequency === 'monthly' &&
+    Object.keys(schedule).length === 3 &&
+    typeof schedule.day === 'number' &&
+    Number.isInteger(schedule.day) &&
+    schedule.day >= 1 &&
+    schedule.day <= 31
   )
 }
 

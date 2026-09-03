@@ -143,6 +143,19 @@ describe('Volo Coach SSE', () => {
     })
   })
 
+  it('accepts an explicit one-time local-time suggestion on a Move create card', async () => {
+    stubCoachCardStream({ frequency: 'none', local_time: '12:00' })
+    const events: VoloCoachStreamEvent[] = []
+
+    await streamVoloCoachPost('/coach', { body: '中午12点做饭' }, (event) => events.push(event))
+
+    expect(events.find((event) => event.event === 'card_created')).toMatchObject({
+      data: {
+        payload: { suggested_schedule: { frequency: 'none', local_time: '12:00' } },
+      },
+    })
+  })
+
   it.each([
     { frequency: 'daily', local_time: '25:00' },
     { frequency: 'weekly', local_time: '12:00' },

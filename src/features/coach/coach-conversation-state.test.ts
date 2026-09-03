@@ -136,14 +136,32 @@ describe('Move check plan', () => {
     })
   })
 
-  it('prefills an explicit daily suggestion and otherwise matches the backend default', () => {
+  it('prefills the complete AI schedule suggestion and otherwise matches the backend default', () => {
     expect(resolveMoveScheduleDraft({ frequency: 'daily', local_time: '12:00' })).toEqual({
       frequency: 'daily',
       time: '12:00',
+      rule: { frequency: 'daily' },
+    })
+    expect(resolveMoveScheduleDraft({ frequency: 'none', local_time: '12:00' })).toEqual({
+      frequency: 'none',
+      time: '12:00',
+      rule: { frequency: 'none' },
+    })
+    expect(
+      resolveMoveScheduleDraft({
+        frequency: 'weekly',
+        weekdays: [1, 4],
+        local_time: '07:30',
+      }),
+    ).toEqual({
+      frequency: 'weekly',
+      time: '07:30',
+      rule: { frequency: 'weekly', weekdays: [1, 4] },
     })
     expect(resolveMoveScheduleDraft(undefined, date)).toEqual({
       frequency: 'none',
       time: '09:05',
+      rule: { frequency: 'none' },
     })
   })
 })

@@ -194,6 +194,8 @@ export * from './postV2MovesIdAdjustmentSession201Session';
 export * from './postV2MovesIdAdjustmentSession201SessionKind';
 export * from './postV2MovesIdAdjustmentSession201SessionScheduleState';
 export * from './postV2MovesIdAdjustmentSession201SessionStatus';
+export * from './postV2VoiceSessions201';
+export * from './postV2VoiceSessionsBody';
 export * from './putV2DailyEchoSchedule200';
 export * from './putV2DailyEchoScheduleBody';
 export * from './putV2MovesIdSchedule200';

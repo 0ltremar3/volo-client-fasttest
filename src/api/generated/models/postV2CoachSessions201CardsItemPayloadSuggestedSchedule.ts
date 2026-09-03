@@ -11,4 +11,14 @@ export type PostV2CoachSessions201CardsItemPayloadSuggestedSchedule = {
   frequency: PostV2CoachSessions201CardsItemPayloadSuggestedScheduleFrequency;
   /** @pattern ^([01]\d|2[0-3]):[0-5]\d$ */
   local_time: string;
+  /**
+   * @minItems 1
+   * @maxItems 7
+   */
+  weekdays?: number[];
+  /**
+   * @minimum 1
+   * @maximum 31
+   */
+  day?: number;
 };
