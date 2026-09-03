@@ -62,7 +62,7 @@ Three real links only: Daily (`/daily`), Coach (`/chat`), and Review (`/review`)
 
 ### Top bar
 
-An ongoing Coach conversation uses the centered `Coach` title and the compact dark `Done` action on the right. After the user has sent a message, `Done` prepares the editable pause summary but does not complete the session. With no user message, `Done` cancels the empty session and returns directly to Daily. Move adjustment mode hides `Done`, because confirming the revision is the only completion action. Coach landing states keep their existing page-specific heading. Daily uses the exported VOLO wordmark and a non-interactive profile brand glyph. Do not add new-conversation, account, or history controls to either top bar. Browser/PWA safe areas replace Figma's illustrative status bar and Dynamic Island.
+An ongoing Coach conversation uses the centered `Coach` title and the compact dark `Done` action on the right. After the user has sent a message, `Done` prepares the editable pause summary but does not complete the session. With no user message, `Done` cancels the empty session and returns directly to Daily. Move adjustment keeps `Done`, so the user can Pause or confirm a revision. Coach landing states keep their existing page-specific heading. Daily uses the exported VOLO wordmark and a non-interactive profile brand glyph. Do not add new-conversation, account, or history controls to either top bar. Browser/PWA safe areas replace Figma's illustrative status bar and Dynamic Island.
 
 ### Daily date navigator
 

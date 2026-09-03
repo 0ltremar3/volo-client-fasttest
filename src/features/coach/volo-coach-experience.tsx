@@ -375,7 +375,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
   const sending = turnState.active !== null
   const conversationRef = useRef<HTMLDivElement>(null)
   const adjustmentMode = Boolean(thread.data?.session.related_move_id)
-  const pauseCard = adjustmentMode ? null : findPendingSessionEnd(turnState.cards)
+  const pauseCard = findPendingSessionEnd(turnState.cards)
   const pendingMoveCard = findPendingMoveCard(turnState.cards)
   // A revision card carries no schedule, so seed its editor from the Move the
   // adjustment targets instead of guessing.
@@ -549,7 +549,6 @@ function SessionView({ sessionId }: { sessionId: string }) {
           }}
           disabled={!canPrepareEnd}
           busy={ending}
-          showDone={!adjustmentMode}
         />
         <p className="sr-only" aria-live="polite">
           {endGuardCardId === pendingMoveCard?.id ? t('resolveMoveBeforeDone') : ''}

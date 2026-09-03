@@ -100,7 +100,7 @@ or separate voice history is used. A pending Pause card, ending flow, text turn,
 or active voice room disables the waveform. Text sending remains blocked until the voice layer exits.
 
 When Coach opens an adjusted Move, the original conversation history remains in place and the
-header hides the ordinary Done/Pause path. A `move_revision` card confirms revised wording and keeps
+header keeps the ordinary `Done` action. A `move_revision` card confirms revised wording and keeps
 the existing Schedule unless the user opens `Change schedule`; that editor is seeded from the target
 Move's current plan and only sends `final_payload.schedule` after an actual change, so an untouched
 card never overwrites a Schedule the user already set. Confirming returns to the originating Daily
