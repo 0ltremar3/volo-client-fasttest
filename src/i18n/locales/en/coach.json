@@ -72,6 +72,7 @@
   "changeSchedule": "Change schedule",
   "skip": "Skip",
   "editMove": "Edit move",
+  "adjustmentOpening": "Let us revisit your Move: \"{{description}}\".",
   "adjustmentError": "This adjustment could not be saved. Try again.",
   "moveSaveError": "This Move could not be saved. Try again.",
   "copyFailed": "Copy failed",

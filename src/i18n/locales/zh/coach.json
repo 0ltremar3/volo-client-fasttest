@@ -72,6 +72,7 @@
   "changeSchedule": "更改计划",
   "skip": "跳过",
   "editMove": "编辑 Move",
+  "adjustmentOpening": "来重新想想这个 Move：「{{description}}」。",
   "adjustmentError": "无法保存这次调整，请再试一次。",
   "moveSaveError": "无法保存这个 Move，请再试一次。",
   "copyFailed": "复制失败",

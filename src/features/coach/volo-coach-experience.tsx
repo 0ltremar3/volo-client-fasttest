@@ -49,6 +49,8 @@ import {
   resolveCoachEndAction,
   type CoachStartView,
 } from '@/features/coach/coach-conversation-state'
+import { localizeCoachAssistantBody } from '@/features/coach/coach-message-copy'
+import { voloCoachHomeQueryKey, voloSessionQueryKey } from '@/features/coach/coach-session-query'
 import {
   buildCoachTimeline,
   coachTurnReducer,
@@ -110,7 +112,7 @@ export function VoloCoachExperience() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const sessionId = searchParams.get('session')
-  const home = useQuery({ queryKey: ['volo-coach-home'], queryFn: coachApi.home })
+  const home = useQuery({ queryKey: voloCoachHomeQueryKey, queryFn: coachApi.home })
 
   useEffect(() => {
     if (!sessionId && home.data?.current_session) {
@@ -154,7 +156,7 @@ function CoachStart({
   const create = useMutation({
     mutationFn: coachApi.create,
     onSuccess: async (result) => {
-      await queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] })
+      await queryClient.invalidateQueries({ queryKey: voloCoachHomeQueryKey })
       if (result.session.status === 'ongoing') void navigate(`/chat?session=${result.session.id}`)
       else setEntry('home')
     },
@@ -318,7 +320,7 @@ function ScheduledSession({ session }: { session: ScheduledSessionValue }) {
   const start = useMutation({
     mutationFn: startOnce,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] })
+      await queryClient.invalidateQueries({ queryKey: voloCoachHomeQueryKey })
       void navigate(`/chat?session=${session.id}`)
     },
   })
@@ -357,8 +359,9 @@ function SessionView({ sessionId }: { sessionId: string }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const thread = useQuery({
-    queryKey: ['volo-session', sessionId],
+    queryKey: voloSessionQueryKey(sessionId),
     queryFn: () => coachApi.get(sessionId),
+    staleTime: 0,
   })
   const [turnState, dispatch] = useReducer(coachTurnReducer, undefined, () =>
     createCoachTurnState(),
@@ -412,14 +415,14 @@ function SessionView({ sessionId }: { sessionId: string }) {
     mutationFn: () => coachApi.endSuggestion(sessionId),
     onSuccess: async (result) => {
       dispatch({ type: 'card_changed', card: result.card })
-      await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
+      await queryClient.invalidateQueries({ queryKey: voloSessionQueryKey(sessionId) })
     },
   })
 
   const discardEmptySession = useMutation({
     mutationFn: () => coachApi.cancel(sessionId),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] })
+      await queryClient.invalidateQueries({ queryKey: voloCoachHomeQueryKey })
       void navigate('/daily', { replace: true })
     },
   })
@@ -431,8 +434,8 @@ function SessionView({ sessionId }: { sessionId: string }) {
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
-        queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] }),
+        queryClient.invalidateQueries({ queryKey: voloSessionQueryKey(sessionId) }),
+        queryClient.invalidateQueries({ queryKey: voloCoachHomeQueryKey }),
         queryClient.invalidateQueries({ queryKey: ['volo-daily'] }),
         queryClient.invalidateQueries({ queryKey: ['volo-review'] }),
         queryClient.invalidateQueries({ queryKey: ['volo-review-activity'] }),
@@ -448,7 +451,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
     },
     onSuccess: async (result) => {
       updateCard(result.card)
-      await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
+      await queryClient.invalidateQueries({ queryKey: voloSessionQueryKey(sessionId) })
       window.requestAnimationFrame(() => composerRef.current?.focus())
     },
   })
@@ -457,8 +460,8 @@ function SessionView({ sessionId }: { sessionId: string }) {
 
   const refreshCanonicalThread = useCallback(() => {
     void Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
-      queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] }),
+      queryClient.invalidateQueries({ queryKey: voloSessionQueryKey(sessionId) }),
+      queryClient.invalidateQueries({ queryKey: voloCoachHomeQueryKey }),
     ])
   }, [queryClient, sessionId])
 
@@ -487,8 +490,8 @@ function SessionView({ sessionId }: { sessionId: string }) {
       )
       dispatch({ type: 'success' })
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
-        queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] }),
+        queryClient.invalidateQueries({ queryKey: voloSessionQueryKey(sessionId) }),
+        queryClient.invalidateQueries({ queryKey: voloCoachHomeQueryKey }),
       ])
     } catch (error) {
       if (controller.signal.aborted) {
@@ -675,6 +678,8 @@ function SessionView({ sessionId }: { sessionId: string }) {
 }
 
 function MessageBubble({ message }: { message: VoloMessage }) {
+  const { t } = useTranslation('coach')
+  const body = localizeCoachAssistantBody(message.body, t)
   return message.role === 'user' ? (
     <div className="flex justify-end pl-12">
       <p className="max-w-[18.5rem] text-pretty rounded-[22px] bg-[var(--coach-user-bubble)] px-4 py-3 text-base font-medium leading-5 text-[var(--coach-text-warm)]">
@@ -682,7 +687,7 @@ function MessageBubble({ message }: { message: VoloMessage }) {
       </p>
     </div>
   ) : (
-    <StreamingText text={message.body} status="complete" onCopy={() => copyText(message.body)} />
+    <StreamingText text={body} status="complete" onCopy={() => copyText(body)} />
   )
 }
 
@@ -748,8 +753,8 @@ function CoachCard({
         if (card.type === 'move_revision') {
           const returnDate = result.session.related_local_date ?? relatedLocalDate ?? today()
           await Promise.all([
-            queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
-            queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] }),
+            queryClient.invalidateQueries({ queryKey: voloSessionQueryKey(sessionId) }),
+            queryClient.invalidateQueries({ queryKey: voloCoachHomeQueryKey }),
             queryClient.invalidateQueries({ queryKey: getGetV2MovesQueryKey() }),
             queryClient.invalidateQueries({
               queryKey: getGetV2DailyQueryKey({ date: returnDate }),
@@ -759,7 +764,7 @@ function CoachCard({
           return
         }
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] }),
+          queryClient.invalidateQueries({ queryKey: voloSessionQueryKey(sessionId) }),
           queryClient.invalidateQueries({ queryKey: getGetV2MovesQueryKey() }),
         ])
       },
@@ -769,7 +774,7 @@ function CoachCard({
     mutation: {
       onSuccess: async (result) => {
         onCardChanged(result.card)
-        await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
+        await queryClient.invalidateQueries({ queryKey: voloSessionQueryKey(sessionId) })
       },
     },
   })
@@ -778,7 +783,7 @@ function CoachCard({
     onSuccess: async (result) => {
       onCardChanged({ ...card, status: 'rejected' })
       onCardChanged(result.card)
-      await queryClient.invalidateQueries({ queryKey: ['volo-session', sessionId] })
+      await queryClient.invalidateQueries({ queryKey: voloSessionQueryKey(sessionId) })
     },
   })
 

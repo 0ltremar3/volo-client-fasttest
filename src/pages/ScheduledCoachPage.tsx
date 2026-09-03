@@ -7,6 +7,7 @@ import { coachApi } from '@/api/volo'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { Button } from '@/components/ui/button'
 import { CoachOrb } from '@/features/coach/coach-orb'
+import { voloCoachHomeQueryKey } from '@/features/coach/coach-session-query'
 import { singleFlight } from '@/features/coach/schedule-routing'
 import { currentAppLocale } from '@/i18n'
 import { toBcp47 } from '@/lib/locale'
@@ -17,13 +18,13 @@ export function ScheduledCoachPage() {
   const { sessionId = '' } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const home = useQuery({ queryKey: ['volo-coach-home'], queryFn: coachApi.home })
+  const home = useQuery({ queryKey: voloCoachHomeQueryKey, queryFn: coachApi.home })
   const session = home.data?.scheduled_sessions.find((item) => item.id === sessionId)
   const startOnce = useMemo(() => singleFlight(() => coachApi.start(sessionId)), [sessionId])
   const start = useMutation({
     mutationFn: startOnce,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['volo-coach-home'] })
+      await queryClient.invalidateQueries({ queryKey: voloCoachHomeQueryKey })
       void navigate(`/chat?session=${sessionId}`, { replace: true })
     },
   })

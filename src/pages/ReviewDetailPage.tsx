@@ -9,10 +9,12 @@ import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
 import { mockAuthEnabled } from '@/features/auth/mock-auth'
+import { localizeCoachAssistantBody } from '@/features/coach/coach-message-copy'
 import { mockReviewDetail } from '@/features/review/review-mock'
 
 export function ReviewDetailPage() {
   const { t } = useTranslation('review')
+  const { t: tCoach } = useTranslation('coach')
   const { sessionId = '' } = useParams()
   const navigate = useNavigate()
   const detail = useQuery({
@@ -105,7 +107,7 @@ export function ReviewDetailPage() {
                 key={message.id}
                 className="whitespace-pre-wrap pr-3 text-base font-medium leading-6"
               >
-                {message.body}
+                {localizeCoachAssistantBody(message.body, tCoach)}
               </p>
             ),
           )}

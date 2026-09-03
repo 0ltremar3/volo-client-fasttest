@@ -19,11 +19,16 @@ import {
   usePutV2MovesIdSchedule,
 } from '@/api/generated/endpoints'
 import type { GetV2Daily200Echo, GetV2Moves200ItemsItem } from '@/api/generated/models'
-import { dailyApi } from '@/api/volo'
+import { dailyApi, type SessionThread } from '@/api/volo'
 import { DateNavigator } from '@/components/date-navigation/date-navigator'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
 import { AppBottomNavigation } from '@/components/layout/app-bottom-navigation'
 import { Button } from '@/components/ui/button'
+import {
+  overlayResumedCoachSession,
+  voloCoachHomeQueryKey,
+  voloSessionQueryKey,
+} from '@/features/coach/coach-session-query'
 import { EchoSettingsSheet } from '@/features/daily/echo-settings-sheet'
 import { PeriodMoves, type PeriodMoveItem } from '@/features/daily/period-moves'
 import { formatIsoWeekday, parseDailyDate, type EchoSchedule } from '@/features/daily/daily-model'
@@ -330,7 +335,16 @@ function VoloPeriodMoves({ moves }: { moves: GetV2Moves200ItemsItem[] }) {
       onRethink={async (item) => {
         const move = getMove(item)
         const result = await adjustment.mutateAsync({ id: move.id })
-        await invalidateMoves()
+        queryClient.setQueryData(
+          voloSessionQueryKey(result.session.id),
+          (current: SessionThread | undefined) =>
+            overlayResumedCoachSession(current, result.session),
+        )
+        await Promise.all([
+          invalidateMoves(),
+          queryClient.invalidateQueries({ queryKey: voloSessionQueryKey(result.session.id) }),
+          queryClient.invalidateQueries({ queryKey: voloCoachHomeQueryKey }),
+        ])
         void navigate(`/chat?session=${result.session.id}`)
       }}
       onScheduleChange={async (item, schedule) => {
