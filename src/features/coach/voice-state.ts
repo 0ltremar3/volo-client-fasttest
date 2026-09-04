@@ -12,11 +12,11 @@ export type VoiceTranscriptState = {
 
 export type VoiceFailure = 'permission' | 'worker_start' | 'worker_disconnect' | 'connection'
 
-export function createVoiceTranscriptState(): VoiceTranscriptState {
+export function createVoiceTranscriptState(initialAssistant = ''): VoiceTranscriptState {
   return {
     interimUser: '',
     finalUser: '',
-    assistant: '',
+    assistant: initialAssistant,
     userSegmentOrder: [],
     userSegments: {},
     clearUserOnNextSegment: false,

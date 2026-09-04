@@ -46,6 +46,7 @@ type VoiceOverlayProps = {
   details: VoiceConnectionDetails | null
   loading: boolean
   requestError: boolean
+  initialAssistantText?: string
   onRetry: () => void
   onClose: () => void
   onCanonicalChange: () => void
@@ -53,12 +54,11 @@ type VoiceOverlayProps = {
   onReviewPendingMove: (cardId: string) => void
 }
 
-const emptyTranscript = createVoiceTranscriptState()
-
 export function VoiceOverlay({
   details,
   loading,
   requestError,
+  initialAssistantText = '',
   onRetry,
   onClose,
   onCanonicalChange,
@@ -87,6 +87,7 @@ export function VoiceOverlay({
           key={details.voice_session_id}
           closeRef={closeRef}
           details={details}
+          initialAssistantText={initialAssistantText}
           onClose={onClose}
           onCanonicalChange={onCanonicalChange}
           onRetry={onRetry}
@@ -99,6 +100,7 @@ export function VoiceOverlay({
           <VoicePending
             loading={loading}
             error={requestError}
+            initialAssistantText={initialAssistantText}
             onRetry={onRetry}
             onClose={onClose}
           />
@@ -111,11 +113,13 @@ export function VoiceOverlay({
 function VoicePending({
   loading,
   error,
+  initialAssistantText,
   onRetry,
   onClose,
 }: {
   loading: boolean
   error: boolean
+  initialAssistantText: string
   onRetry: () => void
   onClose: () => void
 }) {
@@ -132,12 +136,28 @@ function VoicePending({
           />
         )}
       </div>
-      <h3 className="mt-6 text-xl font-semibold">
-        {error ? t('voice.unavailable') : t('voice.connecting')}
-      </h3>
-      <p className="mt-2 max-w-[19rem] text-sm leading-5 text-[var(--coach-text-secondary)]">
-        {error ? t('voice.startFailed') : t('voice.preparing')}
-      </p>
+      {error ? (
+        <>
+          <h3 className="mt-6 text-xl font-semibold">{t('voice.unavailable')}</h3>
+          <p className="mt-2 max-w-[19rem] text-sm leading-5 text-[var(--coach-text-secondary)]">
+            {t('voice.startFailed')}
+          </p>
+        </>
+      ) : (
+        <>
+          {initialAssistantText ? (
+            <div className="mt-6 max-w-[21rem]">
+              <p className="text-xs font-semibold text-[var(--coach-text-tertiary)]">
+                {t('title')}
+              </p>
+              <p className="mt-1 text-pretty text-base leading-6">{initialAssistantText}</p>
+            </div>
+          ) : null}
+          <p className="mt-4 max-w-[19rem] text-sm leading-5 text-[var(--coach-text-secondary)]">
+            {t('voice.preparing')}
+          </p>
+        </>
+      )}
       {error ? (
         <button
           type="button"
@@ -189,6 +209,7 @@ function VoiceChrome({
 function VoiceRoom({
   closeRef,
   details,
+  initialAssistantText,
   onClose,
   onRetry,
   onCanonicalChange,
@@ -197,6 +218,7 @@ function VoiceRoom({
 }: {
   closeRef: RefObject<HTMLButtonElement | null>
   details: VoiceConnectionDetails
+  initialAssistantText: string
   onClose: () => void
   onRetry: () => void
   onCanonicalChange: () => void
@@ -218,6 +240,7 @@ function VoiceRoom({
         closeRef={closeRef}
         room={room}
         details={details}
+        initialAssistantText={initialAssistantText}
         onClose={onClose}
         onRetry={onRetry}
         onCanonicalChange={onCanonicalChange}
@@ -233,6 +256,7 @@ function VoiceRoomContent({
   closeRef,
   room,
   details,
+  initialAssistantText,
   onClose,
   onRetry,
   onCanonicalChange,
@@ -242,6 +266,7 @@ function VoiceRoomContent({
   closeRef: RefObject<HTMLButtonElement | null>
   room: Room
   details: VoiceConnectionDetails
+  initialAssistantText: string
   onClose: () => void
   onRetry: () => void
   onCanonicalChange: () => void
@@ -249,7 +274,11 @@ function VoiceRoomContent({
   onReviewPendingMove: (cardId: string) => void
 }) {
   const { t } = useTranslation('coach')
-  const [transcript, updateTranscript] = useReducer(reduceVoiceTranscript, emptyTranscript)
+  const [transcript, updateTranscript] = useReducer(
+    reduceVoiceTranscript,
+    initialAssistantText,
+    createVoiceTranscriptState,
+  )
   const [failure, setFailure] = useState<VoiceFailure | null>(null)
   const [reconnecting, setReconnecting] = useState(false)
   const [micEnabled, setMicEnabled] = useState(false)

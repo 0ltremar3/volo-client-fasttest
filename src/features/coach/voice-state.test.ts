@@ -100,6 +100,19 @@ describe('voice state', () => {
     expect(voicePhaseLabel('reconnecting')).toBe('Reconnecting')
   })
 
+  it('seeds the persisted opening and replaces it with live assistant transcription', () => {
+    const initial = createVoiceTranscriptState('Persisted opening')
+    expect(initial.assistant).toBe('Persisted opening')
+
+    const live = reduceVoiceTranscript(initial, {
+      speaker: 'assistant',
+      segmentId: 'assistant-opening',
+      text: 'Live opening transcript',
+      final: true,
+    })
+    expect(live.assistant).toBe('Live opening transcript')
+  })
+
   it('keeps final text from distinct transcription segments in order', () => {
     const empty = createVoiceTranscriptState()
     const first = reduceVoiceTranscript(empty, {

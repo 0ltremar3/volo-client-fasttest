@@ -529,6 +529,12 @@ function SessionView({ sessionId }: { sessionId: string }) {
     ending,
     voiceOpen,
   })
+  const initialVoiceAssistantText = thread.data.messages.some((message) => message.role === 'user')
+    ? ''
+    : localizeCoachAssistantBody(
+        thread.data.messages.find((message) => message.role === 'assistant')?.body ?? '',
+        t,
+      )
   const pauseError = confirmEnd.isError
     ? t('pauseSaveError')
     : continueEnd.isError
@@ -654,6 +660,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
           details={voiceSession.data ?? null}
           loading={voiceSession.isPending}
           requestError={voiceSession.isError}
+          initialAssistantText={initialVoiceAssistantText}
           onRetry={() => {
             retryVoiceSession(voiceSession)
           }}
