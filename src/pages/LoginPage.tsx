@@ -27,7 +27,7 @@ export function LoginPage() {
   const [email, setEmail] = useState(mockAuthEnabled ? mockCredentials.email : '')
   const [password, setPassword] = useState(mockAuthEnabled ? mockCredentials.password : '')
   const [otp, setOtp] = useState('')
-  const [rememberMe, setRememberMe] = useState(false)
+  const [rememberMe, setRememberMe] = useState(true)
   const [notice, setNotice] = useState<LoginNotice | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { tryBeginSend, markSent, releaseSend, remainingSeconds, wasSent } = useOtpSendCooldown()
