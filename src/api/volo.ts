@@ -1,5 +1,5 @@
-import { clearAccessToken, setAccessToken } from '@/api/auth-session'
-import { apiFetch } from '@/api/client'
+import { clearAccessToken, getAccessToken, setAccessToken } from '@/api/auth-session'
+import { apiFetch, getWebSocketUrl } from '@/api/client'
 import {
   streamPost,
   streamVoloCoachPost,
@@ -43,6 +43,12 @@ export type VoiceConnectionDetails = {
   room_name: string
   participant_name: string
   expires_at: string
+}
+
+export type VoiceTranscriptionStream = {
+  send: (audio: ArrayBuffer) => void
+  finish: () => void
+  close: () => void
 }
 
 export type VoloCheck = {
@@ -262,6 +268,68 @@ export const voiceApi = {
     apiFetch<VoiceConnectionDetails>('/v2/voice/sessions', {
       method: 'POST',
       body: JSON.stringify({ coach_session_id: coachSessionId }),
+    }),
+  transcribe: (audio: Blob) =>
+    apiFetch<{ text: string; language?: string; duration?: number }>(
+      '/v2/voice/transcriptions?language=auto',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': audio.type || 'application/octet-stream' },
+        body: audio,
+      },
+    ),
+  streamTranscription: (onInterim: (text: string) => void) =>
+    new Promise<VoiceTranscriptionStream>((resolve, reject) => {
+      const token = getAccessToken()
+      if (!token) {
+        reject(new Error('Authentication required'))
+        return
+      }
+
+      const socket = new WebSocket(getWebSocketUrl('/v2/voice/transcriptions/stream'))
+      let ready = false
+      const failBeforeReady = () => {
+        if (!ready) reject(new Error('Streaming transcription unavailable'))
+      }
+      socket.addEventListener('open', () => {
+        socket.send(
+          JSON.stringify({
+            type: 'authenticate',
+            token,
+            time_zone: timezone(),
+          }),
+        )
+      })
+      socket.addEventListener('message', (event) => {
+        if (typeof event.data !== 'string') return
+        let payload: unknown
+        try {
+          payload = JSON.parse(event.data)
+        } catch {
+          return
+        }
+        if (!payload || typeof payload !== 'object' || !('type' in payload)) return
+        if (payload.type === 'ready') {
+          ready = true
+          resolve({
+            send: (audio) => {
+              if (socket.readyState === WebSocket.OPEN) socket.send(audio)
+            },
+            finish: () => {
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'finish' }))
+              }
+            },
+            close: () => socket.close(),
+          })
+          return
+        }
+        if (payload.type === 'interim' && 'text' in payload && typeof payload.text === 'string') {
+          onInterim(payload.text)
+        }
+      })
+      socket.addEventListener('error', failBeforeReady)
+      socket.addEventListener('close', failBeforeReady)
     }),
 }
 

@@ -9,9 +9,14 @@
 
 'use client'
 
-import { AudioWaveform } from 'lucide-react'
+import { LoaderCircle, Square } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { mergeDictationDraft } from '@/components/ai/dictation-audio'
+import inspirationIcon from '@/assets/coach/inspiration.svg'
+import micIcon from '@/assets/coach/mic.svg'
+import voiceIcon from '@/assets/coach/voice.svg'
 
 /* ─────────────────────────────────────────────────────────
  * PROMPT BAR
@@ -554,6 +559,9 @@ export function CoachPromptBar({
   inputRef: providedInputRef,
   onSend,
   onVoice,
+  dictationState = 'idle',
+  dictationError,
+  onDictationToggle,
 }: {
   placeholder?: string
   showInspirations?: boolean
@@ -561,19 +569,48 @@ export function CoachPromptBar({
   inputRef?: React.RefObject<HTMLTextAreaElement | null>
   onSend: (text: string) => void
   onVoice?: () => void
+  dictationState?: 'idle' | 'requesting' | 'recording' | 'transcribing'
+  dictationError?: string | null
+  onDictationToggle?: (
+    updateDraft: (text: string, phase: 'begin' | 'interim' | 'final' | 'cancel') => void,
+  ) => void
 }) {
   const { t } = useTranslation('coach')
   const [draft, setDraft] = useState('')
   const [inspirationsOpen, setInspirationsOpen] = useState(false)
   const internalInputRef = useRef<HTMLTextAreaElement>(null)
+  const dictationBaseRef = useRef<string | null>(null)
   const inputRef = providedInputRef ?? internalInputRef
   const hasDraft = draft.trim().length > 0
-  const canSend = hasDraft && !disabled
+  const canSend = hasDraft && !disabled && dictationState === 'idle'
+
+  function updateDictationDraft(
+    transcript: string,
+    phase: 'begin' | 'interim' | 'final' | 'cancel',
+  ) {
+    if (phase === 'begin') {
+      dictationBaseRef.current = draft
+      return
+    }
+    const base = dictationBaseRef.current ?? draft
+    if (phase === 'cancel') {
+      setDraft(base)
+      dictationBaseRef.current = null
+      return
+    }
+    setDraft(mergeDictationDraft(base, transcript))
+    setInspirationsOpen(false)
+    if (phase === 'final') {
+      dictationBaseRef.current = null
+      window.requestAnimationFrame(() => inputRef.current?.focus())
+    }
+  }
 
   function send() {
     if (!canSend) return
     onSend(draft.trim())
     setDraft('')
+    dictationBaseRef.current = null
     setInspirationsOpen(false)
     if (inputRef.current) inputRef.current.style.height = '44px'
   }
@@ -597,6 +634,7 @@ export function CoachPromptBar({
               disabled={disabled}
               onClick={() => {
                 setDraft(starter)
+                dictationBaseRef.current = null
                 setInspirationsOpen(false)
                 inputRef.current?.focus()
               }}
@@ -611,8 +649,12 @@ export function CoachPromptBar({
       ) : null}
 
       <div
-        className="grid min-h-12 grid-cols-[44px_minmax(0,1fr)_44px] items-center rounded-full border border-[var(--coach-border-warm)] bg-[var(--coach-surface-glass-strong)] p-px shadow-[var(--coach-shadow)] transition-colors focus-within:border-[var(--coach-border-strong)]"
-        aria-busy={disabled || undefined}
+        className={`grid min-h-12 items-center rounded-full border border-[var(--coach-border-warm)] bg-[var(--coach-surface-glass-strong)] p-px shadow-[var(--coach-shadow)] transition-colors focus-within:border-[var(--coach-border-strong)] ${
+          onDictationToggle
+            ? 'grid-cols-[44px_minmax(0,1fr)_44px_44px]'
+            : 'grid-cols-[44px_minmax(0,1fr)_44px]'
+        }`}
+        aria-busy={disabled || dictationState !== 'idle' || undefined}
       >
         <button
           type="button"
@@ -625,23 +667,19 @@ export function CoachPromptBar({
           onClick={() => setInspirationsOpen((current) => !current)}
           className="flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"
         >
-          <span className="grid size-[26px] place-items-center rounded-full bg-[var(--coach-chrome-dark)] text-[var(--coach-on-dark)]">
-            <Icon size={14}>
-              <path d="M12 3l1.1 3.1L16 7.3l-2.9 1.2L12 12l-1.1-3.5L8 7.3l2.9-1.2L12 3z" />
-              <path d="M18.5 13l.7 2 1.8.8-1.8.7-.7 2-.7-2-1.8-.7 1.8-.8.7-2z" />
-            </Icon>
-          </span>
+          <img src={inspirationIcon} alt="" className="size-[26px]" data-coach-icon="inspiration" />
         </button>
         <textarea
           ref={inputRef}
           rows={1}
           value={draft}
           disabled={disabled}
+          readOnly={dictationState !== 'idle'}
+          aria-live="polite"
           onChange={(event) => {
             setDraft(event.target.value)
+            dictationBaseRef.current = null
             setInspirationsOpen(false)
-            event.target.style.height = '44px'
-            event.target.style.height = `${Math.min(Math.max(event.target.scrollHeight, 44), 96)}px`
           }}
           onKeyDown={(event) => {
             if (event.key === 'Escape') setInspirationsOpen(false)
@@ -654,7 +692,48 @@ export function CoachPromptBar({
           aria-label={t('composer.prompt')}
           className="h-11 min-h-11 min-w-0 w-full resize-none overflow-y-auto bg-transparent px-1 py-3 text-base leading-5 text-ink outline-none [overflow-wrap:anywhere] placeholder:text-[var(--coach-text-tertiary)] disabled:cursor-not-allowed disabled:opacity-55"
         />
-        {/* TODO: Restore the speech-to-text icon when dictation is implemented. */}
+        {onDictationToggle ? (
+          <button
+            type="button"
+            aria-label={
+              dictationState === 'recording'
+                ? t('composer.dictationStop')
+                : dictationState === 'requesting'
+                  ? t('composer.dictationRequesting')
+                  : dictationState === 'transcribing'
+                    ? t('composer.dictationWorking')
+                    : t('composer.dictationStart')
+            }
+            title={
+              dictationState === 'recording'
+                ? t('composer.dictationStop')
+                : dictationState === 'requesting'
+                  ? t('composer.dictationRequesting')
+                  : dictationState === 'transcribing'
+                    ? t('composer.dictationWorking')
+                    : t('composer.dictationStart')
+            }
+            aria-pressed={dictationState === 'recording'}
+            disabled={
+              disabled || dictationState === 'requesting' || dictationState === 'transcribing'
+            }
+            onClick={() => onDictationToggle(updateDictationDraft)}
+            className="flex size-11 items-center justify-center rounded-full text-[var(--coach-ink)] transition-[color,transform] enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {dictationState === 'requesting' || dictationState === 'transcribing' ? (
+              <LoaderCircle
+                className="size-[18px] animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+            ) : dictationState === 'recording' ? (
+              <span className="grid size-[26px] place-items-center rounded-full bg-[var(--coach-accent)] text-[var(--coach-on-dark)]">
+                <Square className="size-3" fill="currentColor" aria-hidden="true" />
+              </span>
+            ) : (
+              <img src={micIcon} alt="" className="size-[21px]" data-coach-icon="mic" />
+            )}
+          </button>
+        ) : null}
         {hasDraft ? (
           <button
             type="button"
@@ -674,16 +753,19 @@ export function CoachPromptBar({
             type="button"
             aria-label={onVoice ? t('composer.voiceStart') : t('composer.voiceUnavailable')}
             title={onVoice ? t('composer.voiceStart') : t('composer.voiceUnavailable')}
-            disabled={disabled || !onVoice}
+            disabled={disabled || !onVoice || dictationState !== 'idle'}
             onClick={onVoice}
             className="flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"
           >
-            <span className="grid size-[26px] place-items-center rounded-full bg-[var(--coach-accent)] text-[var(--coach-on-dark)]">
-              <AudioWaveform className="size-4" strokeWidth={2.2} aria-hidden="true" />
-            </span>
+            <img src={voiceIcon} alt="" className="size-[26px]" data-coach-icon="voice" />
           </button>
         )}
       </div>
+      {dictationError ? (
+        <p className="px-4 pt-2 text-sm text-[var(--danger)]" role="alert">
+          {dictationError}
+        </p>
+      ) : null}
     </div>
   )
 }

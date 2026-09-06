@@ -28,6 +28,12 @@ function getRequestUrl(path: string) {
   return `${apiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`
 }
 
+export function getWebSocketUrl(path: string) {
+  const url = new URL(getRequestUrl(path), window.location.href)
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  return url.toString()
+}
+
 async function parseResponse(response: Response): Promise<unknown> {
   if (response.status === 204) return undefined
 

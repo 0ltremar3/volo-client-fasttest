@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { clearAccessToken } from '@/api/auth-session'
 import { streamVoloCoachPost } from '@/api/sse'
-import { authApi, reviewApi } from '@/api/volo'
+import { authApi, reviewApi, voiceApi } from '@/api/volo'
 
 beforeEach(() => {
   vi.stubGlobal('localStorage', createStorage())
@@ -168,5 +168,87 @@ describe('Review API contract', () => {
 
     expect(fetchMock.mock.calls[0]?.[0]).toContain('/v2/review/review%2Fid')
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: 'DELETE' })
+  })
+})
+
+describe('Voice transcription API contract', () => {
+  it('posts the raw audio blob with its MIME type and Bearer token', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ token: 'session-token' }))
+      .mockResolvedValueOnce(jsonResponse({ text: '今天想先整理计划', language: 'zh' }))
+    vi.stubGlobal('fetch', fetchMock)
+    await authApi.signIn('alex@example.com', '123456')
+    const audio = new Blob(['audio'], { type: 'audio/webm' })
+
+    await expect(voiceApi.transcribe(audio)).resolves.toMatchObject({
+      text: '今天想先整理计划',
+    })
+
+    expect(fetchMock.mock.calls[1]?.[0]).toContain('/v2/voice/transcriptions?language=auto')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: 'POST', body: audio })
+    expect(requestHeaders(fetchMock.mock.calls[1]).get('Authorization')).toBe(
+      'Bearer session-token',
+    )
+    expect(requestHeaders(fetchMock.mock.calls[1]).get('Content-Type')).toBe('audio/webm')
+  })
+
+  it('authenticates the caption socket and forwards interim text', async () => {
+    class FakeWebSocket extends EventTarget {
+      static readonly OPEN = 1
+      static current: FakeWebSocket | undefined
+      readonly sent: unknown[] = []
+      readyState = 0
+
+      constructor(readonly url: string) {
+        super()
+        queueMicrotask(() => {
+          this.readyState = FakeWebSocket.OPEN
+          this.dispatchEvent(new Event('open'))
+        })
+        FakeWebSocket.current = this
+      }
+
+      send(data: unknown) {
+        this.sent.push(data)
+        const message = typeof data === 'string' ? (JSON.parse(data) as { type?: unknown }) : null
+        if (message?.type === 'authenticate') {
+          queueMicrotask(() => this.message({ type: 'ready' }))
+        }
+      }
+
+      close() {
+        this.readyState = 3
+        this.dispatchEvent(new Event('close'))
+      }
+
+      message(payload: object) {
+        this.dispatchEvent(new MessageEvent('message', { data: JSON.stringify(payload) }))
+      }
+    }
+
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ token: 'session-token' }))
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('window', { location: { href: 'http://127.0.0.1:5173/chat' } })
+    vi.stubGlobal('WebSocket', FakeWebSocket)
+    await authApi.signIn('alex@example.com', '123456')
+    const onInterim = vi.fn()
+
+    const stream = await voiceApi.streamTranscription(onInterim)
+    const socket = FakeWebSocket.current
+    expect(socket?.url).toBe('ws://127.0.0.1:8000/v2/voice/transcriptions/stream')
+    expect(JSON.parse(socket?.sent[0] as string)).toMatchObject({
+      type: 'authenticate',
+      token: 'session-token',
+    })
+
+    socket?.message({ type: 'interim', text: '正在识别' })
+    stream.send(new ArrayBuffer(4))
+    stream.finish()
+    expect(onInterim).toHaveBeenCalledWith('正在识别')
+    expect(socket?.sent.some((item) => item instanceof ArrayBuffer)).toBe(true)
+    expect(socket?.sent.some((item) => typeof item === 'string' && item.includes('finish'))).toBe(
+      true,
+    )
   })
 })

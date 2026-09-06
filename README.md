@@ -99,6 +99,15 @@ thread. Interim transcription stays local; no raw audio, camera, screen share, L
 or separate voice history is used. A pending Pause card, ending flow, text turn, completed session,
 or active voice room disables the waveform. Text sending remains blocked until the voice layer exits.
 
+The same real-mode Coach composer also has an independent dictation button. During recording it
+sends mono 16 kHz PCM through the authenticated `/v2/voice/transcriptions/stream` WebSocket and
+shows a rolling SenseVoice preview inside the textarea about every 1.2 seconds. The textarea remains
+at its original 44px one-line height and scrolls internally. Stopping sends the original
+`MediaRecorder` Blob to
+`POST /v2/voice/transcriptions?language=auto`; only that SenseVoice final is inserted into
+the draft for review, without sending a Coach message. Neither endpoint persists audio/transcript
+or triggers Coach processing, and a streaming failure falls back to stop-then-transcribe.
+
 When Coach opens an adjusted Move, the original conversation history remains in place and the
 header keeps the ordinary `Done` action. A `move_revision` card confirms revised wording and keeps
 the existing Schedule unless the user opens `Change schedule`; that editor is seeded from the target
@@ -225,8 +234,8 @@ attribution and the MIT notice are preserved in `THIRD_PARTY_NOTICES.md`. Keep c
 behind the local token system and remove demo-only capabilities that the backend cannot support.
 Its empty state shows the designed orange waveform affordance and its non-empty state switches to
 the orange send action. In connected Volo V2 Coach sessions, the waveform starts the LiveKit voice
-overlay; dictation remains unavailable because interim transcript is display-only and final speech
-is submitted by the Voice Worker through the backend adapter.
+overlay; the separate microphone starts streaming dictation, replaces one provisional suffix in
+the read-only textarea, and makes it editable after SenseVoice returns the final text.
 Coach replies use the controlled `StreamingText` primitive with real SSE text, reduced-motion-safe
 cursor feedback, stable completion accessibility, and copy/retry actions only after streaming stops.
 Before the first delta it shows a compact Reflecting pixel wave; each real delta renders immediately
