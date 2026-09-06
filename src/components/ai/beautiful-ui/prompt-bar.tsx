@@ -578,11 +578,27 @@ export function CoachPromptBar({
   const { t } = useTranslation('coach')
   const [draft, setDraft] = useState('')
   const [inspirationsOpen, setInspirationsOpen] = useState(false)
+  const [multiline, setMultiline] = useState(false)
   const internalInputRef = useRef<HTMLTextAreaElement>(null)
   const dictationBaseRef = useRef<string | null>(null)
   const inputRef = providedInputRef ?? internalInputRef
   const hasDraft = draft.trim().length > 0
   const canSend = hasDraft && !disabled && dictationState === 'idle'
+
+  /* Grow the textarea with its content; switch the shell from a perfect
+   * capsule (single line) to a soft card (multiline) so the big radius and
+   * round icons never stretch into an awkward pill. Icons stay anchored to
+   * the bottom row so they don't drift as the box grows. */
+  useLayoutEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    // Re-measure from the single-line baseline so shrinking back to one line
+    // collapses correctly; scrollHeight then grows the box line by line.
+    el.style.height = ''
+    const next = el.scrollHeight
+    el.style.height = `${next}px`
+    setMultiline(next > 44)
+  }, [draft, inputRef])
 
   function updateDictationDraft(
     transcript: string,
@@ -612,7 +628,6 @@ export function CoachPromptBar({
     setDraft('')
     dictationBaseRef.current = null
     setInspirationsOpen(false)
-    if (inputRef.current) inputRef.current.style.height = '44px'
   }
 
   return (
@@ -649,11 +664,9 @@ export function CoachPromptBar({
       ) : null}
 
       <div
-        className={`grid min-h-12 items-center rounded-full border border-[var(--coach-border-warm)] bg-[var(--coach-surface-glass-strong)] p-px shadow-[var(--coach-shadow)] transition-colors focus-within:border-[var(--coach-border-strong)] ${
-          onDictationToggle
-            ? 'grid-cols-[44px_minmax(0,1fr)_44px_44px]'
-            : 'grid-cols-[44px_minmax(0,1fr)_44px]'
-        }`}
+        className={`grid min-h-12 items-end gap-y-1.5 border bg-[var(--coach-surface-glass-strong)] p-px shadow-[var(--coach-shadow)] transition-[border-color,border-radius] focus-within:border-[var(--coach-border-strong)] ${
+          multiline ? 'rounded-[22px]' : 'rounded-full'
+        } border-[var(--coach-border-warm)] grid-cols-[44px_minmax(0,1fr)_44px_44px]`}
         aria-busy={disabled || dictationState !== 'idle' || undefined}
       >
         <button
@@ -665,7 +678,9 @@ export function CoachPromptBar({
           aria-expanded={inspirationsOpen}
           aria-controls="coach-inspiration-options"
           onClick={() => setInspirationsOpen((current) => !current)}
-          className="flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"
+          className={`flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45 ${
+            multiline ? 'col-start-1 row-start-2 justify-self-start' : ''
+          }`}
         >
           <img src={inspirationIcon} alt="" className="size-[26px]" data-coach-icon="inspiration" />
         </button>
@@ -690,7 +705,9 @@ export function CoachPromptBar({
           }}
           placeholder={placeholder}
           aria-label={t('composer.prompt')}
-          className="h-11 min-h-11 min-w-0 w-full resize-none overflow-y-auto bg-transparent px-1 py-3 text-base leading-5 text-ink outline-none [overflow-wrap:anywhere] placeholder:text-[var(--coach-text-tertiary)] disabled:cursor-not-allowed disabled:opacity-55"
+          className={`coach-scrollbar-none h-11 min-h-11 w-full min-w-0 resize-none overflow-y-auto bg-transparent px-1 py-3 text-base leading-5 text-ink outline-none [overflow-wrap:anywhere] max-h-[7.5rem] placeholder:text-[var(--coach-text-tertiary)] disabled:cursor-not-allowed disabled:opacity-55 ${
+            multiline ? 'col-span-full col-start-1 row-start-1' : ''
+          }`}
         />
         {onDictationToggle ? (
           <button
@@ -718,7 +735,9 @@ export function CoachPromptBar({
               disabled || dictationState === 'requesting' || dictationState === 'transcribing'
             }
             onClick={() => onDictationToggle(updateDictationDraft)}
-            className="flex size-11 items-center justify-center rounded-full text-[var(--coach-ink)] transition-[color,transform] enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"
+            className={`flex size-11 items-center justify-center rounded-full text-[var(--coach-ink)] transition-[color,transform] enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45 ${
+              multiline ? 'col-start-3 row-start-2 justify-self-end' : ''
+            }`}
           >
             {dictationState === 'requesting' || dictationState === 'transcribing' ? (
               <LoaderCircle
@@ -740,7 +759,9 @@ export function CoachPromptBar({
             aria-label={t('composer.send')}
             disabled={!canSend}
             onClick={send}
-            className="flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"
+            className={`flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45 ${
+              multiline ? 'col-start-4 row-start-2 justify-self-end' : ''
+            }`}
           >
             <span className="grid size-[26px] place-items-center rounded-full bg-[var(--coach-accent)] text-[var(--coach-on-dark)]">
               <Icon size={16} strokeWidth={2.4}>
@@ -755,7 +776,9 @@ export function CoachPromptBar({
             title={onVoice ? t('composer.voiceStart') : t('composer.voiceUnavailable')}
             disabled={disabled || !onVoice || dictationState !== 'idle'}
             onClick={onVoice}
-            className="flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45"
+            className={`flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45 ${
+              multiline ? 'col-start-4 row-start-2 justify-self-end' : ''
+            }`}
           >
             <img src={voiceIcon} alt="" className="size-[26px]" data-coach-icon="voice" />
           </button>
