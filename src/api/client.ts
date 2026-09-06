@@ -1,6 +1,8 @@
 import { clearAccessToken, getAccessToken } from '@/api/auth-session'
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
+function getApiBaseUrl() {
+  return import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
+}
 
 export class ApiError extends Error {
   readonly status: number
@@ -25,7 +27,7 @@ export function createApiHeaders(init?: HeadersInit) {
 
 function getRequestUrl(path: string) {
   if (/^https?:\/\//u.test(path)) return path
-  return `${apiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`
+  return `${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`
 }
 
 export function getWebSocketUrl(path: string) {

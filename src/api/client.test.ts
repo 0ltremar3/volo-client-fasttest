@@ -5,12 +5,14 @@ import { streamVoloCoachPost } from '@/api/sse'
 import { authApi, reviewApi, voiceApi } from '@/api/volo'
 
 beforeEach(() => {
+  vi.stubEnv('VITE_API_BASE_URL', 'http://127.0.0.1:8000')
   vi.stubGlobal('localStorage', createStorage())
   vi.stubGlobal('sessionStorage', createStorage())
 })
 
 afterEach(() => {
   clearAccessToken()
+  vi.unstubAllEnvs()
   vi.unstubAllGlobals()
 })
 
