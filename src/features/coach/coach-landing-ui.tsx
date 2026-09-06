@@ -19,7 +19,7 @@ export function CoachNewSessionPanel({
 }) {
   const { t } = useTranslation('coach')
   return (
-    <section className="relative flex flex-1 flex-col items-center px-[25px] pb-[145px] pt-[220px] text-center">
+    <section className="app-screen-scroll relative flex flex-col items-center px-[25px] pb-[max(clamp(2rem,12dvh,9.0625rem),env(safe-area-inset-bottom))] pt-[clamp(2.5rem,24dvh,13.75rem)] text-center">
       {onClose ? (
         <Button
           type="button"
@@ -32,8 +32,8 @@ export function CoachNewSessionPanel({
           <X />
         </Button>
       ) : null}
-      <CoachOrb />
-      <div className="mt-[35px] w-full">
+      <CoachOrb className="size-[clamp(5rem,15dvh,7.5rem)]" />
+      <div className="mt-[clamp(1.25rem,4dvh,2.1875rem)] w-full">
         <h1 className="font-display text-4xl font-medium leading-none tracking-[-0.02em] text-[var(--coach-ink)]">
           {t('hello')}
         </h1>
@@ -45,7 +45,7 @@ export function CoachNewSessionPanel({
         </p>
       </div>
 
-      <div className="mt-auto w-full pt-14">
+      <div className="mt-auto w-full pt-[clamp(1.5rem,5dvh,3.5rem)]">
         <Button
           type="button"
           onClick={onFindTime}

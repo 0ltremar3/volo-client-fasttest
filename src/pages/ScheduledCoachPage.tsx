@@ -46,9 +46,9 @@ export function ScheduledCoachPage() {
   return (
     <main className="app-canvas relative isolate flex h-dvh flex-col overflow-hidden text-[var(--coach-ink)]">
       <AppAtmosphere />
-      <section className="relative z-10 flex flex-1 flex-col items-center px-[25px] pt-[22vh] text-center">
+      <section className="app-screen-scroll relative z-10 flex flex-col items-center px-[25px] pt-[clamp(2.5rem,22dvh,14rem)] text-center">
         <p className="text-lg font-semibold">{t('timeForSession')}</p>
-        <CoachOrb className="mt-14" />
+        <CoachOrb className="mt-[clamp(2rem,7dvh,3.5rem)] size-[clamp(5rem,15dvh,7.5rem)]" />
         <h1 className="mt-8 text-wrap-balance text-4xl font-semibold leading-none">
           {session.topic || session.title}
         </h1>
@@ -60,7 +60,7 @@ export function ScheduledCoachPage() {
             minute: '2-digit',
           }).format(new Date(session.scheduled_at!))}
         </p>
-        <div className="mt-14 w-full space-y-2">
+        <div className="mt-auto w-full space-y-2 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[clamp(2rem,7dvh,3.5rem)]">
           <Button
             className="h-[50px] w-full rounded-full bg-[var(--coach-surface)] text-[var(--coach-ink)] shadow-[0_6px_18px_rgb(52_51_48/8%)] hover:bg-[var(--coach-surface-glass-strong)]"
             disabled={start.isPending}

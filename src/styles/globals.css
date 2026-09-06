@@ -367,6 +367,20 @@
     display: none;
   }
 
+  /* Inner scroll region for screens locked to h-dvh: overflow scrolls here instead
+     of being clipped, with no visible scrollbar. */
+  .app-screen-scroll {
+    min-height: 0;
+    flex: 1 1 0%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .app-screen-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
   .coach-thinking-cell {
     animation: coach-pixel-on 650ms ease-in-out infinite;
   }

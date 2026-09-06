@@ -48,6 +48,9 @@
 - Design from 375px upward. Keep primary controls at least 44×44 CSS pixels on touch devices.
 - Preserve safe-area padding, dynamic viewport units, keyboard-safe composer placement, readable
   wrapping, and zero horizontal overflow.
+- Screens locked to `h-dvh` must route overflow through an internal `app-screen-scroll` region so
+  small viewports and enlarged fonts stay reachable without a visible scrollbar. Express vertical
+  rhythm with `clamp()` + `dvh`; do not hardcode large pixel gaps tuned for one device height.
 - Use semantic landmarks and heading order. Every interactive control needs an accessible name,
   visible keyboard focus, and a complete disabled/loading/error state where applicable.
 - Keep dropdowns and prompt menus keyboard-operable; expose expanded state and controlled content

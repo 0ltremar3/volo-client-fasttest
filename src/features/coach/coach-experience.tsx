@@ -71,7 +71,7 @@ function ScheduleScreen({
 }) {
   const { t } = useTranslation('coach')
   return (
-    <section className="flex flex-1 flex-col px-6 pb-10">
+    <section className="app-screen-scroll flex flex-col px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
       <div className="relative flex h-12 items-center justify-center">
         <Button
           type="button"

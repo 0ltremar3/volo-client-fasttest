@@ -182,7 +182,7 @@ function CoachStart({
   if (view === 'schedule') {
     return (
       <form
-        className="flex min-h-0 flex-1 flex-col px-6 pb-10"
+        className="app-screen-scroll flex flex-col px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]"
         onSubmit={(event) => {
           event.preventDefault()
           create.mutate({
@@ -626,6 +626,8 @@ function SessionView({ sessionId }: { sessionId: string }) {
             disabled={sending || ending || Boolean(pauseCard) || voiceOpen}
             inputRef={composerRef}
             onSend={(body) => void send(body)}
+            onTranscribe={(audio) => voiceApi.transcribe(audio).then((result) => result.text)}
+            onTranscribeStream={voiceApi.streamTranscription}
             onVoice={
               voiceAvailable
                 ? () => {
