@@ -585,20 +585,37 @@ export function CoachPromptBar({
   const hasDraft = draft.trim().length > 0
   const canSend = hasDraft && !disabled && dictationState === 'idle'
 
-  /* Grow the textarea with its content; switch the shell from a perfect
-   * capsule (single line) to a soft card (multiline) so the big radius and
-   * round icons never stretch into an awkward pill. Icons stay anchored to
-   * the bottom row so they don't drift as the box grows. */
   useLayoutEffect(() => {
     const el = inputRef.current
-    if (!el) return
-    // Re-measure from the single-line baseline so shrinking back to one line
-    // collapses correctly; scrollHeight then grows the box line by line.
-    el.style.height = ''
-    const next = el.scrollHeight
-    el.style.height = `${next}px`
-    setMultiline(next > 44)
-  }, [draft, inputRef])
+    const shell = el?.parentElement
+    if (!el || !shell) return
+    function measure() {
+      if (!el || !shell) return
+      // Always test the compact column: expanded width must not change the threshold.
+      const columns = getComputedStyle(shell).gridTemplateColumns.split(' ')
+      el.style.width = columns[1] ?? ''
+      el.style.paddingInline = 'var(--composer-inline-padding)'
+      el.style.height = '0px'
+      const style = getComputedStyle(el)
+      const singleLine =
+        parseFloat(style.lineHeight) +
+        parseFloat(style.paddingTop) +
+        parseFloat(style.paddingBottom)
+      setMultiline(el.scrollHeight > singleLine + 1)
+      el.style.width = ''
+      el.style.paddingInline = ''
+      el.style.height = `${el.scrollHeight}px`
+    }
+    measure()
+    let width = shell.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (shell.clientWidth === width) return
+      width = shell.clientWidth
+      measure()
+    })
+    observer.observe(shell)
+    return () => observer.disconnect()
+  }, [draft, inputRef, multiline])
 
   function updateDictationDraft(
     transcript: string,
@@ -664,9 +681,8 @@ export function CoachPromptBar({
       ) : null}
 
       <div
-        className={`grid min-h-12 items-end gap-y-1.5 border bg-[var(--coach-surface-glass-strong)] p-px shadow-[var(--coach-shadow)] transition-[border-color,border-radius] focus-within:border-[var(--coach-border-strong)] ${
-          multiline ? 'rounded-[22px]' : 'rounded-full'
-        } border-[var(--coach-border-warm)] grid-cols-[44px_minmax(0,1fr)_44px_44px]`}
+        data-expanded={multiline}
+        className="coach-composer grid items-end border border-[var(--coach-border-warm)] bg-[var(--coach-surface-glass-strong)] shadow-[var(--coach-shadow)] focus-within:border-[var(--coach-border-strong)]"
         aria-busy={disabled || dictationState !== 'idle' || undefined}
       >
         <button
@@ -705,7 +721,7 @@ export function CoachPromptBar({
           }}
           placeholder={placeholder}
           aria-label={t('composer.prompt')}
-          className={`coach-scrollbar-none h-11 min-h-11 w-full min-w-0 resize-none overflow-y-auto bg-transparent px-1 py-3 text-base leading-5 text-ink outline-none [overflow-wrap:anywhere] max-h-[7.5rem] placeholder:text-[var(--coach-text-tertiary)] disabled:cursor-not-allowed disabled:opacity-55 ${
+          className={`coach-composer-input coach-scrollbar-none h-11 min-h-11 w-full min-w-0 resize-none overflow-y-auto bg-transparent py-3 text-base leading-5 text-ink outline-none [overflow-wrap:anywhere] placeholder:text-[var(--coach-text-tertiary)] disabled:cursor-not-allowed disabled:opacity-55 ${
             multiline ? 'col-span-full col-start-1 row-start-1' : ''
           }`}
         />

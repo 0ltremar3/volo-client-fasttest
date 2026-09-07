@@ -28,7 +28,7 @@ describe('CoachPromptBar dictation control', () => {
     expect(transcribing).toContain('disabled=""')
   })
 
-  it('keeps dictation in the fixed one-line input', () => {
+  it('keeps dictation read-only with a one-line minimum height', () => {
     const html = renderToStaticMarkup(
       <CoachPromptBar onSend={noOp} onDictationToggle={noOp} dictationState="recording" />,
     )
@@ -36,7 +36,7 @@ describe('CoachPromptBar dictation control', () => {
     expect(html).toContain('aria-live="polite"')
     expect(html).toContain('readOnly=""')
     expect(html).toContain('h-11 min-h-11')
-    expect(html).not.toContain('max-h-24')
+    expect(html).toContain('coach-composer-input')
   })
 
   it('uses the supplied Coach icons in left-to-right order', () => {

@@ -102,7 +102,7 @@ or active voice room disables the waveform. Text sending remains blocked until t
 The same real-mode Coach composer also has an independent dictation button. During recording it
 sends mono 16 kHz PCM through the authenticated `/v2/voice/transcriptions/stream` WebSocket and
 shows a rolling SenseVoice preview inside the textarea about every 1.2 seconds. The textarea remains
-at its original 44px one-line height and scrolls internally. Stopping sends the original
+at a 44px minimum height, grows with the draft, and scrolls internally at its height cap. Stopping sends the original
 `MediaRecorder` Blob to
 `POST /v2/voice/transcriptions?language=auto`; only that SenseVoice final is inserted into
 the draft for review, without sending a Coach message. Neither endpoint persists audio/transcript

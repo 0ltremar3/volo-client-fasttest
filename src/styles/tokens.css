@@ -27,6 +27,11 @@
   --content-width: 48rem;
   --touch-target: 2.75rem;
   --bui-control-size: 2.75rem;
+  --composer-radius: 1.625rem;
+  --composer-padding: 0.25rem;
+  --composer-inline-padding: 0.25rem;
+  --composer-text-inset: 0.5625rem;
+  --composer-text-max-height: 7.5rem;
   --z-modal: 40;
 }
 

@@ -430,6 +430,27 @@
   }
 }
 
+.coach-composer {
+  grid-template-columns: var(--touch-target) minmax(0, 1fr) var(--touch-target) var(--touch-target);
+  padding: var(--composer-padding);
+  border-radius: var(--composer-radius);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.coach-composer-input {
+  padding-inline: var(--composer-inline-padding);
+  max-height: min(var(--composer-text-max-height), 25dvh);
+}
+
+.coach-composer[data-expanded='true'] .coach-composer-input {
+  padding-inline: var(--composer-text-inset);
+}
+
+.coach-composer > button:focus-visible {
+  outline: 2px solid var(--coach-border-strong);
+  outline-offset: -2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
