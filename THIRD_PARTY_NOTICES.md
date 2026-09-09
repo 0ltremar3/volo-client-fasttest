@@ -1,5 +1,15 @@
 # Third-party notices
 
+## Ondo UI LiveWaveform
+
+Source: <https://ui.ondo.dou.so/r/live-waveform.json>
+
+Documentation: <https://ui.ondo.dou.so/docs/components/live-waveform/>
+
+MIT licensed Ondo UI component, adapted upstream from ElevenLabs UI LiveWaveform.
+Copied to `src/components/ui/live-waveform.tsx`; locally adapted for strict TypeScript,
+audio-context cleanup, and centered bars. The MIT license terms below apply.
+
 ## Beautiful UI Prompt Bar
 
 Source: <https://github.com/slev12397/beautiful-ui/blob/main/components/primitives/PromptBar.tsx>

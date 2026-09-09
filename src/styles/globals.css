@@ -431,10 +431,123 @@
 }
 
 .coach-composer {
-  grid-template-columns: var(--touch-target) minmax(0, 1fr) var(--touch-target) var(--touch-target);
+  grid-template-columns: var(--touch-target) minmax(0, 1fr) var(--touch-target);
   padding: var(--composer-padding);
   border-radius: var(--composer-radius);
   transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.hold-to-talk {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: var(--touch-target);
+  min-width: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  touch-action: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.coach-composer > .hold-to-talk:focus-visible {
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+  text-decoration-thickness: 2px;
+}
+.hold-to-talk:disabled {
+  opacity: 0.55;
+}
+.coach-composer:has(.hold-to-talk) {
+  border-color: var(--coach-border-warm);
+}
+.coach-composer > .hold-keyboard:focus-visible {
+  outline: none;
+  box-shadow: none;
+  color: var(--coach-accent);
+}
+.hold-composer-adapter {
+  isolation: isolate;
+}
+.hold-composer-adapter[data-recording='true'] .coach-composer {
+  position: relative;
+  background: var(--coach-accent);
+  border-color: transparent;
+  box-shadow: none;
+}
+.hold-composer-adapter[data-recording='true'][data-cancel='true'] .coach-composer {
+  background: var(--coach-recording-cancel);
+}
+.hold-composer-adapter[data-recording='true'] .coach-composer > button:not(.hold-to-talk) {
+  visibility: hidden;
+  position: absolute;
+  pointer-events: none;
+}
+.hold-composer-adapter[data-recording='true'] .hold-to-talk {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  color: var(--recording-waveform-ink);
+  border-radius: inherit;
+}
+.hold-keyboard {
+  background: transparent !important;
+  border-radius: 50%;
+}
+.hold-keyboard svg {
+  width: 26px;
+  height: 26px;
+}
+.hold-recording-panel {
+  pointer-events: none;
+  position: absolute;
+  inset-inline: 0;
+  bottom: 100%;
+  padding-bottom: clamp(0.25rem, 1dvh, 0.5rem);
+  text-align: center;
+  color: var(--coach-text-secondary);
+  font-size: 1rem;
+}
+.hold-composer-adapter[data-cancel='true'] .hold-recording-panel {
+  color: var(--coach-recording-cancel);
+}
+.hold-recording-backdrop {
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+  bottom: 0;
+  inset-inline: 0;
+  width: 100%;
+  height: clamp(9rem, 25dvh, 14rem);
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--recording-mask-surface) 86%, transparent) 48%,
+    var(--recording-mask-surface) 80%
+  );
+}
+.hold-waveform {
+  display: block;
+  width: min(80%, 18rem);
+  height: 36px;
+  pointer-events: none;
+}
+.hold-live-waveform {
+  color: inherit;
+}
+.hold-waveform-rest {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+.hold-waveform-rest span {
+  flex: 0 1 3px;
+  height: 5px;
+  border-radius: 2px;
+  background: currentColor;
 }
 
 .coach-composer-input {

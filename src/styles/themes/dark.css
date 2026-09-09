@@ -1,5 +1,7 @@
 [data-theme='dark'] {
   color-scheme: dark;
+  --recording-mask-surface: #252523;
+  --coach-recording-cancel: rgb(239 68 68 / 82%);
 
   --background: #151514;
   --foreground: #f2f2ee;

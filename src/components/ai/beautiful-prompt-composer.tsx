@@ -1,240 +1,295 @@
+import { Keyboard } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
 import { CoachPromptBar } from '@/components/ai/beautiful-ui/prompt-bar'
-import { encodePcm16 } from '@/components/ai/dictation-audio'
+import { Button } from '@/components/ui/button'
+import { RecordingWaveform } from '@/components/ai/recording-waveform'
 
-type DictationState = 'idle' | 'requesting' | 'recording' | 'transcribing'
-type TranscriptionStream = {
-  send: (audio: ArrayBuffer) => void
-  finish: () => void
-  close: () => void
-}
-
-function stopStream(stream: MediaStream | null) {
-  stream?.getTracks().forEach((track) => track.stop())
-}
-
-function recordingOptions() {
-  const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((type) =>
-    MediaRecorder.isTypeSupported(type),
-  )
-  return mimeType ? { mimeType } : undefined
-}
-
-function startPcmCapture(stream: MediaStream, onAudio: (audio: ArrayBuffer) => void) {
-  const context = new AudioContext()
-  const source = context.createMediaStreamSource(stream)
-  const processor = context.createScriptProcessor(4096, 1, 1)
-  const silentOutput = context.createGain()
-  silentOutput.gain.value = 0
-  processor.onaudioprocess = (event) => {
-    onAudio(encodePcm16(event.inputBuffer.getChannelData(0), event.inputBuffer.sampleRate))
-  }
-  source.connect(processor)
-  processor.connect(silentOutput)
-  silentOutput.connect(context.destination)
-  void context.resume()
-  return () => {
-    processor.onaudioprocess = null
-    source.disconnect()
-    processor.disconnect()
-    silentOutput.disconnect()
-    void context.close()
-  }
+type Recording = {
+  recorder?: MediaRecorder
+  stream?: MediaStream
+  cancelled: boolean
+  released: boolean
 }
 
 export function BeautifulPromptComposer({
-  placeholder = 'Write a message…',
+  placeholder,
   showInspirations = false,
   disabled = false,
   inputRef,
   onSend,
-  onVoice,
   onTranscribe,
-  onTranscribeStream,
+  onTranscribingChange,
 }: {
   placeholder?: string
   showInspirations?: boolean
   disabled?: boolean
   inputRef?: React.RefObject<HTMLTextAreaElement | null>
   onSend: (text: string) => void
-  onVoice?: () => void
   onTranscribe?: (audio: Blob) => Promise<string>
-  onTranscribeStream?: (onInterim: (text: string) => void) => Promise<TranscriptionStream>
+  onTranscribingChange?: (pending: boolean) => void
 }) {
   const { t } = useTranslation('coach')
-  const recorderRef = useRef<MediaRecorder | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const chunksRef = useRef<Blob[]>([])
-  const transcriptionStreamRef = useRef<TranscriptionStream | null>(null)
-  const stopPcmCaptureRef = useRef<(() => void) | null>(null)
-  const mountedRef = useRef(false)
-  const [dictationState, setDictationState] = useState<DictationState>('idle')
-  const [dictationError, setDictationError] = useState<string | null>(null)
-
-  function stopStreamingTranscription() {
-    stopPcmCaptureRef.current?.()
-    stopPcmCaptureRef.current = null
-    transcriptionStreamRef.current?.finish()
-  }
-
-  function closeStreamingTranscription() {
-    stopPcmCaptureRef.current?.()
-    stopPcmCaptureRef.current = null
-    transcriptionStreamRef.current?.close()
-    transcriptionStreamRef.current = null
-  }
-
+  const fallbackInputRef = useRef<HTMLTextAreaElement>(null)
+  const textInputRef = inputRef ?? fallbackInputRef
+  const [voiceMode, setVoiceMode] = useState(false)
+  const [state, setState] = useState<'idle' | 'requesting' | 'recording' | 'transcribing'>('idle')
+  const [cancel, setCancel] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const active = useRef<Recording | null>(null)
+  const [waveformStream, setWaveformStream] = useState<MediaStream | null>(null)
   useEffect(() => {
-    mountedRef.current = true
+    onTranscribingChange?.(state === 'transcribing')
+  }, [onTranscribingChange, state])
+  useEffect(() => () => onTranscribingChange?.(false), [onTranscribingChange])
+  const origin = useRef<number | null>(null)
+  const blocked = useRef(disabled)
+  useEffect(() => {
+    blocked.current = disabled
+  }, [disabled])
+  useEffect(() => {
+    function abort() {
+      const take = active.current
+      active.current = null
+      if (take) {
+        take.cancelled = true
+        if (take.recorder?.state === 'recording') take.recorder.stop()
+        take.stream?.getTracks().forEach((track) => track.stop())
+      }
+    }
+    function hidden() {
+      if (document.hidden) {
+        abort()
+        setState('idle')
+        setCancel(false)
+      }
+    }
+    function blur() {
+      abort()
+      setState('idle')
+      setCancel(false)
+    }
+    window.addEventListener('blur', blur)
+    document.addEventListener('visibilitychange', hidden)
     return () => {
-      mountedRef.current = false
-      recorderRef.current?.stop()
-      recorderRef.current = null
-      stopPcmCaptureRef.current?.()
-      stopPcmCaptureRef.current = null
-      transcriptionStreamRef.current?.close()
-      transcriptionStreamRef.current = null
-      stopStream(streamRef.current)
-      streamRef.current = null
+      abort()
+      window.removeEventListener('blur', blur)
+      document.removeEventListener('visibilitychange', hidden)
     }
   }, [])
 
-  async function toggleDictation(
-    updateDraft: (text: string, phase: 'begin' | 'interim' | 'final' | 'cancel') => void,
-  ) {
-    if (recorderRef.current?.state === 'recording') {
-      setDictationState('transcribing')
-      recorderRef.current.stop()
-      return
-    }
-    if (dictationState !== 'idle') return
-    if (!onTranscribe) return
-    if (!navigator.mediaDevices?.getUserMedia || !globalThis.MediaRecorder) {
-      setDictationError(t('composer.dictationUnsupported'))
-      return
-    }
-
-    setDictationError(null)
-    updateDraft('', 'begin')
-    setDictationState('requesting')
+  async function start() {
+    if (active.current || disabled || !onTranscribe) return
+    const take: Recording = { cancelled: false, released: false }
+    active.current = take
+    setError(null)
+    setCancel(false)
+    setState('requesting')
     try {
+      if (!navigator.mediaDevices?.getUserMedia || !globalThis.MediaRecorder)
+        throw new Error('unsupported')
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      if (!mountedRef.current) {
-        stopStream(stream)
+      take.stream = stream
+      if (active.current !== take || blocked.current) {
+        stream.getTracks().forEach((track) => track.stop())
+        if (active.current === take) {
+          active.current = null
+          setState('idle')
+        }
         return
       }
-      streamRef.current = stream
-      if (onTranscribeStream) {
-        try {
-          const transcriptionStream = await onTranscribeStream((text) => {
-            if (mountedRef.current) updateDraft(text, 'interim')
-          })
-          if (!mountedRef.current) {
-            transcriptionStream.close()
-            return
-          }
-          transcriptionStreamRef.current = transcriptionStream
-          stopPcmCaptureRef.current = startPcmCapture(stream, transcriptionStream.send)
-        } catch {
-          closeStreamingTranscription()
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((type) =>
+        MediaRecorder.isTypeSupported(type),
+      )
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      take.recorder = recorder
+      const chunks: Blob[] = []
+      let size = 0
+      recorder.ondataavailable = ({ data }) => {
+        chunks.push(data)
+        size += data.size
+        if (size > 10 * 1024 * 1024 && recorder.state === 'recording') {
+          take.cancelled = true
+          setError(t('composer.tooLong'))
+          recorder.stop()
         }
       }
-      const recorder = new MediaRecorder(stream, recordingOptions())
-      recorderRef.current = recorder
-      chunksRef.current = []
-      let recorderFailed = false
-      recorder.ondataavailable = (event) => {
-        if (event.data.size) chunksRef.current.push(event.data)
-      }
       recorder.onerror = () => {
-        recorderFailed = true
-        closeStreamingTranscription()
-        stopStream(streamRef.current)
-        recorderRef.current = null
-        streamRef.current = null
-        if (mountedRef.current) {
-          updateDraft('', 'cancel')
-          setDictationState('idle')
-          setDictationError(t('composer.dictationFailed'))
+        take.cancelled = true
+        stream.getTracks().forEach((track) => track.stop())
+        if (active.current === take) {
+          active.current = null
+          setState('idle')
+          setError(t('composer.dictationFailed'))
         }
       }
       recorder.onstop = () => {
-        if (recorderFailed) return
-        stopStreamingTranscription()
-        const audio = new Blob(chunksRef.current, {
-          type: recorder.mimeType || chunksRef.current[0]?.type || 'application/octet-stream',
-        })
-        chunksRef.current = []
-        stopStream(streamRef.current)
-        recorderRef.current = null
-        streamRef.current = null
-        if (!mountedRef.current) {
-          closeStreamingTranscription()
+        stream.getTracks().forEach((track) => track.stop())
+        if (active.current !== take) return
+        if (take.cancelled || blocked.current) {
+          active.current = null
+          setState('idle')
           return
         }
-        if (!audio.size) {
-          closeStreamingTranscription()
-          updateDraft('', 'cancel')
-          setDictationState('idle')
-          setDictationError(t('composer.dictationEmpty'))
+        const audio = new Blob(chunks, { type: recorder.mimeType || 'application/octet-stream' })
+        if (!audio.size || size > 10 * 1024 * 1024) {
+          if (size > 10 * 1024 * 1024) setError(t('composer.tooLong'))
+          active.current = null
+          setState('idle')
           return
         }
-        setDictationState('transcribing')
+        setState('transcribing')
         void onTranscribe(audio)
           .then((text) => {
-            if (!mountedRef.current) return
-            if (!text.trim()) {
-              updateDraft('', 'cancel')
-              setDictationError(t('composer.dictationEmpty'))
-            } else {
-              updateDraft(text, 'final')
-            }
+            if (active.current !== take || blocked.current) return
+            if (text.trim()) onSend(text.trim())
           })
           .catch(() => {
-            if (mountedRef.current) {
-              updateDraft('', 'cancel')
-              setDictationError(t('composer.dictationFailed'))
-            }
+            if (active.current === take) setError(t('composer.dictationFailed'))
           })
           .finally(() => {
-            closeStreamingTranscription()
-            if (mountedRef.current) {
-              setDictationState('idle')
+            if (active.current === take) {
+              active.current = null
+              setState('idle')
             }
           })
       }
-      recorder.start()
-      setDictationState('recording')
-    } catch (error) {
-      closeStreamingTranscription()
-      updateDraft('', 'cancel')
-      stopStream(streamRef.current)
-      streamRef.current = null
-      recorderRef.current = null
-      setDictationState('idle')
-      setDictationError(
-        error instanceof DOMException && error.name === 'NotAllowedError'
-          ? t('composer.dictationPermission')
-          : t('composer.dictationFailed'),
+      recorder.start(1000)
+      setWaveformStream(stream)
+      setState('recording')
+    } catch (failure) {
+      take.stream?.getTracks().forEach((track) => track.stop())
+      if (active.current !== take) return
+      active.current = null
+      setState('idle')
+      setError(
+        t(
+          failure instanceof DOMException && failure.name === 'NotAllowedError'
+            ? 'composer.dictationPermission'
+            : failure instanceof Error && failure.message === 'unsupported'
+              ? 'composer.dictationUnsupported'
+              : 'composer.dictationFailed',
+        ),
       )
     }
   }
-
+  function release(cancelled: boolean) {
+    const take = active.current
+    origin.current = null
+    if (!take || take.released) return
+    take.released = true
+    take.cancelled = cancelled
+    if (take.recorder?.state === 'recording') {
+      setState(cancelled ? 'idle' : 'transcribing')
+      take.recorder.stop()
+    } else {
+      active.current = null
+      setState('idle')
+    }
+    setCancel(false)
+  }
+  const holdControl = (
+    <button
+      autoFocus
+      type="button"
+      className="hold-to-talk"
+      disabled={disabled || state === 'transcribing'}
+      aria-label={t('composer.holdToTalk')}
+      aria-describedby="hold-instructions"
+      onContextMenu={(event) => event.preventDefault()}
+      onPointerDown={(event) => {
+        if (event.button !== 0 || !event.isPrimary) return
+        event.preventDefault()
+        event.currentTarget.setPointerCapture(event.pointerId)
+        origin.current = event.clientY
+        void start()
+      }}
+      onPointerMove={(event) => {
+        if (origin.current === null) return
+        const cancelling = origin.current - event.clientY > 60
+        if (active.current) active.current.cancelled = cancelling
+        setCancel(cancelling)
+      }}
+      onPointerUp={() => release(active.current?.cancelled ?? false)}
+      onPointerCancel={() => release(true)}
+      onLostPointerCapture={() => release(true)}
+      onBlur={() => release(true)}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') release(true)
+        if (event.key === ' ' || event.key === 'Enter') {
+          event.preventDefault()
+          if (!event.repeat) void start()
+        }
+      }}
+      onKeyUp={(event) => {
+        if (event.key === ' ' || event.key === 'Enter') {
+          event.preventDefault()
+          release(false)
+        }
+      }}
+    >
+      {state === 'recording' && waveformStream ? (
+        <span className="hold-waveform" aria-hidden="true">
+          <RecordingWaveform stream={waveformStream} />
+        </span>
+      ) : (
+        t(state === 'requesting' ? 'composer.dictationRequesting' : 'composer.holdToTalk')
+      )}
+    </button>
+  )
+  const keyboardControl = (
+    <Button
+      className="hold-keyboard"
+      variant="ghost"
+      size="icon"
+      disabled={state !== 'idle'}
+      aria-label={t('composer.keyboard')}
+      onClick={() => {
+        setVoiceMode(false)
+        requestAnimationFrame(() => textInputRef.current?.focus())
+      }}
+    >
+      <Keyboard />
+    </Button>
+  )
   return (
-    <div className="sticky bottom-0 z-20 mt-auto bg-[var(--coach-composer-fade)] px-5 pb-3 pt-4">
+    <div
+      className="hold-composer-adapter sticky bottom-0 z-20 mt-auto bg-[var(--coach-composer-fade)] px-5 pb-3 pt-4"
+      data-recording={state === 'recording' || state === 'requesting'}
+      data-cancel={cancel}
+    >
       <CoachPromptBar
         placeholder={placeholder}
         showInspirations={showInspirations}
-        disabled={disabled}
-        inputRef={inputRef}
+        disabled={disabled || state !== 'idle'}
+        inputRef={textInputRef}
         onSend={onSend}
-        onVoice={onVoice}
-        dictationState={dictationState}
-        dictationError={dictationError}
-        onDictationToggle={onTranscribe ? (apply) => void toggleDictation(apply) : undefined}
+        onVoice={onTranscribe ? () => setVoiceMode(true) : undefined}
+        inputControl={voiceMode ? holdControl : undefined}
+        trailingControl={voiceMode ? keyboardControl : undefined}
       />
+      <span id="hold-instructions" className="sr-only">
+        {t('composer.holdHint')}
+      </span>
+      {state === 'recording' || state === 'requesting' ? (
+        <div className="hold-recording-panel">
+          <div className="hold-recording-backdrop" />
+          <p role="status">
+            {t(
+              cancel
+                ? 'composer.releaseCancel'
+                : state === 'requesting'
+                  ? 'composer.dictationRequesting'
+                  : 'composer.releaseSend',
+            )}
+          </p>
+        </div>
+      ) : null}
+      {error ? (
+        <p className="pt-2 text-sm text-[var(--danger)]" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   )
 }

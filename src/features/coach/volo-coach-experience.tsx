@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Check, ChevronDown, Pencil, RefreshCw, X } from 'lucide-react'
+import { CalendarClock, Check, ChevronDown, LoaderCircle, Pencil, RefreshCw, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -63,7 +63,7 @@ import {
   sortScheduledSessionsByTime,
 } from '@/features/coach/schedule-routing'
 import { VoiceOverlay } from '@/features/coach/voice-overlay'
-import { canStartVoice, retryVoiceSession } from '@/features/coach/voice-state'
+import { retryVoiceSession } from '@/features/coach/voice-state'
 import { currentAppLocale } from '@/i18n'
 
 const today = () => new Date().toLocaleDateString('en-CA')
@@ -367,6 +367,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
     createCoachTurnState(),
   )
   const [voiceOpen, setVoiceOpen] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
   const [targetCardId, setTargetCardId] = useState<string | null>(null)
   const [endGuardCardId, setEndGuardCardId] = useState<string | null>(null)
   const streamControllerRef = useRef<AbortController | null>(null)
@@ -387,7 +388,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     const conversation = conversationRef.current
     conversation?.scrollTo({ top: conversation.scrollHeight, behavior: 'smooth' })
-  }, [timeline])
+  }, [timeline, transcribing])
 
   useEffect(() => {
     if (thread.data) {
@@ -522,13 +523,6 @@ function SessionView({ sessionId }: { sessionId: string }) {
     preparing: ending || voiceOpen,
   })
   const endAction = resolveCoachEndAction(turnState.cards)
-  const voiceAvailable = canStartVoice({
-    sessionStatus: thread.data.session.status,
-    sending,
-    pauseBlocked: Boolean(pauseCard),
-    ending,
-    voiceOpen,
-  })
   const initialVoiceAssistantText = thread.data.messages.some((message) => message.role === 'user')
     ? ''
     : localizeCoachAssistantBody(
@@ -612,6 +606,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
                 onRetry={retryFailedTurn}
               />
             ) : null}
+            {transcribing ? <TranscriptionBubble /> : null}
             {prepareEnd.isError || discardEmptySession.isError ? (
               <p className="text-center text-sm text-[var(--danger)]" role="alert">
                 {t('endError')}
@@ -625,17 +620,12 @@ function SessionView({ sessionId }: { sessionId: string }) {
             showInspirations
             disabled={sending || ending || Boolean(pauseCard) || voiceOpen}
             inputRef={composerRef}
-            onSend={(body) => void send(body)}
+            onSend={(body) => {
+              setTranscribing(false)
+              void send(body)
+            }}
+            onTranscribingChange={setTranscribing}
             onTranscribe={(audio) => voiceApi.transcribe(audio).then((result) => result.text)}
-            onTranscribeStream={voiceApi.streamTranscription}
-            onVoice={
-              voiceAvailable
-                ? () => {
-                    setVoiceOpen(true)
-                    voiceSession.mutate()
-                  }
-                : undefined
-            }
           />
         ) : (
           <p className="safe-bottom px-5 py-5 text-center text-sm text-[var(--coach-text-secondary)]">
@@ -682,6 +672,24 @@ function SessionView({ sessionId }: { sessionId: string }) {
         />
       ) : null}
     </>
+  )
+}
+
+export function TranscriptionBubble() {
+  const { t } = useTranslation('coach')
+  return (
+    <div
+      className="flex justify-end pl-12"
+      role="status"
+      aria-label={t('composer.dictationWorking')}
+    >
+      <div className="rounded-[22px] bg-[var(--coach-user-bubble)] px-4 py-3 text-[var(--coach-text-warm)]">
+        <LoaderCircle
+          className="size-5 animate-spin motion-reduce:animate-none"
+          aria-hidden="true"
+        />
+      </div>
+    </div>
   )
 }
 

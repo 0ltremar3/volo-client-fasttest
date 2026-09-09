@@ -1,4 +1,5 @@
 :root {
+  --recording-waveform-ink: #fffcf6;
   --font-family-sans:
     'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
     'Noto Sans SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;

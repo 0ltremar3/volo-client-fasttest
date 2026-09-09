@@ -90,23 +90,22 @@ ongoing.
 Confirmed Move cards remain in the conversation at their original assistant-message position with
 a read-only Added or Adjusted state; rejected and expired cards stay hidden.
 
-For an idle ongoing Coach session in real mode, the empty composer waveform opens a full-screen
-voice layer on the same `/chat?session=...` route. The layer requests a short-lived LiveKit token
-through the authenticated API client, publishes microphone audio only, shows interim/final user
-transcription and Coach state/text, plays the existing persisted Volo reply, supports input-device
-selection, mute, interruption, reconnect, and hangup, and then refreshes the canonical database
-thread. Interim transcription stays local; no raw audio, camera, screen share, LiveKit recording,
-or separate voice history is used. A pending Pause card, ending flow, text turn, completed session,
-or active voice room disables the waveform. Text sending remains blocked until the voice layer exits.
-
-The same real-mode Coach composer also has an independent dictation button. During recording it
-sends mono 16 kHz PCM through the authenticated `/v2/voice/transcriptions/stream` WebSocket and
-shows a rolling SenseVoice preview inside the textarea about every 1.2 seconds. The textarea remains
-at a 44px minimum height, grows with the draft, and scrolls internally at its height cap. Stopping sends the original
-`MediaRecorder` Blob to
-`POST /v2/voice/transcriptions?language=auto`; only that SenseVoice final is inserted into
-the draft for review, without sending a Coach message. Neither endpoint persists audio/transcript
-or triggers Coach processing, and a streaming failure falls back to stop-then-transcribe.
+The orange Coach waveform switches to hold-to-talk input within the original single-row
+composer: inspiration on the left, hold control in the center, and the keyboard switch on the
+right. Hold to record, release to
+transcribe and send the final text, or slide up before release to cancel without uploading.
+The keyboard button restores the preserved text draft. Recognition uses only the raw Blob
+`POST /v2/voice/transcriptions?language=auto` endpoint with existing Bearer authentication.
+No interim WebSocket or LiveKit room is opened from this composer. The independent microphone
+entry is commented out. Space/Enter supports keyboard hold, and Escape cancels.
+While held, the original composer becomes an orange recording button with centered, mirrored
+rounded bars from Ondo UI `LiveWaveform` in static mode, driven by the shared microphone stream.
+The instruction sits close above the button over a short, full-viewport-width theme-aware fade;
+slide-up cancellation turns the button red. Keyboard focus uses a label underline or icon color,
+without rectangular focus outlines on voice controls.
+The keyboard glyph is 26px with a 44px touch target and no filled focus background. Empty
+recognition silently returns to idle. Reduced motion uses steady bars. After release, recognition
+shows only a circular spinner in a pending user bubble; the composer has no recognition loader.
 
 When Coach opens an adjusted Move, the original conversation history remains in place and the
 header keeps the ordinary `Done` action. A `move_revision` card confirms revised wording and keeps
@@ -233,9 +232,7 @@ The Coach composer reuses the adapted Prompt Bar through the application adapter
 attribution and the MIT notice are preserved in `THIRD_PARTY_NOTICES.md`. Keep copied components
 behind the local token system and remove demo-only capabilities that the backend cannot support.
 Its empty state shows the designed orange waveform affordance and its non-empty state switches to
-the orange send action. In connected Volo V2 Coach sessions, the waveform starts the LiveKit voice
-overlay; the separate microphone starts streaming dictation, replaces one provisional suffix in
-the read-only textarea, and makes it editable after SenseVoice returns the final text.
+the orange send action. In connected Volo V2 Coach sessions, the waveform opens hold-to-talk input using final-only recognition.
 Coach replies use the controlled `StreamingText` primitive with real SSE text, reduced-motion-safe
 cursor feedback, stable completion accessibility, and copy/retry actions only after streaming stops.
 Before the first delta it shows a compact Reflecting pixel wave; each real delta renders immediately

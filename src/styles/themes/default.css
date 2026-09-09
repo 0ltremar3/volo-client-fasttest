@@ -1,6 +1,8 @@
 :root,
 [data-theme='default'] {
   color-scheme: light;
+  --recording-mask-surface: #ffffff;
+  --coach-recording-cancel: rgb(239 68 68 / 82%);
 
   --background: #f7f7f5;
   --foreground: #1d1d1b;

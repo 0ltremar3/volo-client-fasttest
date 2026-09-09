@@ -31,7 +31,6 @@ import {
   formatScheduleTime,
   mockMoveProposal,
   mockSessions,
-  moveCopy,
   openingMessages,
   readMockCoachHomeState,
   resolveMoveScheduleDraft,
@@ -43,6 +42,7 @@ import {
   type MoveScheduleFrequency,
 } from '@/features/coach/coach-model'
 import { currentAppLocale } from '@/i18n'
+import { localizeCoachAssistantBody } from '@/features/coach/coach-message-copy'
 import { cn } from '@/lib/utils'
 import { mockAuthEnabled } from '@/features/auth/mock-auth'
 import { VoloCoachExperience } from '@/features/coach/volo-coach-experience'
@@ -50,10 +50,11 @@ import { VoloCoachExperience } from '@/features/coach/volo-coach-experience'
 type MoveState = 'hidden' | 'suggested' | 'editing' | 'added' | 'skipped'
 
 function FocusCard() {
+  const { t } = useTranslation('coach')
   return (
     <CoachFocusCard
-      title="The cost of choice, and what I truly want"
-      topics={['Career Choice', 'Inner Standards']}
+      title={t('mock.focusTitle')}
+      topics={[t('mock.focusCareer'), t('mock.focusStandards')]}
     />
   )
 }
@@ -99,9 +100,9 @@ function ScheduleScreen({
             onChange={(event) => onChange({ ...value, topic: event.target.value })}
             className="coach-chip max-w-[10rem] appearance-none truncate px-4 text-right text-sm"
           >
-            <option>Career Direction</option>
-            <option>Leadership</option>
-            <option>A difficult decision</option>
+            <option value="Career Direction">{t('mock.topicCareer')}</option>
+            <option value="Leadership">{t('mock.topicLeadership')}</option>
+            <option value="A difficult decision">{t('mock.topicDecision')}</option>
           </select>
         </label>
         <label className="flex min-h-[70px] items-center gap-4">
@@ -162,15 +163,15 @@ function ScheduleScreen({
 }
 
 function SessionCard({ schedule }: { schedule: CoachSchedule }) {
-  const { i18n } = useTranslation('coach')
+  const { t, i18n } = useTranslation('coach')
   const locale = currentAppLocale(i18n.language)
   return (
     <article className="min-h-[116px] rounded-[22px] bg-[var(--coach-surface-glass)] px-[18px] py-[18px] shadow-[var(--coach-shadow)]">
       <p className="text-base font-medium leading-6 text-[var(--coach-ink)]">
-        Set aside 30 minutes to explore what this direction is asking of you.
+        {t('mock.scheduledDescription')}
       </p>
       <div className="mt-4 flex items-end gap-3 text-xs text-[var(--coach-text-tertiary)]">
-        <span className="min-w-0 flex-1 truncate">From “The Cost of Choice”</span>
+        <span className="min-w-0 flex-1 truncate">{t('mock.scheduledSource')}</span>
         <time className="shrink-0">
           {formatScheduleDate(schedule.date, locale)} · {formatScheduleTime(schedule.time, locale)}
         </time>
@@ -190,13 +191,18 @@ function HomeScreen({
 }) {
   const { t, i18n } = useTranslation('coach')
   const locale = currentAppLocale(i18n.language)
+  const topicLabels: Record<string, string> = {
+    'Career Direction': t('mock.topicCareer'),
+    Leadership: t('mock.topicLeadership'),
+    'A difficult decision': t('mock.topicDecision'),
+  }
   return (
     <section className="relative flex min-h-0 flex-1 flex-col">
       <div className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-5 pb-20 pt-[62px]">
         <SessionCard schedule={schedule} />
         <div className="mt-9">
           <CoachNextSessionHero
-            topic={schedule.topic}
+            topic={topicLabels[schedule.topic] ?? schedule.topic}
             when={formatCoachAppointment(
               `${schedule.date}T${schedule.time}:00`,
               locale,
@@ -212,6 +218,7 @@ function HomeScreen({
 }
 
 function MessageBubble({ message }: { message: CoachMessage }) {
+  const { t } = useTranslation('coach')
   if (message.role === 'user') {
     return (
       <div className="flex justify-end pl-12">
@@ -225,7 +232,7 @@ function MessageBubble({ message }: { message: CoachMessage }) {
   return (
     <div className="pr-3">
       <p className="text-pretty whitespace-pre-line text-base font-medium leading-5 text-[var(--coach-ink)]">
-        {message.text}
+        {localizeCoachAssistantBody(message.text, t)}
       </p>
     </div>
   )
@@ -267,7 +274,7 @@ function MoveCard({
       <p className="mb-4 text-pretty text-base font-medium leading-5">{t('moveIntroMock')}</p>
       <MoveCardSurface
         schedule={`${scheduleLabels[frequency]} · ${time}`}
-        source="From “The Cost of Choice”"
+        source={t('mock.scheduledSource')}
         dueLabel={state === 'added' ? t('todayAt', { time }) : ''}
         status={
           state === 'added' ? (
@@ -430,6 +437,7 @@ function CoachExperienceState({
 }: {
   initialSession: (typeof mockSessions)[number] | undefined
 }) {
+  const { t } = useTranslation('coach')
   const navigate = useNavigate()
   const initialHome = readMockCoachHomeState()
   const initialLanding = resolveCoachLanding(
@@ -451,7 +459,7 @@ function CoachExperienceState({
   const [replying, setReplying] = useState(false)
   const [turn, setTurn] = useState(initialSession ? 0 : 2)
   const [moveState, setMoveState] = useState<MoveState>(initialSession ? 'hidden' : 'suggested')
-  const [moveText, setMoveText] = useState(moveCopy)
+  const [moveText, setMoveText] = useState(() => t('mock.moveDescription'))
   const [pauseOpen, setPauseOpen] = useState(false)
   const [preparingPause, setPreparingPause] = useState(false)
   const [pauseAction, setPauseAction] = useState<'confirm' | 'continue' | null>(null)
