@@ -269,13 +269,14 @@ export const voiceApi = {
       method: 'POST',
       body: JSON.stringify({ coach_session_id: coachSessionId }),
     }),
-  transcribe: (audio: Blob) =>
+  transcribe: (audio: Blob, signal?: AbortSignal) =>
     apiFetch<{ text: string; language?: string; duration?: number }>(
-      '/v2/voice/transcriptions?language=auto',
+      '/v2/voice/transcriptions?language=auto&provider=groq',
       {
         method: 'POST',
         headers: { 'Content-Type': audio.type || 'application/octet-stream' },
         body: audio,
+        signal,
       },
     ),
   streamTranscription: (onInterim: (text: string) => void) =>

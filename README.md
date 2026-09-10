@@ -9,6 +9,16 @@ Move checks, scheduling, and POST SSE streaming use `/v2`.
 
 ## Stack
 
+Voice dictation captures 16 kHz mono PCM locally and, after stop/flush, uploads one
+complete WAV to authenticated `POST /v2/voice/transcriptions?language=auto&provider=groq`.
+The backend uses Groq `whisper-large-v3`; configure `GROQ_API_KEY` on the backend
+only. No LiveKit Agent or SenseVoice worker is needed for dictation. The existing
+recording UI and final-message submission behavior are preserved. Up to five
+minutes of PCM are buffered; cancellation discards the buffer and aborts an
+in-flight upload. End-to-final includes the complete upload and recognition,
+so long recordings do not carry a sub-second latency guarantee. The backend
+must support this provider parameter before deploying this frontend.
+
 - React, Vite, and strict TypeScript
 - Tailwind CSS and shadcn/ui
 - React Router
@@ -94,19 +104,16 @@ The orange Coach waveform switches to hold-to-talk input within the original sin
 composer: inspiration on the left, hold control in the center, and the keyboard switch on the
 right. Hold to record, release to
 finish and send the final text, or slide up before release to cancel without sending a chat message.
-Audio is uploaded during recording; cancellation cannot undo audio already transmitted.
-The keyboard button restores the preserved text draft. Recognition connects to
-`/v2/voice/transcriptions/stream?mode=final&language=auto` and includes
-`primary_language=zh|en` from the interface locale as a weak hint.
-The backend uses this only to retry very short unexpected Japanese/Korean fragments;
-regular Chinese/English recognition remains automatic. The socket authenticates using the existing
-Bearer in the first message, then sends mono 16 kHz PCM16 via AudioWorklet. Release flushes
-the tail before `finish`; only the returned `final` text (including punctuation) is sent.
-There is no full-Blob POST fallback, interim promotion, or LiveKit room from this composer.
-Disconnects, cancellation, unmount and backgrounding close the socket and microphone.
-Recording is limited to 295 seconds; final waiting to 35 seconds. Requires AudioWorklet and
+Audio is buffered locally during recording. The keyboard button restores the preserved text draft.
+Release flushes the AudioWorklet tail, wraps all mono 16 kHz PCM16 in one WAV, and uploads it to
+`/v2/voice/transcriptions?language=auto&provider=groq` using existing Bearer authentication.
+Only the returned transcript is sent to Coach. Cancellation discards buffered audio and aborts
+an in-flight request, but cannot undo audio already uploaded to the provider.
+There is no WebSocket transcription, provider fallback, or LiveKit room from this composer.
+Cancellation, unmount and backgrounding release the microphone and abort the request.
+Recording is limited to 295 seconds; final waiting to 65 seconds. Requires AudioWorklet and
 a 16 kHz AudioContext (HTTPS or localhost); unsupported browsers show the existing error.
-The backend must have the final-mode update deployed. The independent microphone
+The backend must support the Groq provider and have its API key configured. The independent microphone
 entry is commented out. Space/Enter supports keyboard hold, and Escape cancels.
 While held, the original composer becomes an orange recording button with centered, mirrored
 rounded bars from Ondo UI `LiveWaveform` in static mode, driven by the shared microphone stream.
