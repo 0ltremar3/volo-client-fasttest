@@ -14,6 +14,7 @@ import {
 import { VoloCoachStreamError } from '@/api/sse'
 import { coachApi, voiceApi, type MoveSchedule, type VoloCard, type VoloMessage } from '@/api/volo'
 import { BeautifulPromptComposer } from '@/components/ai/beautiful-prompt-composer'
+import { startVoiceDictation } from '@/components/ai/voice-dictation'
 import { StreamingText } from '@/components/ai/beautiful-ui/streaming-text'
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
@@ -625,7 +626,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
               void send(body)
             }}
             onTranscribingChange={setTranscribing}
-            onTranscribe={(audio) => voiceApi.transcribe(audio).then((result) => result.text)}
+            onStartTranscription={startVoiceDictation}
           />
         ) : (
           <p className="safe-bottom px-5 py-5 text-center text-sm text-[var(--coach-text-secondary)]">

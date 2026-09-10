@@ -93,10 +93,20 @@ a read-only Added or Adjusted state; rejected and expired cards stay hidden.
 The orange Coach waveform switches to hold-to-talk input within the original single-row
 composer: inspiration on the left, hold control in the center, and the keyboard switch on the
 right. Hold to record, release to
-transcribe and send the final text, or slide up before release to cancel without uploading.
-The keyboard button restores the preserved text draft. Recognition uses only the raw Blob
-`POST /v2/voice/transcriptions?language=auto` endpoint with existing Bearer authentication.
-No interim WebSocket or LiveKit room is opened from this composer. The independent microphone
+finish and send the final text, or slide up before release to cancel without sending a chat message.
+Audio is uploaded during recording; cancellation cannot undo audio already transmitted.
+The keyboard button restores the preserved text draft. Recognition connects to
+`/v2/voice/transcriptions/stream?mode=final&language=auto` and includes
+`primary_language=zh|en` from the interface locale as a weak hint.
+The backend uses this only to retry very short unexpected Japanese/Korean fragments;
+regular Chinese/English recognition remains automatic. The socket authenticates using the existing
+Bearer in the first message, then sends mono 16 kHz PCM16 via AudioWorklet. Release flushes
+the tail before `finish`; only the returned `final` text (including punctuation) is sent.
+There is no full-Blob POST fallback, interim promotion, or LiveKit room from this composer.
+Disconnects, cancellation, unmount and backgrounding close the socket and microphone.
+Recording is limited to 295 seconds; final waiting to 35 seconds. Requires AudioWorklet and
+a 16 kHz AudioContext (HTTPS or localhost); unsupported browsers show the existing error.
+The backend must have the final-mode update deployed. The independent microphone
 entry is commented out. Space/Enter supports keyboard hold, and Escape cancels.
 While held, the original composer becomes an orange recording button with centered, mirrored
 rounded bars from Ondo UI `LiveWaveform` in static mode, driven by the shared microphone stream.

@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { CoachPromptBar } from '@/components/ai/beautiful-ui/prompt-bar'
 import { Button } from '@/components/ui/button'
 import { RecordingWaveform } from '@/components/ai/recording-waveform'
+import type { VoiceDictation } from '@/components/ai/voice-dictation'
 
 type Recording = {
-  recorder?: MediaRecorder
+  dictation?: VoiceDictation
+  controller: AbortController
   stream?: MediaStream
   cancelled: boolean
   released: boolean
@@ -18,7 +20,7 @@ export function BeautifulPromptComposer({
   disabled = false,
   inputRef,
   onSend,
-  onTranscribe,
+  onStartTranscription,
   onTranscribingChange,
 }: {
   placeholder?: string
@@ -26,7 +28,11 @@ export function BeautifulPromptComposer({
   disabled?: boolean
   inputRef?: React.RefObject<HTMLTextAreaElement | null>
   onSend: (text: string) => void
-  onTranscribe?: (audio: Blob) => Promise<string>
+  onStartTranscription?: (
+    stream: MediaStream,
+    signal: AbortSignal,
+    onFailure: () => void,
+  ) => Promise<VoiceDictation>
   onTranscribingChange?: (pending: boolean) => void
 }) {
   const { t } = useTranslation('coach')
@@ -53,7 +59,8 @@ export function BeautifulPromptComposer({
       active.current = null
       if (take) {
         take.cancelled = true
-        if (take.recorder?.state === 'recording') take.recorder.stop()
+        take.controller.abort()
+        take.dictation?.close()
         take.stream?.getTracks().forEach((track) => track.stop())
       }
     }
@@ -79,15 +86,14 @@ export function BeautifulPromptComposer({
   }, [])
 
   async function start() {
-    if (active.current || disabled || !onTranscribe) return
-    const take: Recording = { cancelled: false, released: false }
+    if (active.current || disabled || !onStartTranscription) return
+    const take: Recording = { cancelled: false, released: false, controller: new AbortController() }
     active.current = take
     setError(null)
     setCancel(false)
     setState('requesting')
     try {
-      if (!navigator.mediaDevices?.getUserMedia || !globalThis.MediaRecorder)
-        throw new Error('unsupported')
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported')
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       take.stream = stream
       if (active.current !== take || blocked.current) {
@@ -98,66 +104,29 @@ export function BeautifulPromptComposer({
         }
         return
       }
-      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((type) =>
-        MediaRecorder.isTypeSupported(type),
-      )
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
-      take.recorder = recorder
-      const chunks: Blob[] = []
-      let size = 0
-      recorder.ondataavailable = ({ data }) => {
-        chunks.push(data)
-        size += data.size
-        if (size > 10 * 1024 * 1024 && recorder.state === 'recording') {
-          take.cancelled = true
-          setError(t('composer.tooLong'))
-          recorder.stop()
-        }
-      }
-      recorder.onerror = () => {
+      take.dictation = await onStartTranscription(stream, take.controller.signal, () => {
+        if (active.current !== take) return
+        active.current = null
         take.cancelled = true
+        take.controller.abort()
+        stream.getTracks().forEach((track) => track.stop())
+        setState('idle')
+        setError(t('composer.dictationFailed'))
+      })
+      if (active.current !== take || blocked.current) {
+        take.dictation.close()
         stream.getTracks().forEach((track) => track.stop())
         if (active.current === take) {
           active.current = null
           setState('idle')
-          setError(t('composer.dictationFailed'))
         }
+        return
       }
-      recorder.onstop = () => {
-        stream.getTracks().forEach((track) => track.stop())
-        if (active.current !== take) return
-        if (take.cancelled || blocked.current) {
-          active.current = null
-          setState('idle')
-          return
-        }
-        const audio = new Blob(chunks, { type: recorder.mimeType || 'application/octet-stream' })
-        if (!audio.size || size > 10 * 1024 * 1024) {
-          if (size > 10 * 1024 * 1024) setError(t('composer.tooLong'))
-          active.current = null
-          setState('idle')
-          return
-        }
-        setState('transcribing')
-        void onTranscribe(audio)
-          .then((text) => {
-            if (active.current !== take || blocked.current) return
-            if (text.trim()) onSend(text.trim())
-          })
-          .catch(() => {
-            if (active.current === take) setError(t('composer.dictationFailed'))
-          })
-          .finally(() => {
-            if (active.current === take) {
-              active.current = null
-              setState('idle')
-            }
-          })
-      }
-      recorder.start(1000)
       setWaveformStream(stream)
       setState('recording')
     } catch (failure) {
+      take.controller.abort()
+      take.dictation?.close()
       take.stream?.getTracks().forEach((track) => track.stop())
       if (active.current !== take) return
       active.current = null
@@ -179,12 +148,28 @@ export function BeautifulPromptComposer({
     if (!take || take.released) return
     take.released = true
     take.cancelled = cancelled
-    if (take.recorder?.state === 'recording') {
-      setState(cancelled ? 'idle' : 'transcribing')
-      take.recorder.stop()
-    } else {
+    if (cancelled || !take.dictation || blocked.current) {
       active.current = null
+      take.controller.abort()
+      take.dictation?.close()
+      take.stream?.getTracks().forEach((track) => track.stop())
       setState('idle')
+    } else {
+      setState('transcribing')
+      void take.dictation
+        .finish()
+        .then((text) => {
+          if (active.current === take && !blocked.current && text.trim()) onSend(text.trim())
+        })
+        .catch(() => {
+          if (active.current === take) setError(t('composer.dictationFailed'))
+        })
+        .finally(() => {
+          if (active.current === take) {
+            active.current = null
+            setState('idle')
+          }
+        })
     }
     setCancel(false)
   }
@@ -264,7 +249,7 @@ export function BeautifulPromptComposer({
         disabled={disabled || state !== 'idle'}
         inputRef={textInputRef}
         onSend={onSend}
-        onVoice={onTranscribe ? () => setVoiceMode(true) : undefined}
+        onVoice={onStartTranscription ? () => setVoiceMode(true) : undefined}
         inputControl={voiceMode ? holdControl : undefined}
         trailingControl={voiceMode ? keyboardControl : undefined}
       />
