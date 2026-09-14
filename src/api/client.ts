@@ -63,3 +63,34 @@ export async function apiFetch<T>(url: string, options: RequestInit = {}): Promi
   }
   return payload as T
 }
+
+// Provider requests must not inherit app authentication, cookies or the session URL.
+export async function bailianAsrFetch(
+  token: string,
+  body: string,
+  signal: AbortSignal,
+): Promise<unknown> {
+  const response = await fetch(
+    'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',
+    {
+      method: 'POST',
+      credentials: 'omit',
+      mode: 'cors',
+      redirect: 'error',
+      referrerPolicy: 'no-referrer',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'X-DashScope-SSE': 'disable',
+      },
+      body,
+      signal,
+    },
+  )
+  if (!response.ok) {
+    await response.body?.cancel()
+    // A provider 401 is not an expired app session. Never clear the user's login here.
+    throw new ApiError(response.status, { error: 'Speech recognition request failed' })
+  }
+  return response.json() as Promise<unknown>
+}

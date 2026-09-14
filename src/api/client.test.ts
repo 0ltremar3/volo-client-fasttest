@@ -174,25 +174,36 @@ describe('Review API contract', () => {
 })
 
 describe('Voice transcription API contract', () => {
-  it('posts the raw audio blob with its MIME type and Bearer token', async () => {
+  it('requests a credential before uploading audio directly to Bailian', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse({ token: 'session-token' }))
-      .mockResolvedValueOnce(jsonResponse({ text: '今天想先整理计划', language: 'zh' }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          token: 'st-temporary',
+          expires_at: Math.floor(Date.now() / 1000) + 180,
+          endpoint:
+            'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',
+          model: 'qwen-audio-3.0-asr-flash',
+          max_audio_bytes: 7400000,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ output: { text: '今天想先整理计划' } }))
     vi.stubGlobal('fetch', fetchMock)
     await authApi.signIn('alex@example.com', '123456')
-    const audio = new Blob(['audio'], { type: 'audio/webm' })
+    const audio = new Blob(['audio'], { type: 'audio/wav' })
 
     await expect(voiceApi.transcribe(audio)).resolves.toMatchObject({
       text: '今天想先整理计划',
     })
 
-    expect(fetchMock.mock.calls[1]?.[0]).toContain('/v2/voice/transcriptions?language=auto')
-    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: 'POST', body: audio })
+    expect(fetchMock.mock.calls[1]?.[0]).toContain('/v2/voice/transcriptions/credentials')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: 'POST', body: '{}' })
     expect(requestHeaders(fetchMock.mock.calls[1]).get('Authorization')).toBe(
       'Bearer session-token',
     )
-    expect(requestHeaders(fetchMock.mock.calls[1]).get('Content-Type')).toBe('audio/webm')
+    expect(requestHeaders(fetchMock.mock.calls[2]).get('Authorization')).toBe('Bearer st-temporary')
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({ credentials: 'omit' })
   })
 
   it('authenticates the caption socket and forwards interim text', async () => {

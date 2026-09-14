@@ -1,5 +1,5 @@
 import { getAccessToken } from '@/api/auth-session'
-import { apiFetch } from '@/api/client'
+import { transcribeBailianDirect } from '@/api/bailian-transcription'
 
 export type FinalTranscription = {
   send: (audio: ArrayBuffer) => void
@@ -64,12 +64,10 @@ export function openFinalTranscription(
         offset += chunk.length
       }
       chunks = []
-      finalPromise = apiFetch<unknown>('/v2/voice/transcriptions?language=auto&provider=bailian', {
-        method: 'POST',
-        headers: { 'Content-Type': 'audio/wav' },
-        body: new Blob([buffer], { type: 'audio/wav' }),
-        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(65000)]),
-      })
+      finalPromise = transcribeBailianDirect(
+        new Blob([buffer], { type: 'audio/wav' }),
+        controller.signal,
+      )
         .then((result) => {
           if (closed || signal.aborted) throw new Error('Cancelled')
           if (

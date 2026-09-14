@@ -1,5 +1,6 @@
 import { clearAccessToken, getAccessToken, setAccessToken } from '@/api/auth-session'
 import { apiFetch, getWebSocketUrl } from '@/api/client'
+import { transcribeBailianDirect } from '@/api/bailian-transcription'
 import {
   streamPost,
   streamVoloCoachPost,
@@ -269,16 +270,7 @@ export const voiceApi = {
       method: 'POST',
       body: JSON.stringify({ coach_session_id: coachSessionId }),
     }),
-  transcribe: (audio: Blob, signal?: AbortSignal) =>
-    apiFetch<{ text: string; language?: string; duration?: number }>(
-      '/v2/voice/transcriptions?language=auto&provider=bailian',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': audio.type || 'application/octet-stream' },
-        body: audio,
-        signal,
-      },
-    ),
+  transcribe: transcribeBailianDirect,
   streamTranscription: (onInterim: (text: string) => void) =>
     new Promise<VoiceTranscriptionStream>((resolve, reject) => {
       const token = getAccessToken()

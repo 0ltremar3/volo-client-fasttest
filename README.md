@@ -9,11 +9,16 @@ Move checks, scheduling, and POST SSE streaming use `/v2`.
 
 ## Stack
 
-Voice dictation captures 16 kHz mono PCM locally and, after stop/flush, uploads one
-complete WAV to authenticated `POST /v2/voice/transcriptions?language=auto&provider=bailian`.
-The backend uses Bailian `qwen-audio-3.0-asr-flash`; configure `DASHSCOPE_API_KEY`
-(or the existing `QWEN_API_KEY`) and the matching regional `BAILIAN_ASR_BASE_URL` on the backend
-only. No LiveKit Agent or SenseVoice worker is needed for dictation. The existing
+Voice dictation captures 16 kHz mono PCM locally. After stop/flush and WAV encoding,
+it calls authenticated `POST /v2/voice/transcriptions/credentials` with an empty JSON
+body, then uploads the audio directly to Bailian Beijing using a 180-second temporary
+credential. Model: `qwen-audio-3.0-asr-flash`. App auth/cookies are never sent to Bailian;
+audio is never routed through the app backend. All environments reuse the backend's
+existing `DASHSCOPE_API_KEY`, falling back to `QWEN_API_KEY`; no separate key is required.
+Temporary credentials stay in memory only. A provider
+401 triggers one credential refresh, never app logout; no retry on ambiguous failures.
+The entire operation has a 90-second deadline. No LiveKit Agent or SenseVoice worker
+is needed for dictation. The existing
 recording UI is preserved; final recognition now populates an editable draft and
 switches to text mode, with the cursor at the end. Only explicit Send/Enter submits
 the message. While recognition is pending, a disabled orange composer button shows
