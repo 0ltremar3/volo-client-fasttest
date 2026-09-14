@@ -271,7 +271,7 @@ export const voiceApi = {
     }),
   transcribe: (audio: Blob, signal?: AbortSignal) =>
     apiFetch<{ text: string; language?: string; duration?: number }>(
-      '/v2/voice/transcriptions?language=auto&provider=groq',
+      '/v2/voice/transcriptions?language=auto&provider=bailian',
       {
         method: 'POST',
         headers: { 'Content-Type': audio.type || 'application/octet-stream' },

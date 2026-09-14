@@ -10,11 +10,19 @@ Move checks, scheduling, and POST SSE streaming use `/v2`.
 ## Stack
 
 Voice dictation captures 16 kHz mono PCM locally and, after stop/flush, uploads one
-complete WAV to authenticated `POST /v2/voice/transcriptions?language=auto&provider=groq`.
-The backend uses Groq `whisper-large-v3`; configure `GROQ_API_KEY` on the backend
+complete WAV to authenticated `POST /v2/voice/transcriptions?language=auto&provider=bailian`.
+The backend uses Bailian `qwen-audio-3.0-asr-flash`; configure `DASHSCOPE_API_KEY`
+(or the existing `QWEN_API_KEY`) and the matching regional `BAILIAN_ASR_BASE_URL` on the backend
 only. No LiveKit Agent or SenseVoice worker is needed for dictation. The existing
-recording UI and final-message submission behavior are preserved. Up to five
-minutes of PCM are buffered; cancellation discards the buffer and aborts an
+recording UI is preserved; final recognition now populates an editable draft and
+switches to text mode, with the cursor at the end. Only explicit Send/Enter submits
+the message. While recognition is pending, a disabled orange composer button shows
+the loading spinner; no transcription bubble is added to the conversation. Up to 225 seconds
+of PCM are buffered (base64 expansion must fit Bailian's 10 MB inline input limit);
+at 195 seconds a gentle warning appears, and at 225 seconds recording ends through
+the normal final-transcription/draft path instead of failing. The AudioWorklet caps
+samples exactly; manual release after auto-stop cannot submit or cancel it twice.
+cancellation discards the buffer and aborts an
 in-flight upload. End-to-final includes the complete upload and recognition,
 so long recordings do not carry a sub-second latency guarantee. The backend
 must support this provider parameter before deploying this frontend.

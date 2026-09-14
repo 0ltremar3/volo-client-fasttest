@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Check, ChevronDown, LoaderCircle, Pencil, RefreshCw, X } from 'lucide-react'
+import { CalendarClock, Check, ChevronDown, Pencil, RefreshCw, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -368,7 +368,6 @@ function SessionView({ sessionId }: { sessionId: string }) {
     createCoachTurnState(),
   )
   const [voiceOpen, setVoiceOpen] = useState(false)
-  const [transcribing, setTranscribing] = useState(false)
   const [targetCardId, setTargetCardId] = useState<string | null>(null)
   const [endGuardCardId, setEndGuardCardId] = useState<string | null>(null)
   const streamControllerRef = useRef<AbortController | null>(null)
@@ -389,7 +388,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     const conversation = conversationRef.current
     conversation?.scrollTo({ top: conversation.scrollHeight, behavior: 'smooth' })
-  }, [timeline, transcribing])
+  }, [timeline])
 
   useEffect(() => {
     if (thread.data) {
@@ -607,7 +606,6 @@ function SessionView({ sessionId }: { sessionId: string }) {
                 onRetry={retryFailedTurn}
               />
             ) : null}
-            {transcribing ? <TranscriptionBubble /> : null}
             {prepareEnd.isError || discardEmptySession.isError ? (
               <p className="text-center text-sm text-[var(--danger)]" role="alert">
                 {t('endError')}
@@ -622,10 +620,8 @@ function SessionView({ sessionId }: { sessionId: string }) {
             disabled={sending || ending || Boolean(pauseCard) || voiceOpen}
             inputRef={composerRef}
             onSend={(body) => {
-              setTranscribing(false)
               void send(body)
             }}
-            onTranscribingChange={setTranscribing}
             onStartTranscription={startVoiceDictation}
           />
         ) : (
@@ -673,24 +669,6 @@ function SessionView({ sessionId }: { sessionId: string }) {
         />
       ) : null}
     </>
-  )
-}
-
-export function TranscriptionBubble() {
-  const { t } = useTranslation('coach')
-  return (
-    <div
-      className="flex justify-end pl-12"
-      role="status"
-      aria-label={t('composer.dictationWorking')}
-    >
-      <div className="rounded-[22px] bg-[var(--coach-user-bubble)] px-4 py-3 text-[var(--coach-text-warm)]">
-        <LoaderCircle
-          className="size-5 animate-spin motion-reduce:animate-none"
-          aria-hidden="true"
-        />
-      </div>
-    </div>
   )
 }
 

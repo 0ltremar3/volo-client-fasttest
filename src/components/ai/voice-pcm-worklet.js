@@ -1,10 +1,12 @@
 /* global AudioWorkletProcessor, registerProcessor */
 class VoicePcmProcessor extends AudioWorkletProcessor {
-  constructor() {
+  constructor(options) {
     super()
     this.samples = new DataView(new ArrayBuffer(3200))
     this.length = 0
     this.stopped = false
+    this.total = 0
+    this.maxSamples = options?.processorOptions?.maxSamples ?? 225 * 16000
     this.port.onmessage = () => {
       this.stopped = true
       this.flush()
@@ -29,6 +31,13 @@ class VoicePcmProcessor extends AudioWorkletProcessor {
           true,
         )
         if (this.length === 1600) this.flush()
+        if (++this.total >= this.maxSamples) {
+          this.stopped = true
+          this.flush()
+          this.port.postMessage({ type: 'limit' })
+          this.port.postMessage({ type: 'stopped' })
+          return false
+        }
       }
     }
     return true

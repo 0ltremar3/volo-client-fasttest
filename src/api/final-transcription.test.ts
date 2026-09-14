@@ -29,7 +29,7 @@ it('uploads one authenticated WAV only after stop, preserving every frame', asyn
   expect(await result).toBe('早上9点。明天呢？')
   expect(fetchMock).toHaveBeenCalledTimes(1)
   const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-  expect(url).toContain('/v2/voice/transcriptions?language=auto&provider=groq')
+  expect(url).toContain('/v2/voice/transcriptions?language=auto&provider=bailian')
   expect(new Headers(init.headers).get('Authorization')).toBe('Bearer test-token')
   const wav = new DataView(await (init.body as Blob).arrayBuffer())
   expect(wav.getUint32(24, true)).toBe(16000)

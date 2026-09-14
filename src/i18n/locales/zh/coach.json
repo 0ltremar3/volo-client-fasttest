@@ -135,8 +135,10 @@
       "avoiding": "我一直在回避一个决定"
     },
     "holdToTalk": "按住说话",
-    "holdHint": "松手发送，上滑取消",
-    "releaseSend": "松手发送，上滑取消",
+    "holdHint": "松手转文字，上滑取消",
+    "releaseSend": "松手转文字，上滑取消",
+    "nearRecordingLimit": "还有约30秒会自动结束，你可以慢慢收个尾。",
+    "recordingLimitReached": "已结束录音，正在转成可编辑文字。",
     "releaseCancel": "松手取消",
     "keyboard": "切换到键盘输入",
     "tooLong": "录音超过 10 MiB，请缩短后重试。"

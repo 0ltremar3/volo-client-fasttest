@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { CoachPromptBar } from '@/components/ai/beautiful-ui/prompt-bar'
 import { Button } from '@/components/ui/button'
 import { RecordingWaveform } from '@/components/ai/recording-waveform'
-import type { VoiceDictation } from '@/components/ai/voice-dictation'
+import type { DictationLimitEvents, VoiceDictation } from '@/components/ai/voice-dictation'
+import { mergeDictationDraft } from '@/components/ai/dictation-audio'
 
 type Recording = {
   dictation?: VoiceDictation
@@ -21,7 +22,6 @@ export function BeautifulPromptComposer({
   inputRef,
   onSend,
   onStartTranscription,
-  onTranscribingChange,
 }: {
   placeholder?: string
   showInspirations?: boolean
@@ -32,22 +32,21 @@ export function BeautifulPromptComposer({
     stream: MediaStream,
     signal: AbortSignal,
     onFailure: () => void,
+    events?: DictationLimitEvents,
   ) => Promise<VoiceDictation>
-  onTranscribingChange?: (pending: boolean) => void
 }) {
   const { t } = useTranslation('coach')
   const fallbackInputRef = useRef<HTMLTextAreaElement>(null)
   const textInputRef = inputRef ?? fallbackInputRef
   const [voiceMode, setVoiceMode] = useState(false)
+  const [draft, setDraft] = useState('')
   const [state, setState] = useState<'idle' | 'requesting' | 'recording' | 'transcribing'>('idle')
   const [cancel, setCancel] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [nearLimit, setNearLimit] = useState(false)
+  const [autoStopped, setAutoStopped] = useState(false)
   const active = useRef<Recording | null>(null)
   const [waveformStream, setWaveformStream] = useState<MediaStream | null>(null)
-  useEffect(() => {
-    onTranscribingChange?.(state === 'transcribing')
-  }, [onTranscribingChange, state])
-  useEffect(() => () => onTranscribingChange?.(false), [onTranscribingChange])
   const origin = useRef<number | null>(null)
   const blocked = useRef(disabled)
   useEffect(() => {
@@ -90,6 +89,8 @@ export function BeautifulPromptComposer({
     const take: Recording = { cancelled: false, released: false, controller: new AbortController() }
     active.current = take
     setError(null)
+    setNearLimit(false)
+    setAutoStopped(false)
     setCancel(false)
     setState('requesting')
     try {
@@ -104,15 +105,29 @@ export function BeautifulPromptComposer({
         }
         return
       }
-      take.dictation = await onStartTranscription(stream, take.controller.signal, () => {
-        if (active.current !== take) return
-        active.current = null
-        take.cancelled = true
-        take.controller.abort()
-        stream.getTracks().forEach((track) => track.stop())
-        setState('idle')
-        setError(t('composer.dictationFailed'))
-      })
+      take.dictation = await onStartTranscription(
+        stream,
+        take.controller.signal,
+        () => {
+          if (active.current !== take) return
+          active.current = null
+          take.cancelled = true
+          take.controller.abort()
+          stream.getTracks().forEach((track) => track.stop())
+          setState('idle')
+          setError(t('composer.dictationFailed'))
+        },
+        {
+          onNearLimit: () => {
+            if (active.current === take && !take.released) setNearLimit(true)
+          },
+          onLimit: () => {
+            if (active.current !== take || take.released) return
+            setAutoStopped(true)
+            release(false)
+          },
+        },
+      )
       if (active.current !== take || blocked.current) {
         take.dictation.close()
         stream.getTracks().forEach((track) => track.stop())
@@ -155,11 +170,20 @@ export function BeautifulPromptComposer({
       take.stream?.getTracks().forEach((track) => track.stop())
       setState('idle')
     } else {
+      setVoiceMode(false)
       setState('transcribing')
       void take.dictation
         .finish()
         .then((text) => {
-          if (active.current === take && !blocked.current && text.trim()) onSend(text.trim())
+          if (active.current === take && text.trim()) {
+            setDraft((previous) => mergeDictationDraft(previous, text))
+            setVoiceMode(false)
+            requestAnimationFrame(() => {
+              const input = textInputRef.current
+              input?.focus()
+              input?.setSelectionRange(input.value.length, input.value.length)
+            })
+          }
         })
         .catch(() => {
           if (active.current === take) setError(t('composer.dictationFailed'))
@@ -244,6 +268,9 @@ export function BeautifulPromptComposer({
       data-cancel={cancel}
     >
       <CoachPromptBar
+        draft={draft}
+        onDraftChange={setDraft}
+        transcribing={state === 'transcribing'}
         placeholder={placeholder}
         showInspirations={showInspirations}
         disabled={disabled || state !== 'idle'}
@@ -265,7 +292,9 @@ export function BeautifulPromptComposer({
                 ? 'composer.releaseCancel'
                 : state === 'requesting'
                   ? 'composer.dictationRequesting'
-                  : 'composer.releaseSend',
+                  : nearLimit
+                    ? 'composer.nearRecordingLimit'
+                    : 'composer.releaseSend',
             )}
           </p>
         </div>
@@ -273,6 +302,11 @@ export function BeautifulPromptComposer({
       {error ? (
         <p className="pt-2 text-sm text-[var(--danger)]" role="alert">
           {error}
+        </p>
+      ) : null}
+      {state === 'transcribing' && autoStopped ? (
+        <p className="pt-2 text-sm text-muted-foreground" role="status">
+          {t('composer.recordingLimitReached')}
         </p>
       ) : null}
     </div>

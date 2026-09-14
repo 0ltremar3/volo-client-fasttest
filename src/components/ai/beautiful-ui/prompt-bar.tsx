@@ -11,6 +11,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoaderCircle } from 'lucide-react'
 
 import inspirationIcon from '@/assets/coach/inspiration.svg'
 import voiceIcon from '@/assets/coach/voice.svg'
@@ -558,6 +559,9 @@ export function CoachPromptBar({
   onVoice,
   inputControl,
   trailingControl,
+  draft: controlledDraft,
+  onDraftChange,
+  transcribing = false,
 }: {
   placeholder?: string
   showInspirations?: boolean
@@ -567,15 +571,20 @@ export function CoachPromptBar({
   onVoice?: () => void
   inputControl?: React.ReactNode
   trailingControl?: React.ReactNode
+  draft?: string
+  onDraftChange?: (text: string) => void
+  transcribing?: boolean
 }) {
   const { t } = useTranslation('coach')
-  const [draft, setDraft] = useState('')
+  const [internalDraft, setInternalDraft] = useState('')
+  const draft = controlledDraft ?? internalDraft
+  const setDraft = onDraftChange ?? setInternalDraft
   const [inspirationsOpen, setInspirationsOpen] = useState(false)
   const [multiline, setMultiline] = useState(false)
   const internalInputRef = useRef<HTMLTextAreaElement>(null)
   const inputRef = providedInputRef ?? internalInputRef
   const hasDraft = draft.trim().length > 0
-  const canSend = hasDraft && !disabled
+  const canSend = hasDraft && !disabled && !transcribing
   const hasInputControl = Boolean(inputControl)
 
   useLayoutEffect(() => {
@@ -684,7 +693,7 @@ export function CoachPromptBar({
               if (event.key === 'Escape') setInspirationsOpen(false)
               if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                 event.preventDefault()
-                send()
+                if (!event.repeat) send()
               }
             }}
             placeholder={placeholder}
@@ -696,20 +705,30 @@ export function CoachPromptBar({
         )}
         {/* Independent microphone entry hidden: <img src="/src/assets/coach/mic.svg" alt="" /> */}
         {trailingControl ??
-          (hasDraft ? (
+          (hasDraft || transcribing ? (
             <button
               type="button"
-              aria-label={t('composer.send')}
+              aria-label={t(transcribing ? 'composer.dictationWorking' : 'composer.send')}
+              aria-busy={transcribing || undefined}
               disabled={!canSend}
               onClick={send}
-              className={`flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-45 ${
+              className={`flex size-11 items-center justify-center rounded-full transition-transform enabled:active:scale-[0.94] disabled:cursor-not-allowed ${transcribing ? '' : 'disabled:opacity-45'} ${
                 multiline && !inputControl ? 'col-start-3 row-start-2 justify-self-end' : ''
               }`}
             >
               <span className="grid size-[26px] place-items-center rounded-full bg-[var(--coach-accent)] text-[var(--coach-on-dark)]">
-                <Icon size={16} strokeWidth={2.4}>
-                  <path d="M12 19V5M5 12l7-7 7 7" />
-                </Icon>
+                {transcribing ? (
+                  <span role="status" aria-label={t('composer.dictationWorking')}>
+                    <LoaderCircle
+                      className="size-4 animate-spin motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
+                  </span>
+                ) : (
+                  <Icon size={16} strokeWidth={2.4}>
+                    <path d="M12 19V5M5 12l7-7 7 7" />
+                  </Icon>
+                )}
               </span>
             </button>
           ) : (

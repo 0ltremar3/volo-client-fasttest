@@ -32,7 +32,7 @@ export function openFinalTranscription(
       if (closed || finalPromise || !audio.byteLength || audio.byteLength % 2) {
         throw new Error('Invalid recording state or PCM frame')
       }
-      if (bytes + audio.byteLength > 300 * 32000) throw new Error('Recording too long')
+      if (bytes + audio.byteLength > 225 * 32000) throw new Error('Recording too long')
       chunks.push(new Uint8Array(audio.slice(0)))
       bytes += audio.byteLength
     },
@@ -64,7 +64,7 @@ export function openFinalTranscription(
         offset += chunk.length
       }
       chunks = []
-      finalPromise = apiFetch<unknown>('/v2/voice/transcriptions?language=auto&provider=groq', {
+      finalPromise = apiFetch<unknown>('/v2/voice/transcriptions?language=auto&provider=bailian', {
         method: 'POST',
         headers: { 'Content-Type': 'audio/wav' },
         body: new Blob([buffer], { type: 'audio/wav' }),

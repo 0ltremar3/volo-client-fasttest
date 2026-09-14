@@ -135,8 +135,10 @@
       "avoiding": "I keep avoiding a decision"
     },
     "holdToTalk": "Hold to talk",
-    "holdHint": "Release to send · Slide up to cancel",
-    "releaseSend": "Release to send, slide up to cancel",
+    "holdHint": "Release to transcribe · Slide up to cancel",
+    "releaseSend": "Release to transcribe, slide up to cancel",
+    "nearRecordingLimit": "About 30 seconds left. Take your time to wrap up.",
+    "recordingLimitReached": "Recording ended. Preparing text for you to edit.",
     "releaseCancel": "Release to cancel",
     "keyboard": "Switch to keyboard",
     "tooLong": "Recording exceeds 10 MiB. Try a shorter recording."
