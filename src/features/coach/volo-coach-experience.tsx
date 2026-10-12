@@ -570,7 +570,6 @@ function SessionView({ sessionId }: { sessionId: string }) {
                   <StreamingText
                     key={item.id}
                     text={item.draft.text}
-                    tail={item.draft.tail}
                     status={item.draft.status}
                     onCopy={() => copyText(item.draft.text)}
                     onRetry={turnState.failed ? retryFailedTurn : undefined}

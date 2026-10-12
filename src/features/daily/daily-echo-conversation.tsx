@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
+import { AssistantMarkdown } from '@/components/ai/assistant-markdown'
 import { dailyApi, type EchoMessage } from '@/api/volo'
 import { BeautifulPromptComposer } from '@/components/ai/beautiful-prompt-composer'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
@@ -129,17 +130,10 @@ export function DailyEchoConversation({ echoId }: { echoId: string }) {
                 </p>
               </div>
             ) : (
-              <p
-                key={message.id}
-                className="whitespace-pre-wrap pr-3 text-base font-medium leading-6"
-              >
-                {message.body}
-              </p>
+              <AssistantMarkdown key={message.id} text={message.body} className="pr-3" />
             ),
           )}
-          {streamText ? (
-            <p className="whitespace-pre-wrap pr-3 text-base font-medium leading-6">{streamText}</p>
-          ) : null}
+          {streamText ? <AssistantMarkdown text={streamText} streaming className="pr-3" /> : null}
           {failed ? (
             <button
               type="button"

@@ -269,8 +269,15 @@ Its empty state shows the designed orange waveform affordance and its non-empty 
 the orange send action. In connected Volo V2 Coach sessions, the waveform opens hold-to-talk input using final-only recognition.
 Coach replies use the controlled `StreamingText` primitive with real SSE text, reduced-motion-safe
 cursor feedback, stable completion accessibility, and copy/retry actions only after streaming stops.
-Before the first delta it shows a compact Reflecting pixel wave; each real delta renders immediately
-with a brief tail fade rather than a simulated typing timer.
+Before the first delta it shows a compact Reflecting pixel wave. Coach, Echo, and review assistant
+messages share `AssistantMarkdown` (`markdown-to-jsx`): accumulated SSE text is parsed as one document,
+with incomplete syntax suppressed only while streaming. Raw HTML is disabled, links retain URL
+sanitization, and images display their alt text without fetching remote assets. Copy retains the
+original Markdown. Lists, quotes, tables, and code blocks use theme-aware styles; wide tables and
+code scroll inside the message.
+
+The bottom navigation preserves safe-area padding and extends its SVG surface through that padding,
+so the background reaches the viewport edge in both themes.
 
 ## Project shape
 

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
+import { AssistantMarkdown } from '@/components/ai/assistant-markdown'
 import { BeautifulPromptComposer } from '@/components/ai/beautiful-prompt-composer'
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
@@ -231,9 +232,10 @@ function MessageBubble({ message }: { message: CoachMessage }) {
 
   return (
     <div className="pr-3">
-      <p className="text-pretty whitespace-pre-line text-base font-medium leading-5 text-[var(--coach-ink)]">
-        {localizeCoachAssistantBody(message.text, t)}
-      </p>
+      <AssistantMarkdown
+        text={localizeCoachAssistantBody(message.text, t)}
+        className="text-[var(--coach-ink)]"
+      />
     </div>
   )
 }

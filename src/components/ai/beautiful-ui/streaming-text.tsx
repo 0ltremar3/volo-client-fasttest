@@ -2,18 +2,18 @@ import { Check, Copy, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { AssistantMarkdown } from '@/components/ai/assistant-markdown'
+
 export type StreamingTextStatus = 'streaming' | 'complete' | 'failed'
 
 export function StreamingText({
   text,
   status,
-  tail = '',
   onCopy,
   onRetry,
 }: {
   text: string
   status: StreamingTextStatus
-  tail?: string
   onCopy: () => Promise<void> | void
   onRetry?: () => void
 }) {
@@ -21,8 +21,6 @@ export function StreamingText({
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'copied' | 'failed'>('idle')
   const streaming = status === 'streaming'
   const showActions = status === 'complete' || status === 'failed'
-  const appendedText = streaming && tail && text.endsWith(tail) ? tail : ''
-  const stableText = appendedText ? text.slice(0, -appendedText.length) : text
 
   useEffect(() => {
     if (copyStatus !== 'copied') return
@@ -46,26 +44,15 @@ export function StreamingText({
 
   return (
     <div className="min-w-0 pr-3">
-      <p
-        className="text-pretty whitespace-pre-wrap break-words text-base font-medium leading-6"
-        aria-hidden={streaming || undefined}
-      >
-        {stableText}
-        {appendedText ? (
-          <span
-            key={text.length}
-            className="animate-[coach-stream-delta_160ms_var(--ease-standard)_both]"
-          >
-            {appendedText}
-          </span>
-        ) : null}
+      <div aria-hidden={streaming || undefined}>
+        <AssistantMarkdown text={text} streaming={streaming} />
         {streaming ? (
           <span
             className="ml-1 inline-block h-[1em] w-px translate-y-[0.15em] bg-[var(--coach-accent)] motion-safe:animate-pulse"
             aria-hidden="true"
           />
         ) : null}
-      </p>
+      </div>
       {status === 'failed' ? (
         <p className="mt-2 text-sm text-[var(--danger)]" role="alert">
           {t('stream.interrupted')}

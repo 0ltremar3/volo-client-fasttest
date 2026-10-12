@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 
+import { AssistantMarkdown } from '@/components/ai/assistant-markdown'
 import { reviewApi } from '@/api/volo'
 import { MoveCardSurface } from '@/components/cards/move-card-surface'
 import { AppAtmosphere } from '@/components/layout/app-atmosphere'
@@ -103,12 +104,11 @@ export function ReviewDetailPage() {
                 </p>
               </div>
             ) : (
-              <p
+              <AssistantMarkdown
                 key={message.id}
-                className="whitespace-pre-wrap pr-3 text-base font-medium leading-6"
-              >
-                {localizeCoachAssistantBody(message.body, tCoach)}
-              </p>
+                text={localizeCoachAssistantBody(message.body, tCoach)}
+                className="pr-3"
+              />
             ),
           )}
         </div>

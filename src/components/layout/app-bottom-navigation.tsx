@@ -64,6 +64,12 @@ export function AppBottomNavigation({ onCoach }: AppBottomNavigationProps) {
         style={{ filter: 'var(--coach-nav-surface-filter)' }}
         aria-hidden="true"
       />
+      {/* The SVG's opaque body ends at 93px; extend it through the safe area. */}
+      <span
+        className="pointer-events-none absolute inset-x-0 bottom-0 top-[92px] bg-white"
+        style={{ filter: 'var(--coach-nav-surface-filter)' }}
+        aria-hidden="true"
+      />
       <SideTabLink to="/daily" label={t('nav.daily')} svg={dailyIcon} />
 
       <NavLink
