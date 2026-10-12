@@ -2,6 +2,8 @@
   "title": "Coach",
   "scheduleTitle": "Coach Schedule",
   "hello": "New Session",
+  "openingInstant": "I am here. What feels most worth looking at right now?",
+  "openingTopic": "I am here. What feels most worth looking at in this topic now?",
   "tagline": "Make some time to check in with yourself.",
   "makeSpace": "Schedule a Coach session for later, or start one whenever you’re ready.",
   "composeSession": "Start or schedule a new session",

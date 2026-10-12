@@ -12,7 +12,9 @@ const greetingKeys = {
   evening: 'greetingEvening',
 } as const
 
-const fixtureKeys = {
+const fixedMessageKeys = {
+  'I am here. What feels most worth looking at right now?': 'openingInstant',
+  'I am here. What feels most worth looking at in this topic now?': 'openingTopic',
   'What feels most alive when you picture the next chapter of your work?': 'mock.replyAlive',
   'It sounds like the decision is carrying the weight of every future possibility. Which loss feels hardest to accept?':
     'mock.replyLoss',
@@ -32,8 +34,8 @@ export function localizeCoachAssistantBody(body: string, t: TFunction<'coach'>):
   const adjustment = moveAdjustmentOpeningPattern.exec(body)
   if (adjustment) return t('adjustmentOpening', { description: adjustment[1] ?? '' })
 
-  const fixtureKey = fixtureKeys[body as keyof typeof fixtureKeys]
-  if (fixtureKey) return t(fixtureKey)
+  const messageKey = fixedMessageKeys[body as keyof typeof fixedMessageKeys]
+  if (messageKey) return t(messageKey)
 
   const welcome = welcomePattern.exec(body)
   const period = welcome?.[1] as keyof typeof greetingKeys | undefined

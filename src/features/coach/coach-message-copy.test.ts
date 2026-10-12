@@ -9,6 +9,20 @@ const opening = (description: string, withScheduleClaim = false) =>
     : `Let us revisit your Move: "${description}".`
 
 describe('localizeCoachAssistantBody', () => {
+  it.each([
+    [
+      'I am here. What feels most worth looking at right now?',
+      '我在这里。此刻，你最想一起看看什么？',
+    ],
+    [
+      'I am here. What feels most worth looking at in this topic now?',
+      '我在这里。关于这个主题，此刻你最想一起看看什么？',
+    ],
+  ])('renders the stored opening in the active locale: %s', (body, chinese) => {
+    expect(localizeCoachAssistantBody(body, i18n.getFixedT('zh', 'coach'))).toBe(chinese)
+    expect(localizeCoachAssistantBody(body, i18n.getFixedT('en', 'coach'))).toBe(body)
+  })
+
   it('keeps ordinary Coach replies unchanged', () => {
     expect(localizeCoachAssistantBody('What feels present?', i18n.getFixedT('zh', 'coach'))).toBe(
       'What feels present?',

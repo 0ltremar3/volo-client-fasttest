@@ -252,6 +252,10 @@ control. Signed-out users can change language on the login page. Coach and Echo 
 input, and backend Move / Pause / Echo bodies stay in their original language and do not follow the
 UI locale.
 
+Fixed Coach welcome, instant/scheduled opening, and Move rethink messages render in the active
+UI locale, including when reopening a stored conversation. They use exact known copy mappings;
+generated AI replies and user content retain their original wording.
+
 ## Beautiful UI
 
 Beautiful UI is used through its official copy-paste model, not as an npm package. The adapted
