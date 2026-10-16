@@ -228,6 +228,9 @@ function VoiceRoom({
   const room = useMemo(
     () =>
       new Room({
+        // Create transports after the server supplies ICE settings. The single-PC
+        // path mutates an existing RTC configuration, which embedded WebKit rejects.
+        singlePeerConnection: false,
         adaptiveStream: true,
         dynacast: true,
         stopLocalTrackOnUnpublish: true,

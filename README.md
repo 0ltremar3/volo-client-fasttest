@@ -317,3 +317,16 @@ For UI changes, also verify both themes at 375px and desktop width, including ke
 - Hardware trace ingestion
 - Device notifications and calendar sync
 - Durable offline queue and background replay
+
+Coach conversations expose a phone button immediately before Done in the header. It opens the existing LiveKit voice overlay and is unavailable while a text turn, session completion, or pause confirmation is in progress. Calls use the backend voice worker (Deepgram Flux English + ElevenLabs Flash v2.5); provider API keys stay on the backend. Start the backend with `pnpm dev:voice`. Dictation in the composer remains a separate flow.
+
+LiveKit calls explicitly use dual PeerConnections (`singlePeerConnection: false`). This
+avoids the embedded browser's unsupported `RTCPeerConnection.setConfiguration` update
+during the single-PC join flow. A successful Cloud worker registration alone does not
+prove browser media connectivity. ElevenLabs keys also need `text_to_speech` permission.
+
+Voice calls now follow the application language at dial time: Chinese uses Doubao ASR/TTS
+2.0; English uses Deepgram Flux + ElevenLabs Flash v2.5. The voice-session request includes
+`language: "zh" | "en"`; the backend signs the choice for the worker. Change language in
+settings and redial to switch providers. Missing provider credentials return a startup error
+without silently selecting another language. Existing conversation history is not translated.

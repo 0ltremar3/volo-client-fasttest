@@ -1,4 +1,5 @@
 {
+  "startVoiceCall": "开始语音通话",
   "title": "Coach",
   "scheduleTitle": "Coach 日程",
   "hello": "新会话",
@@ -41,7 +42,7 @@
   "openError": "Coach 无法打开。",
   "complete": "这次对话已经结束。",
   "endError": "无法结束这次对话，请再点一次完成。",
-  "resolveMoveBeforeDone": "请先确认或跳过待处理的行动草稿，再结束这次对话。",
+  "resolveMoveBeforeDone": "请先选择「添加行动」或「跳过」，再点「完成」。",
   "pauseTitle": "这里适合停一停",
   "topicToExplore": "想继续探索的主题",
   "takeAway": "带走的一句",
@@ -190,5 +191,6 @@
     "reviewMoveDraft": "查看并确认",
     "openingMoveDraft": "正在打开草稿…",
     "later": "稍后"
-  }
+  },
+  "resolveRevisionBeforeDone": "请先选择「确认调整」或「继续聊」，再点「完成」。"
 }

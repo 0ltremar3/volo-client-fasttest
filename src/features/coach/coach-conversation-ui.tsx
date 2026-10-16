@@ -1,3 +1,5 @@
+import { Phone } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -82,35 +84,57 @@ export function MoveScheduleFields({
 
 export function CoachConversationHeader({
   onDone,
+  onVoice,
+  voiceDisabled = false,
   disabled = false,
   busy = false,
   showDone = true,
 }: {
   onDone: () => void
+  onVoice?: () => void
+  voiceDisabled?: boolean
   disabled?: boolean
   busy?: boolean
   showDone?: boolean
 }) {
   const { t } = useTranslation('coach')
   return (
-    <header className="safe-top relative z-30 grid min-h-16 shrink-0 grid-cols-[57px_1fr_57px] items-center px-5 backdrop-blur-[15px]">
+    <header className="safe-top relative z-30 grid min-h-16 shrink-0 grid-cols-[109px_1fr_109px] items-center px-5 backdrop-blur-[15px]">
       <span aria-hidden="true" />
       <p className="text-center text-base font-semibold text-[var(--coach-ink)]">{t('title')}</p>
-      {showDone ? (
-        <button
-          type="button"
-          className="flex h-11 w-[57px] items-center rounded-full text-sm font-medium text-[var(--coach-on-dark)] transition-[opacity,transform] enabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45"
-          onClick={onDone}
-          disabled={disabled}
-          aria-busy={busy || undefined}
-        >
-          <span className="block h-[30px] w-[57px] rounded-full bg-[var(--coach-chrome-dark)] px-[10px] leading-[30px] shadow-[0_2px_2px_rgb(61_59_54/10%)]">
-            {t('done')}
-          </span>
-        </button>
-      ) : (
-        <span aria-hidden="true" />
-      )}
+      <div className="flex items-center justify-end gap-2">
+        {onVoice ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="group size-11 shrink-0 rounded-full text-[var(--coach-on-dark)] hover:bg-transparent hover:text-[var(--coach-on-dark)] active:opacity-100"
+            aria-label={t('startVoiceCall')}
+            title={t('startVoiceCall')}
+            disabled={voiceDisabled}
+            onClick={onVoice}
+          >
+            <span className="flex size-[30px] items-center justify-center rounded-full bg-[var(--coach-chrome-dark)] shadow-[0_2px_2px_rgb(61_59_54/10%)] transition-[opacity,scale] duration-150 ease-[cubic-bezier(0.2,0,0,1)] group-hover:opacity-90 group-active:scale-[0.96] motion-reduce:transition-none motion-reduce:group-active:scale-100">
+              <Phone className="-scale-x-100" aria-hidden="true" />
+            </span>
+          </Button>
+        ) : null}
+        {showDone ? (
+          <button
+            type="button"
+            className="flex h-11 w-[57px] items-center rounded-full text-sm font-medium text-[var(--coach-on-dark)] transition-[opacity,transform] enabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45"
+            onClick={onDone}
+            disabled={disabled}
+            aria-busy={busy || undefined}
+          >
+            <span className="block h-[30px] w-[57px] rounded-full bg-[var(--coach-chrome-dark)] px-[10px] leading-[30px] shadow-[0_2px_2px_rgb(61_59_54/10%)]">
+              {t('done')}
+            </span>
+          </button>
+        ) : (
+          <span aria-hidden="true" />
+        )}
+      </div>
     </header>
   )
 }

@@ -64,7 +64,7 @@ import {
   sortScheduledSessionsByTime,
 } from '@/features/coach/schedule-routing'
 import { VoiceOverlay } from '@/features/coach/voice-overlay'
-import { retryVoiceSession } from '@/features/coach/voice-state'
+import { canStartVoice, retryVoiceSession } from '@/features/coach/voice-state'
 import { currentAppLocale } from '@/i18n'
 
 const today = () => new Date().toLocaleDateString('en-CA')
@@ -457,7 +457,9 @@ function SessionView({ sessionId }: { sessionId: string }) {
     },
   })
 
-  const voiceSession = useMutation({ mutationFn: () => voiceApi.create(sessionId) })
+  const voiceSession = useMutation({
+    mutationFn: () => voiceApi.create(sessionId, currentAppLocale()),
+  })
 
   const refreshCanonicalThread = useCallback(() => {
     void Promise.all([
@@ -523,12 +525,6 @@ function SessionView({ sessionId }: { sessionId: string }) {
     preparing: ending || voiceOpen,
   })
   const endAction = resolveCoachEndAction(turnState.cards)
-  const initialVoiceAssistantText = thread.data.messages.some((message) => message.role === 'user')
-    ? ''
-    : localizeCoachAssistantBody(
-        thread.data.messages.find((message) => message.role === 'assistant')?.body ?? '',
-        t,
-      )
   const pauseError = confirmEnd.isError
     ? t('pauseSaveError')
     : continueEnd.isError
@@ -547,12 +543,33 @@ function SessionView({ sessionId }: { sessionId: string }) {
             if (isEmptyCoachConversation(turnState.messages)) discardEmptySession.mutate()
             else prepareEnd.mutate()
           }}
+          onVoice={() => {
+            setVoiceOpen(true)
+            retryVoiceSession(voiceSession)
+          }}
+          voiceDisabled={
+            !canStartVoice({
+              sessionStatus: thread.data.session.status,
+              sending,
+              pauseBlocked: Boolean(pauseCard),
+              ending,
+              voiceOpen,
+            })
+          }
           disabled={!canPrepareEnd}
           busy={ending}
         />
-        <p className="sr-only" aria-live="polite">
-          {endGuardCardId === pendingMoveCard?.id ? t('resolveMoveBeforeDone') : ''}
-        </p>
+        <div role="status" aria-live="polite" className="shrink-0">
+          {endGuardCardId === pendingMoveCard?.id ? (
+            <p className="mx-5 mb-2 rounded-xl border border-[var(--coach-border-warm-subtle)] bg-[var(--coach-surface-muted)] px-3 py-2 text-sm leading-5 text-[var(--coach-ink)]">
+              {t(
+                pendingMoveCard.type === 'move_revision'
+                  ? 'resolveRevisionBeforeDone'
+                  : 'resolveMoveBeforeDone',
+              )}
+            </p>
+          ) : null}
+        </div>
         <div
           ref={conversationRef}
           className="coach-scrollbar-none min-h-0 flex-1 overflow-y-auto px-[15px] pb-6 pt-2"
@@ -648,7 +665,6 @@ function SessionView({ sessionId }: { sessionId: string }) {
           details={voiceSession.data ?? null}
           loading={voiceSession.isPending}
           requestError={voiceSession.isError}
-          initialAssistantText={initialVoiceAssistantText}
           onRetry={() => {
             retryVoiceSession(voiceSession)
           }}

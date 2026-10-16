@@ -265,10 +265,10 @@ export const coachApi = {
 }
 
 export const voiceApi = {
-  create: (coachSessionId: string) =>
+  create: (coachSessionId: string, language: 'zh' | 'en') =>
     apiFetch<VoiceConnectionDetails>('/v2/voice/sessions', {
       method: 'POST',
-      body: JSON.stringify({ coach_session_id: coachSessionId }),
+      body: JSON.stringify({ coach_session_id: coachSessionId, language }),
     }),
   transcribe: transcribeBailianDirect,
   streamTranscription: (onInterim: (text: string) => void) =>

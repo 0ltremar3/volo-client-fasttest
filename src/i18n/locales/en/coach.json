@@ -1,4 +1,5 @@
 {
+  "startVoiceCall": "Start voice call",
   "title": "Coach",
   "scheduleTitle": "Coach Schedule",
   "hello": "New Session",
@@ -41,7 +42,7 @@
   "openError": "Coach could not open.",
   "complete": "This conversation is complete.",
   "endError": "Couldn’t end this conversation. Try Done again.",
-  "resolveMoveBeforeDone": "Review or skip the pending Move draft before ending this conversation.",
+  "resolveMoveBeforeDone": "Choose “Add Move” or “Skip”, then select “Done”.",
   "pauseTitle": "A Good Place to Pause",
   "topicToExplore": "TOPIC TO EXPLORE",
   "takeAway": "TAKE AWAY",
@@ -190,5 +191,6 @@
     "reviewMoveDraft": "Review and confirm",
     "openingMoveDraft": "Opening draft…",
     "later": "Later"
-  }
+  },
+  "resolveRevisionBeforeDone": "Choose “Confirm Adjustment” or “Keep talking”, then select “Done”."
 }
